@@ -1,19 +1,14 @@
 import { Suspense } from "react";
-import TestInflux from "./test/page";
+import Spinner from "./components/Spinner";
+import StockTableLoader from "./components/StockTableLoader";
 
-export default function Home() {
+export default async function HomePage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <h1>Fjord</h1>
-        <Suspense fallback={<Loading />}>
-            <TestInflux />
-        </Suspense>
-      </main>
-    </div>
+    <main className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+      <h1 className="text-4xl font-bold text-teal-400 mb-8 drop-shadow-lg">Real-time Stock Dashboard</h1>
+      <Suspense fallback={<Spinner />}>
+        <StockTableLoader />
+      </Suspense>
+    </main>
   );
-}
-
-function Loading() {
-  return <h2>🌀 Loading...</h2>;
 }

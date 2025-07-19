@@ -33,3 +33,18 @@ spec:
                 secretKeyRef:
                   name: influxdb-secrets
                   key: token
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: stock-poller-config
+                  key: REDIS_HOST
+            - name: REDIS_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: stock-poller-config
+                  key: REDIS_PORT
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis
+                  key: redis-password
