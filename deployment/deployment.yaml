@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fjord-deployment
+  namespace: stock
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: fjord 
+  template:
+    metadata:
+      annotations:
+        gh-actions-sha: init 
+      labels:
+        app: fjord 
+    spec:
+      restartPolicy: Always
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: fjord 
+          image: artifacts.tekuro.io/fjord:latest
+          env:
+            - name: INFLUXDB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: influxdb-secrets
+                  key: url
+            - name: INFLUXDB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: influxdb-secrets
+                  key: token
