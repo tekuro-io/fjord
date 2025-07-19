@@ -10,6 +10,7 @@ export async function getTickers() {
     const redis = new Redis(redisOptions);
     try {
         const tickersJson = await redis.get("tickers");
+        console.log("tickersJson:", tickersJson);
         return tickersJson ? JSON.parse(tickersJson) : [];
     } catch (error) {
         console.error("Redis error", error);
