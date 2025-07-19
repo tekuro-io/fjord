@@ -1,5 +1,3 @@
-// src/app/api/stock-data/route.ts
-// IMPORTANT: Correctly import the renamed function and the StockItem interface
 import { getStockDataFromRedis, StockItem } from "../../lib/redis"; // Note the path and function name
 import { NextResponse } from "next/server";
 

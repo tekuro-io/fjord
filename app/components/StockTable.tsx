@@ -8,8 +8,6 @@ import {
   getSortedRowModel,
   flexRender,
   createColumnHelper,
-  CellContext, // Keep CellContext import for reference if needed, though often inferred now
-  ColumnDef,   // Keep ColumnDef import for reference if needed, though often inferred now
 } from "@tanstack/react-table";
 import {
   SlidersHorizontal, Bell, BellRing, ArrowUp, ArrowDown, X,

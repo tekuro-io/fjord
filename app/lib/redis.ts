@@ -1,6 +1,4 @@
-
 import Redis, { RedisOptions } from "ioredis";
-
 
 export interface StockItem {
   ticker: string;
@@ -23,35 +21,44 @@ const redisOptions: RedisOptions = {
     maxRetriesPerRequest: null, 
 };
 
-const redis = new Redis(redisOptions);
+let redisClientPromise: Promise<Redis> | null = null;
 
-// Add error handling for the shared Redis client
-redis.on('error', (err) => {
-    console.error('Redis Client Error:', err);
-});
+function getRedisClient(): Promise<Redis> {
+  if (redisClientPromise) return redisClientPromise;
 
-// Optional: Log connection status
-redis.on('connect', () => {
-    console.log('Redis client connected successfully!');
-});
+  redisClientPromise = (async () => {
+    const redis = new Redis(redisOptions);
 
-redis.on('ready', () => {
-    console.log('Redis client is ready to use.');
-});
+    redis.on('error', (err) => {
+      console.error('Redis Client Error:', err);
+    });
 
-redis.on('end', () => {
-    console.warn('Redis client connection ended.');
-});
+    redis.on('connect', () => {
+      console.log('Redis client connected successfully!');
+    });
 
+    redis.on('ready', () => {
+      console.log('Redis client is ready to use.');
+    });
 
-redis.on('reconnecting', (delay: number) => {
-    console.log(`Redis client reconnecting... delay: ${delay}ms`);
-});
+    redis.on('end', () => {
+      console.warn('Redis client connection ended.');
+    });
+
+    redis.on('reconnecting', (delay: number) => {
+      console.log(`Redis client reconnecting... delay: ${delay}ms`);
+    });
+
+    return redis;
+  })();
+
+  return redisClientPromise;
+}
 
 
 export async function getStockDataFromRedis(): Promise<StockItem[]> {
     try {
-
+        const redis = await getRedisClient()
         const keys = await redis.keys("scanner:latest:*");
         console.log("Found Redis keys:", keys);
 
@@ -83,5 +90,3 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
         return [];
     }
 }
-
-export { redis };
