@@ -1,11 +1,18 @@
 import { InfluxDB } from '@influxdata/influxdb-client';
+import { connection } from 'next/server';
 
 // Makes sure we re-render for each request and it's not statically cached
 export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
 
 async function queryInflux() {
-    const url = process.env.INFLUXDB_URL!;
+    await connection()
+    const url = process.env.INFLUXDB_URL;
     const token = process.env.INFLUXDB_TOKEN!;
+
+    if (!url || !token) {
+        throw new Error("Missing INFLUXDB_URL or INFLUXDB_TOKEN");
+    }
 
     const client = new InfluxDB({ url, token });
     const queryApi = client.getQueryApi("influxdata");
