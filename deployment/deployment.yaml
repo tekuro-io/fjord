@@ -12,7 +12,7 @@ spec:
   template:
     metadata:
       annotations:
-        gh-actions-sha: "63945ec4afaaa4b8bf9c3df5a96d9bcfbb23cebb"
+        gh-actions-sha: "5763d18a360cfd2782d9448a86f9090b5223d56e"
       labels:
         app: fjord 
     spec:
