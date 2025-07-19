@@ -11,6 +11,8 @@ spec:
       app: fjord 
   template:
     metadata:
+      annotations:
+        git-tag: {TAG} 
       labels:
         app: fjord 
     spec:

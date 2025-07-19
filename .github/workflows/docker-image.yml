@@ -53,8 +53,16 @@ jobs:
           NUM=$((NUM + 1))
           NEW_TAG="v$NUM"
         fi
+
+        cd deployment
+        sed -i "/annotations:/,/^[^[:space:]]/ s/gh-actions-sha:.*/git-tag: \"$NEW_TAG\"/" deployment.yaml
+
         git config --global user.name 'Github Actions'
         git config --global user.email 'actions@github.com'
+        git checkout -B release/$NEW_TAG
+        git add deployment.yaml
+        git commit -m "Release $NEW_TAG" || echo "No changes to commit"
+        git push --force origin release/$NEW_TAG
         git tag $NEW_TAG
         git push origin $NEW_TAG
         echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
