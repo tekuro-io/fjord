@@ -8,8 +8,8 @@ import {
   getSortedRowModel,
   flexRender,
   createColumnHelper,
-  CellContext,
-  ColumnDef,
+  CellContext, // Keep CellContext import for reference if needed, though often inferred now
+  ColumnDef,   // Keep ColumnDef import for reference if needed, though often inferred now
 } from "@tanstack/react-table";
 import {
   SlidersHorizontal, Bell, BellRing, ArrowUp, ArrowDown, X,
@@ -215,8 +215,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     return data;
   }, [currentData, multiplierFilter, globalFilter]);
 
-  // Explicitly type the columns array
-  const columns: ColumnDef<StockItem, any>[] = [
+  // NO explicit type here. Let TypeScript infer the type of 'columns'
+  const columns = [
     columnHelper.accessor("ticker", {
       header: () => (
         <div className="flex items-center gap-1">
@@ -224,7 +224,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Symbol</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, string>) => (
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => (
         <div className="flex items-center gap-2">
           <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
             e.stopPropagation();
@@ -234,7 +235,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
                            bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
-            {info.getValue()}
+            {info.getValue() as string} {/* Assert type here */}
           </span>
         </div>
       ),
@@ -246,7 +247,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Prev Price</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatCurrency(info.getValue()),
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => formatCurrency(info.getValue() as number | null), // Assert type here
     }),
     columnHelper.accessor("price", {
       header: () => (
@@ -255,7 +257,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Price</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatCurrency(info.getValue()),
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => formatCurrency(info.getValue() as number | null), // Assert type here
     }),
     columnHelper.accessor("delta", {
       header: () => (
@@ -264,8 +267,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Delta</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => {
-        const val = info.getValue();
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => {
+        const val = info.getValue() as number | null; // Assert type here
         if (val == null) return "-";
 
         let bg = "bg-transparent";
@@ -293,7 +297,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Float</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()),
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => formatLargeNumber(info.getValue() as number | null), // Assert type here
     }),
     columnHelper.accessor("mav10", {
       header: () => (
@@ -302,7 +307,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>MA10 Volume</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()),
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => formatLargeNumber(info.getValue() as number | null), // Assert type here
     }),
     columnHelper.accessor("volume", {
       header: () => (
@@ -311,7 +317,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Volume</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()),
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => formatLargeNumber(info.getValue() as number | null), // Assert type here
     }),
     columnHelper.accessor("multiplier", {
       header: () => (
@@ -320,8 +327,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Multiplier</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => {
-        const val = info.getValue();
+      // No explicit type for 'info' parameter, let it infer from context
+      cell: (info) => {
+        const val = info.getValue() as number | null; // Assert type here
         if (val == null) return "-";
 
         const multiplierValue: number = val;
@@ -403,7 +411,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
             className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm"
           >
-            {/* Changed sm:inline-block to md:inline-block and sm:hidden to md:hidden */}
             <span className="hidden md:inline-block">{showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}</span>
             <span className="md:hidden">Filters</span>
             <SlidersHorizontal className={`w-4 h-4 transition-transform duration-300 ${showOptionsDrawer ? 'rotate-90' : ''}`} />
@@ -417,7 +424,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
             } text-white font-semibold focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm`}
           >
-            {/* Changed sm:inline-block to md:inline-block and sm:hidden to md:hidden */}
             <span className="hidden md:inline-block">{isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}</span>
             <span className="md:hidden">Alert</span>
             {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
