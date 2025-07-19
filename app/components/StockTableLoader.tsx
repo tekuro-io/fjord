@@ -1,11 +1,16 @@
-import StockTable from "./StockTable";
-import { connection } from "next/server";
-import { getTickers } from "../lib/redis";
-
-export default async function StockTableLoader() {
-    await connection() // Disables pre-rendering
-    const data = await getTickers();
-    return <StockTable data={data} />;
-}
+// src/app/StockTableLoader.tsx
+import StockTable from "../components/StockTable"; 
+import { getStockDataFromRedis, StockItem } from "../lib/redis"; 
 
 export const dynamic = "force-dynamic";
+
+export default async function StockTableLoader() {
+
+    try {
+        const data: StockItem[] = await getStockDataFromRedis();
+        return <StockTable data={data} />;
+    } catch (error) {
+        console.error("Error in StockTableLoader: Failed to fetch data for StockTable:", error);
+        return <StockTable data={[]} />;
+    }
+}

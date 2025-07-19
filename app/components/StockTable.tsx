@@ -1,4 +1,5 @@
-'use client'; // This directive is crucial for client-side functionality
+// src/components/StockTable.tsx
+'use client'; // This must be the very first line for client components
 
 import React from "react";
 import {
@@ -7,19 +8,19 @@ import {
   getSortedRowModel,
   flexRender,
   createColumnHelper,
-  CellContext, // Imported for potential explicit typing in cell functions if needed
+  CellContext,
+  ColumnDef,
 } from "@tanstack/react-table";
 import {
   SlidersHorizontal, Bell, BellRing, ArrowUp, ArrowDown, X,
   Tag, DollarSign, Percent, BarChart2, Activity, WifiOff, Search, Clock,
-  ChevronRight, ChevronDown
+  ChevronRight, ChevronDown, Frown
 } from 'lucide-react';
 
 import * as Tone from 'tone';
 
-
 // Define the interface for your stock data structure
-interface StockItem {
+export interface StockItem {
   ticker: string;
   prev_price: number | null;
   price: number | null;
@@ -28,130 +29,16 @@ interface StockItem {
   mav10: number | null;
   volume: number | null;
   multiplier: number | null;
-  // Add any other properties that exist in your stock data from the API
-  // For example, if your API returns `companyName`, `newsHeadlines`, `sentiment`, `description`
-  // although these are currently mocked client-side, if they came from API, they'd be here:
-  // companyName?: string;
-  // newsHeadlines?: string[];
-  // sentiment?: string;
-  // description?: string;
+  timestamp?: string;
 }
 
-// Now, use the StockItem interface with createColumnHelper
 const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
 const MULTIPLIER_THRESHOLD = 4.5;
 
-// Mock company details data with headlines and sentiment (can remain client-side)
-// Note: If this data were to come from your API for each stock,
-// the StockItem interface would need to include these fields.
-const MOCK_COMPANY_DETAILS: { [key: string]: { companyName: string; newsHeadlines: string[]; sentiment: string; description: string; } } = {
-  "AAPL": {
-    companyName: "Apple Inc.",
-    newsHeadlines: [
-      "Apple announces new iPhone model with advanced AI features.",
-      "Analysts raise price targets for AAPL ahead of earnings.",
-      "Apple's services revenue continues strong growth."
-    ],
-    sentiment: "Positive",
-    description: "Apple Inc. designs, manufactures, and markets smartphones, personal computers, tablets, wearables, and accessories worldwide."
-  },
-  "MSFT": {
-    companyName: "Microsoft Corp.",
-    newsHeadlines: [
-      "Microsoft Azure expands cloud services globally.",
-      "New AI partnership boosts MSFT stock.",
-      "Microsoft Q3 earnings beat expectations."
-    ],
-    sentiment: "Very Positive",
-    description: "Microsoft Corporation develops, licenses, and supports a range of software products, services and devices."
-  },
-  "GOOGL": {
-    companyName: "Alphabet Inc. (Class A)",
-    newsHeadlines: [
-      "Google unveils next-gen AI search capabilities.",
-      "Alphabet invests heavily in quantum computing research.",
-      "Regulatory scrutiny impacts Google's advertising business."
-    ],
-    sentiment: "Neutral",
-    description: "Alphabet Inc. provides search, advertising, cloud computing, and other technology services worldwide."
-  },
-  "AMZN": {
-    companyName: "Amazon.com, Inc.",
-    newsHeadlines: [
-      "Amazon Prime Day breaks new sales records.",
-      "AWS continues to dominate cloud market share.",
-      "Amazon faces labor disputes in key regions."
-    ],
-    sentiment: "Mixed",
-    description: "Amazon.com, Inc. engages in the retail sale of consumer products and subscriptions in North America and internationally."
-  },
-  "TSLA": {
-    companyName: "Tesla, Inc.",
-    newsHeadlines: [
-      "Tesla's new Gigafactory production ramps up.",
-      "Cybertruck deliveries begin, generating buzz.",
-      "Elon Musk's tweets cause market volatility for TSLA."
-    ],
-    sentiment: "Volatile",
-    description: "Tesla, Inc. designs, develops, manufactures, leases, and sells electric vehicles, and energy generation and storage systems."
-  },
-  "NVDA": {
-    companyName: "NVIDIA Corp.",
-    newsHeadlines: [
-      "NVIDIA's new GPU line revolutionizes AI processing.",
-      "Strong demand for data center chips boosts NVDA.",
-      "Supply chain issues could impact NVIDIA's future outlook."
-    ],
-    sentiment: "Positive",
-    description: "NVIDIA Corporation provides graphics, and media and communications processors for the computing, consumer, and automotive industries."
-  },
-  "FB": {
-    companyName: "Meta Platforms, Inc.",
-    newsHeadlines: [
-      "Meta's metaverse strategy shows early signs of adoption.",
-      "Facebook's ad revenue remains strong despite competition.",
-      "Privacy concerns continue to challenge Meta Platforms."
-    ],
-    sentiment: "Neutral",
-    description: "Meta Platforms, Inc. develops products that enable people to connect and share through mobile devices, personal computers, virtual reality headsets, and in-home devices."
-  },
-  "NFLX": {
-    companyName: "Netflix, Inc.",
-    newsHeadlines: [
-      "Netflix adds millions of new subscribers globally.",
-      "New content slate excites investors.",
-      "Competition in streaming market intensifies for Netflix."
-    ],
-    sentiment: "Positive",
-    description: "Netflix, Inc. provides subscription streaming entertainment service."
-  },
-  "JPM": {
-    companyName: "JPMorgan Chase & Co.",
-    newsHeadlines: [
-      "JPMorgan reports strong Q4 earnings, beats estimates.",
-      "Investment banking division sees robust activity.",
-      "Economic slowdown could impact JPM's lending business."
-    ],
-    sentiment: "Positive",
-    description: "JPMorgan Chase & Co. is a financial holding company. It provides financial services."
-  },
-  "V": {
-    companyName: "Visa Inc.",
-    newsHeadlines: [
-      "Visa's payment volume grows steadily.",
-      "New partnerships expand Visa's global reach.",
-      "Regulatory changes could affect Visa's transaction fees."
-    ],
-    sentiment: "Positive",
-    description: "Visa Inc. operates as a payments technology company worldwide."
-  }
-};
-
-
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
-  const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData); // Explicit type for useState
+  const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
     { id: "multiplier", desc: true },
   ]);
@@ -160,7 +47,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const [isAlertActive, setIsAlertActive] = React.useState(false);
   const [alertSnapshotTickers, setAlertSnapshotTickers] = React.useState<string[]>([]);
-  const [newStocksAlert, setNewStocksAlert] = React.useState<StockItem[]>([]); // Explicit type for newly detected stocks
+  const [newStocksAlert, setNewStocksAlert] = React.useState<StockItem[]>([]);
 
   const [globalFilter, setGlobalFilter] = React.useState('');
 
@@ -171,16 +58,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
 
-  const synthRef = React.useRef<Tone.Synth | null>(null); // Explicit type for Tone.Synth
+  const synthRef = React.useRef<Tone.Synth | null>(null);
 
   const getMarketStatus = () => {
     const now = new Date();
     try {
-      const etHours = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', hourCycle: 'h23' }).format(now);
-      const etMinutes = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', minute: 'numeric' }).format(now);
-
-      const hours = parseInt(etHours, 10);
-      const minutes = parseInt(etMinutes, 10);
+      const etFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });
+      const [etHours, etMinutes] = etFormatter.format(now).split(':').map(Number);
 
       const dayOfWeek = now.getDay();
 
@@ -188,7 +72,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         return 'Closed';
       }
 
-      const currentMinutesET = hours * 60 + minutes;
+      const currentMinutesET = etHours * 60 + etMinutes;
 
       const preMarketOpen = 4 * 60;
       const marketOpen = 9 * 60 + 30;
@@ -231,11 +115,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && Tone && typeof Tone.Synth !== 'undefined') {
-      synthRef.current = new Tone.Synth().toDestination();
+      if (!synthRef.current) {
+        synthRef.current = new Tone.Synth().toDestination();
+      }
     }
     return () => {
       if (synthRef.current) {
         synthRef.current.dispose();
+        synthRef.current = null;
       }
     };
   }, []);
@@ -263,17 +150,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        // Cast incoming data to StockItem[]
         const newData: StockItem[] = await response.json();
 
         setConnectionStatus('connected');
 
-        const newFilteredData = newData.filter((stock: StockItem) =>
+        const newFilteredDataForAlert = newData.filter((stock: StockItem) =>
           stock.multiplier == null || stock.multiplier >= multiplierFilter
         );
 
         if (isAlertActive && alertSnapshotTickers.length > 0) {
-          const newlyAppearingStocks = newFilteredData.filter((stock: StockItem) =>
+          const newlyAppearingStocks = newFilteredDataForAlert.filter((stock: StockItem) =>
             !alertSnapshotTickers.includes(stock.ticker)
           );
           if (newlyAppearingStocks.length > 0) {
@@ -322,42 +208,15 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         (stock.float != null && formatLargeNumber(stock.float).toLowerCase().includes(lowerCaseFilter)) ||
         (stock.mav10 != null && formatLargeNumber(stock.mav10).toLowerCase().includes(lowerCaseFilter)) ||
         (stock.volume != null && formatLargeNumber(stock.volume).toLowerCase().includes(lowerCaseFilter)) ||
-        (stock.multiplier != null && stock.multiplier.toFixed(1).includes(lowerCaseFilter))
+        (stock.multiplier != null && (stock.multiplier).toFixed(1).includes(lowerCaseFilter))
       );
     }
 
     return data;
   }, [currentData, multiplierFilter, globalFilter]);
 
-  const StockDetailsDisplay = ({ ticker }: { ticker: string }) => {
-    const details = MOCK_COMPANY_DETAILS[ticker as keyof typeof MOCK_COMPANY_DETAILS] || {
-      companyName: "N/A",
-      newsHeadlines: ["No news headlines available."],
-      sentiment: "N/A",
-      description: "No detailed information available for this ticker."
-    };
-
-    return (
-      <div className="p-4 bg-gray-700 rounded-lg text-gray-200 flex flex-col md:flex-row md:space-x-4">
-        <div className="md:w-1/2 mb-4 md:mb-0">
-          <h3 className="text-lg font-bold text-blue-400 mb-2">{details.companyName} ({ticker})</h3>
-          <p className="text-sm mb-1"><strong>Sentiment:</strong> <span className="font-semibold">{details.sentiment}</span></p>
-          <p className="text-sm text-gray-400 mt-3">{details.description}</p>
-        </div>
-
-        <div className="md:w-1/2">
-          <h4 className="text-md font-semibold text-gray-300 mb-1">Recent News Headlines:</h4>
-          <ul className="list-disc list-inside text-sm text-gray-300 ml-4">
-            {details.newsHeadlines.map((headline, index) => (
-              <li key={index} className="mb-1">{headline}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    );
-  };
-
-  const columns = [
+  // Explicitly type the columns array
+  const columns: ColumnDef<StockItem, any>[] = [
     columnHelper.accessor("ticker", {
       header: () => (
         <div className="flex items-center gap-1">
@@ -365,7 +224,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Symbol</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, string>) => ( // Explicitly type info
+      cell: (info: CellContext<StockItem, string>) => (
         <div className="flex items-center gap-2">
           <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
             e.stopPropagation();
@@ -387,7 +246,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Prev Price</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatCurrency(info.getValue()), // Type info
+      cell: (info: CellContext<StockItem, number | null>) => formatCurrency(info.getValue()),
     }),
     columnHelper.accessor("price", {
       header: () => (
@@ -396,7 +255,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Price</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatCurrency(info.getValue()), // Type info
+      cell: (info: CellContext<StockItem, number | null>) => formatCurrency(info.getValue()),
     }),
     columnHelper.accessor("delta", {
       header: () => (
@@ -405,8 +264,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Delta</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => { // Type info
-        const val = info.getValue(); // val is now inferred as number | null
+      cell: (info: CellContext<StockItem, number | null>) => {
+        const val = info.getValue();
         if (val == null) return "-";
 
         let bg = "bg-transparent";
@@ -434,7 +293,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Float</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()), // Type info
+      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()),
     }),
     columnHelper.accessor("mav10", {
       header: () => (
@@ -443,7 +302,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>MA10 Volume</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()), // Type info
+      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()),
     }),
     columnHelper.accessor("volume", {
       header: () => (
@@ -452,7 +311,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Volume</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()), // Type info
+      cell: (info: CellContext<StockItem, number | null>) => formatLargeNumber(info.getValue()),
     }),
     columnHelper.accessor("multiplier", {
       header: () => (
@@ -461,21 +320,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Multiplier</span>
         </div>
       ),
-      cell: (info: CellContext<StockItem, number | null>) => { // Type info
-        const val = info.getValue(); // val is now inferred as number | null
+      cell: (info: CellContext<StockItem, number | null>) => {
+        const val = info.getValue();
         if (val == null) return "-";
 
+        const multiplierValue: number = val;
+
         let bg = "bg-transparent";
-        if (val > 1000) bg = "bg-teal-900";
-        else if (val > 300) bg = "bg-teal-800";
-        else if (val > 40) bg = "bg-teal-700";
-        else if (val > 10) bg = "bg-teal-600";
-        else if (val > 5) bg = "bg-teal-500";
-        else if (val > MULTIPLIER_THRESHOLD) bg = "bg-teal-400";
+        if (multiplierValue > 1000) bg = "bg-teal-900";
+        else if (multiplierValue > 300) bg = "bg-teal-800";
+        else if (multiplierValue > 40) bg = "bg-teal-700";
+        else if (multiplierValue > 10) bg = "bg-teal-600";
+        else if (multiplierValue > 5) bg = "bg-teal-500";
+        else if (multiplierValue > MULTIPLIER_THRESHOLD) bg = "bg-teal-400";
 
         return (
           <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
-            {val.toFixed(1)}
+            {multiplierValue.toFixed(1)}
           </span>
         );
       },
@@ -483,7 +344,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }),
   ];
 
-  const table = useReactTable<StockItem>({ // Use StockItem generic here
+  const table = useReactTable<StockItem>({
     data: filteredData,
     columns,
     state: {
@@ -497,11 +358,36 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     debugTable: false,
   });
 
-  // THE MAIN RETURN STATEMENT FOR THE COMPONENT
+  const getHeaderClasses = (headerId: string) => {
+    switch (headerId) {
+      case 'prev_price':
+      case 'float':
+      case 'volume':
+        return 'hidden md:table-cell';
+      case 'mav10':
+        return 'hidden lg:table-cell';
+      default:
+        return '';
+    }
+  };
+
+  const getCellClasses = (columnId: string) => {
+    switch (columnId) {
+      case 'prev_price':
+      case 'float':
+      case 'volume':
+        return 'hidden md:table-cell';
+      case 'mav10':
+        return 'hidden lg:table-cell';
+      default:
+        return '';
+    }
+  };
+
   return (
     <div className="p-4 overflow-x-auto bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-4 px-4 pt-4">
-        <div className="relative flex items-center w-48 mb-4 sm:mb-0">
+        <div className="relative flex items-center w-full sm:w-48 mb-4 sm:mb-0">
           <Search className="absolute left-2 w-4 h-4 text-gray-400" />
           <input
             type="text"
@@ -512,28 +398,33 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           />
         </div>
 
-        <div className="flex space-x-4 mb-4 sm:mb-0">
+        <div className="flex space-x-2 sm:space-x-4 mb-4 sm:mb-0 w-full sm:w-auto justify-center">
           <button
             onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
-            className="px-6 py-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 flex items-center gap-2"
+            className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm"
           >
-            {showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}
-            <SlidersHorizontal className={`w-5 h-5 transition-transform duration-300 ${showOptionsDrawer ? 'rotate-90' : ''}`} />
+            {/* Changed sm:inline-block to md:inline-block and sm:hidden to md:hidden */}
+            <span className="hidden md:inline-block">{showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}</span>
+            <span className="md:hidden">Filters</span>
+            <SlidersHorizontal className={`w-4 h-4 transition-transform duration-300 ${showOptionsDrawer ? 'rotate-90' : ''}`} />
           </button>
+
           <button
             onClick={toggleAlert}
-            className={`px-6 py-2 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
+            className={`px-2 py-1 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
               isAlertActive
                 ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
                 : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-            } text-white font-semibold focus:ring-opacity-75 flex items-center gap-2`}
+            } text-white font-semibold focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm`}
           >
-            {isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}
-            {isAlertActive ? <BellRing className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+            {/* Changed sm:inline-block to md:inline-block and sm:hidden to md:hidden */}
+            <span className="hidden md:inline-block">{isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}</span>
+            <span className="md:hidden">Alert</span>
+            {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
         </div>
 
-        <div className="flex flex-col items-end text-right">
+        <div className="flex flex-col items-center sm:items-end text-center sm:text-right w-full sm:w-auto mt-4 sm:mt-0">
           <div className="flex items-center mb-1">
             <Clock className="w-4 h-4 text-gray-400 mr-2" />
             <span className="text-gray-300 text-sm font-medium">{currentTimeET} ET</span>
@@ -593,7 +484,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   colSpan={header.colSpan}
                   className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${
                     header.column.getCanSort() ? "cursor-pointer select-none hover:bg-gray-600 transition-colors duration-200" : ""
-                  }`}
+                  } ${getHeaderClasses(header.id)}`}
                   onClick={header.column.getToggleSortingHandler()}
                 >
                   <div className="flex items-center gap-1">
@@ -609,42 +500,61 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           ))}
         </thead>
         <tbody className="bg-gray-800">
-          {table.getRowModel().rows.map((row) => (
-            <React.Fragment key={row.id}>
-              <tr
-                onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
-                className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2 align-middle">
-                    {cell.column.id === 'ticker' ? (
-                      <div className="flex items-center gap-2">
-                        <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
-                          e.stopPropagation();
-                          setExpandedRowId(expandedRowId === row.id ? null : row.id);
-                        }}>
-                          {expandedRowId === row.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                        </button>
-                        <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                         bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
-                          {cell.getValue() as string}
-                        </span>
-                      </div>
-                    ) : (
-                      flexRender(cell.column.columnDef.cell, cell.getContext())
-                    )}
-                  </td>
-                ))}
-              </tr>
-              {expandedRowId === row.id && (
-                <tr>
-                  <td colSpan={columns.length} className="p-4 bg-gray-900">
-                    <StockDetailsDisplay ticker={row.original.ticker} />
-                  </td>
+          {table.getRowModel().rows.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} className="text-center py-8 text-gray-400">
+                <div className="flex flex-col items-center justify-center">
+                  <Frown className="w-12 h-12 mb-4 text-gray-500" />
+                  <p className="text-lg font-semibold">No one but us chickens here.</p>
+                  <p className="text-sm">Try adjusting your filters or search terms.</p>
+                </div>
+              </td>
+            </tr>
+          ) : (
+            table.getRowModel().rows.map((row) => (
+              <React.Fragment key={row.id}>
+                <tr
+                  onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
+                  className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className={`px-3 py-2 align-middle ${getCellClasses(cell.column.id)}`}
+                    >
+                      {cell.column.id === 'ticker' ? (
+                        <div className="flex items-center gap-2">
+                          <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
+                            e.stopPropagation();
+                            setExpandedRowId(expandedRowId === row.id ? null : row.id);
+                          }}>
+                            {expandedRowId === row.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                          </button>
+                          <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
+                                           bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                            {cell.getValue() as string}
+                          </span>
+                        </div>
+                      ) : (
+                        flexRender(cell.column.columnDef.cell, cell.getContext())
+                      )}
+                    </td>
+                  ))}
                 </tr>
-              )}
-            </React.Fragment>
-          ))}
+                {expandedRowId === row.id && (
+                  <tr>
+                    <td colSpan={columns.length} className="p-4 bg-gray-900">
+                      <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
+                          {/* You can display more details here for the expanded row */}
+                          <p><strong>Timestamp:</strong> {row.original.timestamp || 'N/A'}</p>
+                          {/* Add other fields from row.original as needed */}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))
+          )}
         </tbody>
       </table>
 
@@ -664,12 +574,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 }
 
 // Utilities
-// Refined to accept number | null to match StockItem properties
 function formatCurrency(val: number | null) {
   return val != null ? `$${val.toFixed(2)}` : "-";
 }
 
-// Refined to accept number | null to match StockItem properties
 function formatLargeNumber(val: number | null) {
   if (val == null) return "-";
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)} Mil`;
