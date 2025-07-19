@@ -20,6 +20,7 @@ async function queryInflux() {
     const fluxQuery = `
     from(bucket: "stocks_5m")
       |> range(start: -30d)
+      |> filter(fn: (r) => r["ticker"] == "AAPL")
       |> limit(n: 5)
   `;
 
