@@ -26,8 +26,6 @@ export function CommitLink() {
 
     className="text-sm font-mono ml-6 mb-4 inline-block" 
     style={baseStyle} 
-    onMouseEnter={(e) => Object.assign(e.currentTarget.style, hoverStyle)} 
-    onMouseLeave={(e) => Object.assign(e.currentTarget.style, baseStyle)}
   >
     {COMMIT_HASH.slice(0, 7)}
   </a>
