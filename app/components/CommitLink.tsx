@@ -6,7 +6,7 @@ const COMMIT_URL = `https://github.com/amazr/fjord/commit/${COMMIT_HASH}`;
 export function CommitLink() {
 
   const baseStyle = {
-    color: 'rgba(255, 255, 255, 0.05)', 
+    color: 'rgba(40,76,109,1)', 
     textDecoration: 'none', 
   };
 
