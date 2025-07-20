@@ -69,7 +69,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       const dayOfWeek = now.getDay();
 
       if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return 'Closed';
+        return 'Market Closed';
       }
 
       const currentMinutesET = etHours * 60 + etMinutes;
@@ -456,7 +456,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </div>
           {/* Market Status */}
           <span className={`text-xs font-semibold ${
-              marketStatus === 'Open' ? 'text-green-400' :
+              marketStatus === 'Market Open' ? 'text-green-400' :
               marketStatus === 'Pre-market' || marketStatus === 'Extended Hours' ? 'text-yellow-400' :
               'text-red-400'
             }`}>
