@@ -1,4 +1,5 @@
 import Redis, { RedisOptions } from "ioredis";
+import { redisScannerReadDuration } from "./metrics/redis";
 
 export interface StockItem {
   ticker: string;
@@ -57,6 +58,7 @@ function getRedisClient(): Promise<Redis> {
 
 
 export async function getStockDataFromRedis(): Promise<StockItem[]> {
+    const end = redisScannerReadDuration.startTimer();
     try {
         const redis = await getRedisClient()
         const keys = await redis.keys("scanner:latest:*");
@@ -86,5 +88,7 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
     } catch (error) {
         console.error("Error fetching stock data from Redis:", error);
         return [];
+    } finally {
+        end()
     }
 }
