@@ -17,6 +17,9 @@ import {
 
 import * as Tone from 'tone';
 
+// Removed: import StockScreenerIcon from '@/components/icons/stock-screener-icon.svg';
+
+
 // Define the interface for your stock data structure
 export interface StockItem {
   ticker: string;
@@ -383,12 +386,31 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
-      {/* New Title Bar */}
-      <div className="bg-gray-700 py-3 px-6 rounded-t-lg">
-        <h2 className="text-xl font-bold text-white">Live Stock Screener</h2>
+      {/* New Title Bar (SVG removed from here as it's in page.tsx) */}
+      <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between"> {/* Changed to justify-between */}
+        <div className="flex items-center gap-3"> {/* Left: Title only */}
+          <h2 className="text-xl font-bold text-white">Live Stock Screener</h2>
+        </div>
+
+        {/* Right: Connection Status */}
+        <div className="flex items-center text-gray-400 text-sm"> {/* Added text styling for consistency */}
+          {connectionStatus === 'connected' ? (
+            <span className="relative flex h-3 w-3 mr-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+            </span>
+          ) : (
+            <span className="relative flex h-3 w-3 mr-2">
+              <WifiOff className="w-4 h-4 text-red-500" />
+            </span>
+          )}
+          <span>
+            {connectionStatus === 'connected' ? 'Live Data Connected' : 'Connection Lost'}
+          </span>
+        </div>
       </div>
 
-      {/* Controls Section (Search, Filters, Alerts, Status) */}
+      {/* Controls Section (Search, Filters, Alerts, Clock and Market Status) */}
       <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4">
         <div className="relative flex items-center w-full sm:w-48 mb-4 sm:mb-0">
           <Search className="absolute left-2 w-4 h-4 text-gray-400" />
@@ -425,23 +447,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </button>
         </div>
 
+        {/* Clock and Market Status remain here */}
         <div className="flex flex-col items-center sm:items-end text-center sm:text-right w-full sm:w-auto mt-4 sm:mt-0 space-y-1">
-          {/* Connection Status */}
-          <div className="flex items-center">
-            {connectionStatus === 'connected' ? (
-              <span className="relative flex h-3 w-3 mr-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-              </span>
-            ) : (
-              <span className="relative flex h-3 w-3 mr-2">
-                <WifiOff className="w-4 h-4 text-red-500" />
-              </span>
-            )}
-            <span className="text-gray-400 text-sm">
-              {connectionStatus === 'connected' ? 'Live Data Connected' : 'Connection Lost'}
-            </span>
-          </div>
           {/* Clock */}
           <div className="flex items-center">
             <Clock className="w-4 h-4 text-gray-400 mr-2" />
