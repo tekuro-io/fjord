@@ -17,8 +17,6 @@ import {
 
 import * as Tone from 'tone';
 import Sentiment from "./Sentiment";
-import { CommitLink } from "./CommitLink";
-
 
 // Define the interface for your stock data structure
 export interface StockItem {
@@ -570,8 +568,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </tbody>
         </table>
       </div>
-
-      <CommitLink />
 
       {newStocksAlert.length > 0 && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-gray-700 text-white p-4 rounded-lg shadow-lg z-50 flex items-center justify-between animate-fade-in-up w-11/12 max-w-md">

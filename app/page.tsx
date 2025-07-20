@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import StockTableLoader from './components/StockTableLoader';
 import Image from 'next/image'
 import Spinner from './components/Spinner';
+import { CommitLink } from './components/CommitLink';
 
 export default async function HomePage() {
     return (
@@ -18,6 +19,7 @@ export default async function HomePage() {
             <Suspense fallback={<Spinner />}>
                 <StockTableLoader />
             </Suspense>
+            <CommitLink />
         </main>
     );
 }
