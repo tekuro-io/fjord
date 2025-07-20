@@ -559,10 +559,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     <tr>
                       <td colSpan={columns.length} className="p-4 bg-gray-900">
                         <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                            {/* You can display more details here for the expanded row */}
-                            <p><strong>Timestamp:</strong> {row.original.timestamp || 'N/A'}</p>
                             <Sentiment ticker={row.original.ticker} />
-                            {/* Add other fields from row.original as needed */}
                         </div>
                       </td>
                     </tr>
