@@ -60,7 +60,6 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
     try {
         const redis = await getRedisClient()
         const keys = await redis.keys("scanner:latest:*");
-        console.log("Found Redis keys:", keys);
 
         if (keys.length === 0) {
             console.warn("No 'scanner:latest:*' keys found in Redis.");
@@ -68,7 +67,6 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
         }
 
         const results = await redis.mget(...keys);
-        console.log("Raw Redis mget results:", results);
 
         const stockItems: StockItem[] = [];
         results.forEach((jsonString, index) => {
