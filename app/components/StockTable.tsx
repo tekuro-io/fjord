@@ -213,7 +213,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     return data;
   }, [currentData, multiplierFilter, globalFilter]);
 
-  // NO explicit type here. Let TypeScript infer the type of 'columns'
   const columns = [
     columnHelper.accessor("ticker", {
       header: () => (
@@ -222,7 +221,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Symbol</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
       cell: (info) => (
         <div className="flex items-center gap-2">
           <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
@@ -233,7 +231,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
                            bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
-            {info.getValue() as string} {/* Assert type here */}
+            {info.getValue() as string}
           </span>
         </div>
       ),
@@ -245,8 +243,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Prev Price</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
-      cell: (info) => formatCurrency(info.getValue() as number | null), // Assert type here
+      cell: (info) => formatCurrency(info.getValue() as number | null),
     }),
     columnHelper.accessor("price", {
       header: () => (
@@ -255,8 +252,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Price</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
-      cell: (info) => formatCurrency(info.getValue() as number | null), // Assert type here
+      cell: (info) => formatCurrency(info.getValue() as number | null),
     }),
     columnHelper.accessor("delta", {
       header: () => (
@@ -265,9 +261,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Delta</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
       cell: (info) => {
-        const val = info.getValue() as number | null; // Assert type here
+        const val = info.getValue() as number | null;
         if (val == null) return "-";
 
         let bg = "bg-transparent";
@@ -295,8 +290,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Float</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
-      cell: (info) => formatLargeNumber(info.getValue() as number | null), // Assert type here
+      cell: (info) => formatLargeNumber(info.getValue() as number | null),
     }),
     columnHelper.accessor("mav10", {
       header: () => (
@@ -305,8 +299,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>MA10 Volume</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
-      cell: (info) => formatLargeNumber(info.getValue() as number | null), // Assert type here
+      cell: (info) => formatLargeNumber(info.getValue() as number | null),
     }),
     columnHelper.accessor("volume", {
       header: () => (
@@ -315,8 +308,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Volume</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
-      cell: (info) => formatLargeNumber(info.getValue() as number | null), // Assert type here
+      cell: (info) => formatLargeNumber(info.getValue() as number | null),
     }),
     columnHelper.accessor("multiplier", {
       header: () => (
@@ -325,9 +317,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Multiplier</span>
         </div>
       ),
-      // No explicit type for 'info' parameter, let it infer from context
       cell: (info) => {
-        const val = info.getValue() as number | null; // Assert type here
+        const val = info.getValue() as number | null;
         if (val == null) return "-";
 
         const multiplierValue: number = val;
@@ -366,14 +357,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const getHeaderClasses = (headerId: string) => {
     switch (headerId) {
+      // Keep price and delta visible for most small screens as they are core.
+      // Hide prev_price, float, volume, mav10 at 'md' breakpoint
       case 'prev_price':
       case 'float':
       case 'volume':
-        return 'hidden md:table-cell';
+        return 'hidden md:table-cell'; // Hidden on small, visible on md and up
       case 'mav10':
-        return 'hidden lg:table-cell';
+        return 'hidden lg:table-cell'; // Hidden on md and small, visible on lg and up
       default:
-        return '';
+        return ''; // Visible always
     }
   };
 
@@ -428,11 +421,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </button>
         </div>
 
-        <div className="flex flex-col items-center sm:items-end text-center sm:text-right w-full sm:w-auto mt-4 sm:mt-0">
-          <div className="flex items-center mb-1">
-            <Clock className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="text-gray-300 text-sm font-medium">{currentTimeET} ET</span>
-          </div>
+        <div className="flex flex-col items-center sm:items-end text-center sm:text-right w-full sm:w-auto mt-4 sm:mt-0 space-y-1">
+          {/* Connection Status - NOW THE FIRST ITEM */}
           <div className="flex items-center">
             {connectionStatus === 'connected' ? (
               <span className="relative flex h-3 w-3 mr-2">
@@ -448,7 +438,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               {connectionStatus === 'connected' ? 'Live Data Connected' : 'Connection Lost'}
             </span>
           </div>
-          <span className={`text-xs font-semibold mt-1 ${
+          {/* Clock */}
+          <div className="flex items-center">
+            <Clock className="w-4 h-4 text-gray-400 mr-2" />
+            <span className="text-gray-300 text-sm font-medium">{currentTimeET} ET</span>
+          </div>
+          {/* Market Status */}
+          <span className={`text-xs font-semibold ${
               marketStatus === 'Open' ? 'text-green-400' :
               marketStatus === 'Pre-market' || marketStatus === 'Extended Hours' ? 'text-yellow-400' :
               'text-red-400'
@@ -478,7 +474,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
       )}
 
-      <table className="min-w-full table-fixed text-sm text-gray-200 font-sans border-separate border-spacing-y-1 shadow-lg">
+      {/* MODIFIED: Changed to w-full table-auto for better responsiveness */}
+      <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 shadow-lg">
         <thead className="bg-gray-700">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className="h-12">
