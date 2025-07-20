@@ -80,13 +80,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       const extendedMarketClose = 20 * 60;
 
       if (currentMinutesET >= marketOpen && currentMinutesET < marketClose) {
-        return 'Open';
+        return 'Market Open';
       } else if (currentMinutesET >= preMarketOpen && currentMinutesET < marketOpen) {
         return 'Pre-market';
       } else if (currentMinutesET >= marketClose && currentMinutesET < extendedMarketClose) {
         return 'Extended Hours';
       } else {
-        return 'Closed';
+        return 'Market Closed';
       }
     } catch (e) {
       console.error("Error determining market status:", e);
@@ -460,7 +460,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               marketStatus === 'Pre-market' || marketStatus === 'Extended Hours' ? 'text-yellow-400' :
               'text-red-400'
             }`}>
-            Market: {marketStatus}
+            {marketStatus}
           </span>
         </div>
       </div>
