@@ -49,7 +49,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const [globalFilter, setGlobalFilter] = React.useState('');
 
-  const [currentTimeET, setCurrentTimeET] = React.useState('');
+  const [currentTimeET, setCurrentTimeET, ] = React.useState('');
   const [marketStatus, setMarketStatus] = React.useState('');
 
   const [connectionStatus, setConnectionStatus] = React.useState('connected');
@@ -357,16 +357,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const getHeaderClasses = (headerId: string) => {
     switch (headerId) {
-      // Keep price and delta visible for most small screens as they are core.
-      // Hide prev_price, float, volume, mav10 at 'md' breakpoint
       case 'prev_price':
       case 'float':
       case 'volume':
-        return 'hidden md:table-cell'; // Hidden on small, visible on md and up
+        return 'hidden md:table-cell';
       case 'mav10':
-        return 'hidden lg:table-cell'; // Hidden on md and small, visible on lg and up
+        return 'hidden lg:table-cell';
       default:
-        return ''; // Visible always
+        return '';
     }
   };
 
@@ -384,8 +382,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   };
 
   return (
-    <div className="p-4 overflow-x-auto bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 px-4 pt-4">
+    <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
+      {/* New Title Bar */}
+      <div className="bg-gray-700 py-3 px-6 rounded-t-lg">
+        <h2 className="text-xl font-bold text-white">Live Stock Screener</h2>
+      </div>
+
+      {/* Controls Section (Search, Filters, Alerts, Status) */}
+      <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4">
         <div className="relative flex items-center w-full sm:w-48 mb-4 sm:mb-0">
           <Search className="absolute left-2 w-4 h-4 text-gray-400" />
           <input
@@ -422,7 +426,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
 
         <div className="flex flex-col items-center sm:items-end text-center sm:text-right w-full sm:w-auto mt-4 sm:mt-0 space-y-1">
-          {/* Connection Status - NOW THE FIRST ITEM */}
+          {/* Connection Status */}
           <div className="flex items-center">
             {connectionStatus === 'connected' ? (
               <span className="relative flex h-3 w-3 mr-2">
@@ -455,7 +459,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       </div>
 
       {showOptionsDrawer && (
-        <div className="mb-6 p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-4 transition-all duration-300 ease-in-out">
+        <div className="mx-6 mb-6 p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-4 transition-all duration-300 ease-in-out">
           <div className="flex flex-col sm:flex-row items-center justify-between">
             <label htmlFor="multiplier-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
               Filter Multiplier (Min): <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
@@ -474,90 +478,92 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
       )}
 
-      {/* MODIFIED: Changed to w-full table-auto for better responsiveness */}
-      <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 shadow-lg">
-        <thead className="bg-gray-700">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className="h-12">
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  colSpan={header.colSpan}
-                  className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${
-                    header.column.getCanSort() ? "cursor-pointer select-none hover:bg-gray-600 transition-colors duration-200" : ""
-                  } ${getHeaderClasses(header.id)}`}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  <div className="flex items-center gap-1">
-                    {flexRender(header.column.columnDef.header, header.getContext())}
-                    <span className="text-sm text-gray-400 w-4 inline-block text-center">
-                      {header.column.getIsSorted() === "asc" ? <ArrowUp className="w-4 h-4" /> :
-                       header.column.getIsSorted() === "desc" ? <ArrowDown className="w-4 h-4" /> : null}
-                    </span>
+      {/* Table Container with horizontal overflow */}
+      <div className="overflow-x-auto px-6 pb-6">
+        <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 shadow-lg">
+          <thead className="bg-gray-700">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <tr key={headerGroup.id} className="h-12">
+                {headerGroup.headers.map((header) => (
+                  <th
+                    key={header.id}
+                    colSpan={header.colSpan}
+                    className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${
+                      header.column.getCanSort() ? "cursor-pointer select-none hover:bg-gray-600 transition-colors duration-200" : ""
+                    } ${getHeaderClasses(header.id)}`}
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    <div className="flex items-center gap-1">
+                      {flexRender(header.column.columnDef.header, header.getContext())}
+                      <span className="text-sm text-gray-400 w-4 inline-block text-center">
+                        {header.column.getIsSorted() === "asc" ? <ArrowUp className="w-4 h-4" /> :
+                         header.column.getIsSorted() === "desc" ? <ArrowDown className="w-4 h-4" /> : null}
+                      </span>
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            ))}
+          </thead>
+          <tbody className="bg-gray-800">
+            {table.getRowModel().rows.length === 0 ? (
+              <tr>
+                <td colSpan={columns.length} className="text-center py-8 text-gray-400">
+                  <div className="flex flex-col items-center justify-center">
+                    <Frown className="w-12 h-12 mb-4 text-gray-500" />
+                    <p className="text-lg font-semibold">No one but us chickens here.</p>
+                    <p className="text-sm">Try adjusting your filters or search terms.</p>
                   </div>
-                </th>
-              ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody className="bg-gray-800">
-          {table.getRowModel().rows.length === 0 ? (
-            <tr>
-              <td colSpan={columns.length} className="text-center py-8 text-gray-400">
-                <div className="flex flex-col items-center justify-center">
-                  <Frown className="w-12 h-12 mb-4 text-gray-500" />
-                  <p className="text-lg font-semibold">No one but us chickens here.</p>
-                  <p className="text-sm">Try adjusting your filters or search terms.</p>
-                </div>
-              </td>
-            </tr>
-          ) : (
-            table.getRowModel().rows.map((row) => (
-              <React.Fragment key={row.id}>
-                <tr
-                  onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
-                  className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className={`px-3 py-2 align-middle ${getCellClasses(cell.column.id)}`}
-                    >
-                      {cell.column.id === 'ticker' ? (
-                        <div className="flex items-center gap-2">
-                          <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedRowId(expandedRowId === row.id ? null : row.id);
-                          }}>
-                            {expandedRowId === row.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                          </button>
-                          <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                           bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
-                            {cell.getValue() as string}
-                          </span>
-                        </div>
-                      ) : (
-                        flexRender(cell.column.columnDef.cell, cell.getContext())
-                      )}
-                    </td>
-                  ))}
-                </tr>
-                {expandedRowId === row.id && (
-                  <tr>
-                    <td colSpan={columns.length} className="p-4 bg-gray-900">
-                      <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                          {/* You can display more details here for the expanded row */}
-                          <p><strong>Timestamp:</strong> {row.original.timestamp || 'N/A'}</p>
-                          {/* Add other fields from row.original as needed */}
-                      </div>
-                    </td>
+                </td>
+              </tr>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <React.Fragment key={row.id}>
+                  <tr
+                    onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
+                    className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className={`px-3 py-2 align-middle ${getCellClasses(cell.column.id)}`}
+                      >
+                        {cell.column.id === 'ticker' ? (
+                          <div className="flex items-center gap-2">
+                            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
+                              e.stopPropagation();
+                              setExpandedRowId(expandedRowId === row.id ? null : row.id);
+                            }}>
+                              {expandedRowId === row.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                            </button>
+                            <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
+                                             bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                              {cell.getValue() as string}
+                            </span>
+                          </div>
+                        ) : (
+                          flexRender(cell.column.columnDef.cell, cell.getContext())
+                        )}
+                      </td>
+                    ))}
                   </tr>
-                )}
-              </React.Fragment>
-            ))
-          )}
-        </tbody>
-      </table>
+                  {expandedRowId === row.id && (
+                    <tr>
+                      <td colSpan={columns.length} className="p-4 bg-gray-900">
+                        <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
+                            {/* You can display more details here for the expanded row */}
+                            <p><strong>Timestamp:</strong> {row.original.timestamp || 'N/A'}</p>
+                            {/* Add other fields from row.original as needed */}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {newStocksAlert.length > 0 && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-gray-700 text-white p-4 rounded-lg shadow-lg z-50 flex items-center justify-between animate-fade-in-up w-11/12 max-w-md">
