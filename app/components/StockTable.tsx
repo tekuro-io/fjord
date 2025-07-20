@@ -11,14 +11,12 @@ import {
 } from "@tanstack/react-table";
 import {
   SlidersHorizontal, Bell, BellRing, ArrowUp, ArrowDown, X,
-  Tag, DollarSign, Percent, BarChart2, Activity, WifiOff, Search, Clock,
+  Tag, DollarSign, Percent, BarChart2, Activity, WifiOff, Search, Clock, // BarChart2 is already here!
   ChevronRight, ChevronDown, Frown
 } from 'lucide-react';
 
 import * as Tone from 'tone';
 import Sentiment from "./Sentiment";
-
-// Removed: import StockScreenerIcon from '@/components/icons/stock-screener-icon.svg';
 
 
 // Define the interface for your stock data structure
@@ -387,14 +385,15 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   return (
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
-      {/* New Title Bar (SVG removed from here as it's in page.tsx) */}
-      <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between"> {/* Changed to justify-between */}
-        <div className="flex items-center gap-3"> {/* Left: Title only */}
-          <h2 className="text-xl font-bold text-white">Live Stock Screener</h2>
+
+      <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
+        <div className="flex items-center gap-3">
+      
+          <BarChart2 className="w-6 h-6 text-blue-400" /> 
+          <h2 className="text-xl font-bold text-white">Momentum Scanner</h2> 
         </div>
 
-        {/* Right: Connection Status */}
-        <div className="flex items-center text-gray-400 text-sm"> {/* Added text styling for consistency */}
+        <div className="flex items-center text-gray-400 text-sm">
           {connectionStatus === 'connected' ? (
             <span className="relative flex h-3 w-3 mr-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>

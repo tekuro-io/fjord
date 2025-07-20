@@ -8,7 +8,9 @@ export default async function HomePage() {
         <main className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white p-4">
             <h1 className="text-4xl font-bold text-center mb-8 text-emerald-400">
                 <Image
-                    src="/stock.svg"
+                    src="/stock.svg"          
+                    width={120}
+                    height={90}
                     alt="Stock Screener Icon"
                     className='inline-block mr-3 my-2'
                 />
