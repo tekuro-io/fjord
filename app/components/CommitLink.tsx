@@ -1,6 +1,6 @@
 import React from "react";
 
-const COMMIT_HASH = process.env.COMMIT_HASH;
+const COMMIT_HASH = process.env.NEXT_PUBLIC_COMMIT_HASH;
 const COMMIT_URL = `https://github.com/amazr/fjord/commit/${COMMIT_HASH}`;
 
 export function CommitLink() {
