@@ -28,7 +28,7 @@ jobs:
         options: --client
     
     - name: Build the Docker image
-      run: docker build -t ${{ env.IMAGE_NAME }} .
+      run: docker build --build-arg COMMIT_HASH=$(git rev-parse HEAD) -t ${{ env.IMAGE_NAME }} .
       
     - name: Login to Tekuro Artifacts
       uses: docker/login-action@v1

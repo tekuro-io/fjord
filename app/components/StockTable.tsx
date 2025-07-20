@@ -17,7 +17,7 @@ import {
 
 import * as Tone from 'tone';
 import Sentiment from "./Sentiment";
-import { CommitLink } from "./CommmitLink";
+import { CommitLink } from "./CommitLink";
 
 
 // Define the interface for your stock data structure
