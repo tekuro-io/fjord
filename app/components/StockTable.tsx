@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 
 import * as Tone from 'tone';
+import Sentiment from "./Sentiment";
 
 // Removed: import StockScreenerIcon from '@/components/icons/stock-screener-icon.svg';
 
@@ -560,6 +561,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
                             {/* You can display more details here for the expanded row */}
                             <p><strong>Timestamp:</strong> {row.original.timestamp || 'N/A'}</p>
+                            <Sentiment ticker={row.original.ticker} />
                             {/* Add other fields from row.original as needed */}
                         </div>
                       </td>
