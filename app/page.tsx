@@ -19,7 +19,9 @@ export default async function HomePage() {
             <Suspense fallback={<Spinner />}>
                 <StockTableLoader />
             </Suspense>
-            <CommitLink />
+            <footer className="mt-auto py-3 border-t border-gray-700 text-center text-sm text-gray-400 font-sans tracking-wide">
+                <CommitLink />
+            </footer>
         </main>
     );
 }
