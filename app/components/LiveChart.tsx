@@ -13,22 +13,7 @@ interface LiveChartProps {
 // Helper function to get current Unix timestamp in seconds
 const getUnixTimeInSeconds = (date: Date): number => Math.floor(date.getTime() / 1000);
 
-// Helper function to generate initial dummy data for the chart
-// This is used if there's no live data yet, or when switching topics.
-const generateInitialChartData = (ticker: string): ChartDataPoint[] => {
-  const initialData: ChartDataPoint[] = [];
-  let currentTime = getUnixTimeInSeconds(new Date()); // Start from current time in seconds
-  let currentPrice = 100.00 + Math.random() * 50; // Random starting price
 
-  // Generate 60 data points (e.g., covering 1 minute, with 1-second intervals)
-  for (let i = 0; i < 60; i++) {
-    const pointTime: Time = (currentTime - (60 - 1 - i)) as Time; // Explicitly cast to Time
-    const value = parseFloat((currentPrice + (Math.random() * 1 - 0.5)).toFixed(2));
-    initialData.push({ time: pointTime, value: Math.max(0.01, value) });
-    currentPrice = value;
-  }
-  return initialData;
-};
 
 
 export default function LiveChart({ defaultTicker }: LiveChartProps) {
@@ -42,9 +27,8 @@ export default function LiveChart({ defaultTicker }: LiveChartProps) {
   // State to hold initial data for the chart.
   // This will accumulate a few points before live updates take over,
   // or provide a baseline when a new topic is selected.
-  const [initialChartData, setInitialChartData] = useState<ChartDataPoint[]>(
-    generateInitialChartData(defaultTicker)
-  );
+// In components/LiveChart.tsx, inside the LiveChart component function:
+const [initialChartData, setInitialChartData] = useState<ChartDataPoint[]>([]);
 
   // 1. Fetch the WebSocket URL from the Next.js API route
   useEffect(() => {
@@ -59,7 +43,7 @@ export default function LiveChart({ defaultTicker }: LiveChartProps) {
         console.log('Fetched WebSocket URL:', data.websocketUrl);
       } catch (e) {
         console.error('Failed to fetch WebSocket URL from API:', e);
-        setWsUrl('ws://localhost:8080'); // Fallback
+        setWsUrl(null);
       }
     };
     fetchWsUrl();
@@ -81,7 +65,7 @@ export default function LiveChart({ defaultTicker }: LiveChartProps) {
       sendMessage(JSON.stringify(subscribeMessage)); 
       console.log(`Sent subscribe message for topic: ${subscribedTopic}`);
 
-      setInitialChartData(generateInitialChartData(subscribedTopic.split(':')[1] || 'DEFAULT'));
+      setInitialChartData([]);
     }
   }, [isConnected, wsUrl, subscribedTopic, sendMessage]);
 
