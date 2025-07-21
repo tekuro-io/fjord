@@ -1,3 +1,6 @@
+<img width="1024" height="1024" alt="fjord" src="https://github.com/user-attachments/assets/e79fd9fc-57ea-47ad-89e0-79c7c25b814f" />
+
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
