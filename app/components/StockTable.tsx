@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 
 import * as Tone from 'tone';
+// import Sentiment from "./Sentiment"; // Commented out Sentiment
 import LiveChart from "./LiveChart"; // Changed import from ChartComponent to LiveChart
 
 // Define the interface for your stock data structure
@@ -368,6 +369,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+
+    getRowId: (row) => row.ticker, // Use the 'ticker' as the unique row ID
+
     debugTable: false,
   });
 
@@ -539,7 +543,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-                <React.Fragment key={row.id}>
+                <React.Fragment key={row.id}> {/* This key is now stable because row.id is based on ticker */}
                   <tr
                     // Removed onClick from tr to prevent double-toggling,
                     // as the button inside the ticker cell handles it.
