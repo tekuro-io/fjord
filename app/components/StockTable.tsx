@@ -1,4 +1,3 @@
-// src/components/StockTable.tsx
 'use client'; // This must be the very first line for client components
 
 import React from "react";
@@ -16,7 +15,7 @@ import {
 } from 'lucide-react';
 
 import * as Tone from 'tone';
-import Sentiment from "./Sentiment";
+import LiveChart from "./LiveChart"; // Changed import from ChartComponent to LiveChart
 
 // Define the interface for your stock data structure
 export interface StockItem {
@@ -55,9 +54,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const [connectionStatus, setConnectionStatus] = React.useState('connected');
 
-  const [expandedRowId, setExpandedRowId] = React.useState<string | null>(null);
+  // Changed from single expanded row ID to a Set for multiple expanded rows
+  const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
 
   const synthRef = React.useRef<Tone.Synth | null>(null);
+
+  // Helper function to toggle row expansion
+  const toggleRowExpansion = (rowId: string) => {
+    setExpandedRows(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(rowId)) {
+        newSet.delete(rowId);
+      } else {
+        newSet.add(rowId);
+      }
+      return newSet;
+    });
+  };
 
   const getMarketStatus = () => {
     const now = new Date();
@@ -224,14 +237,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       ),
       cell: (info) => (
         <div className="flex items-center gap-2">
+          {/* Updated onClick to use toggleRowExpansion */}
           <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
             e.stopPropagation();
-            setExpandedRowId(expandedRowId === info.row.id ? null : info.row.id);
+            toggleRowExpansion(info.row.id); // Use the new toggle function
           }}>
-            {expandedRowId === info.row.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            {/* Check if the current row is in the expandedRows set */}
+            {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                           bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                                bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
             {info.getValue() as string}
           </span>
         </div>
@@ -387,7 +402,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
-      
+        
           <BarChart2 className="w-6 h-6 text-blue-400" /> 
           <h2 className="text-xl font-bold text-white">Momentum Scanner</h2> 
         </div>
@@ -526,7 +541,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               table.getRowModel().rows.map((row) => (
                 <React.Fragment key={row.id}>
                   <tr
-                    onClick={() => setExpandedRowId(expandedRowId === row.id ? null : row.id)}
+                    // Removed onClick from tr to prevent double-toggling,
+                    // as the button inside the ticker cell handles it.
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -536,14 +552,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       >
                         {cell.column.id === 'ticker' ? (
                           <div className="flex items-center gap-2">
+                            {/* Updated onClick to use toggleRowExpansion */}
                             <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
-                              e.stopPropagation();
-                              setExpandedRowId(expandedRowId === row.id ? null : row.id);
+                              e.stopPropagation(); // Prevent row click from propagating
+                              toggleRowExpansion(row.id); // Use the new toggle function
                             }}>
-                              {expandedRowId === row.id ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              {/* Check if the current row is in the expandedRows set */}
+                              {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                             bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                                                    bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
                               {cell.getValue() as string}
                             </span>
                           </div>
@@ -553,11 +571,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       </td>
                     ))}
                   </tr>
-                  {expandedRowId === row.id && (
+                  {/* Render LiveChart if this row is in the expandedRows set */}
+                  {expandedRows.has(row.id) && (
                     <tr>
                       <td colSpan={columns.length} className="p-4 bg-gray-900">
                         <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                            <Sentiment ticker={row.original.ticker} />
+                          {/* Replaced ChartComponent with LiveChart */}
+                          <LiveChart defaultTicker={row.original.ticker} />
                         </div>
                       </td>
                     </tr>
