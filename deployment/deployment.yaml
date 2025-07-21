@@ -51,8 +51,8 @@ spec:
                 secretKeyRef:
                   name: redis
                   key: redis-password
-            - name: WS_PUBLIC_URL # This is the environment variable name your Next.js client-side code expects
+            - name: WS_PUBLIC_URL 
               valueFrom:
                   configMapKeyRef:
-                    name: hermes-config # Refers to the name of your ConfigMap
-                    key: WS_PUBLIC_URL # Refers to the specific key within that ConfigMap
+                    name: hermes-config 
+                    key: WS_PUBLIC_URL 
