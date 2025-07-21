@@ -15,7 +15,7 @@ export async function GET() {
   try {
     // This environment variable will be picked up during your Next.js build/deployment.
     // In Kubernetes, you'd set this in your Deployment manifest or via a ConfigMap/Secret.
-    const websocketUrl = process.env.NEXT_PUBLIC_WS_SERVER_URL || 'ws://localhost:8080';
+    const websocketUrl = process.env.WS_PUBLIC_URL || 'ws://localhost:8080';
 
     return NextResponse.json({
       websocketUrl: websocketUrl,
@@ -29,3 +29,4 @@ export async function GET() {
     );
   }
 }
+
