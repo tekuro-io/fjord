@@ -1,7 +1,6 @@
-// components/ChartComponent.tsx
 'use client';
 
-import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay } from 'lightweight-charts';
+import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark  } from 'lightweight-charts';
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
 export interface ChartDataPoint {
@@ -39,7 +38,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     const {
         initialData, // Use initialData for the very first chart load
         colors: {
-            backgroundColor = '#121b2b',
+            backgroundColor = '000000',
             lineColor = '#5da7f7',
             textColor = '#296e80',
             areaTopColor = 'rgba(135, 206, 235, 0.7)',
@@ -48,8 +47,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             horzLinesColor = '#374151',
         } = {},
         showWatermark = true, // Keep this as per your current setup
-        watermarkText = 'TradingView', // Keep this as per your current setup
-        watermarkTextColor = 'rgba(255, 255, 255, 0.2)', // Keep this as per your current setup
+        watermarkText = 'BOOP', // Keep this as per your current setup
+        watermarkTextColor = 'rgba(250, 6, 6, 0.75)', // Keep this as per your current setup
     } = props;
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +93,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
             },
 
+
             // --- Configure the timeScale for intraday seconds ---
             timeScale: {
                 rightOffset: 2,         // Small offset for real-time updates
@@ -102,25 +102,31 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 visible: true,
                 timeVisible: true,      // Show time (hours, minutes)
                 secondsVisible: true,   // Crucial: Show seconds
-                lockVisibleTimeRangeOnResize: true, // Keep the same time range when window resizes
-                rightBarStaysOnScroll: true, // Newest bar stays visible if scrolled to right
-                // minBarSpacing is good for allowing tight zoom
+                lockVisibleTimeRangeOnResize: true, 
+                rightBarStaysOnScroll: true,
+
                 minBarSpacing: 0.5,
-                // You can add a formatter if the default labels aren't precise enough
-                // tickMarkFormatter: (time: Time, tickMarkType: TickMarkType, locale: string) => {
-                //     if (typeof time === 'number') {
-                //         const date = new Date(time * 1000);
-                //         return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                //     }
-                //     return '';
-                // },
+
             },
         });
 
-        chartRef.current = chart; // Store chart instance in ref
-        chart.timeScale().fitContent(); // Fit content initially based on initialData
+        createTextWatermark(chart.panes()[0], {
+            horzAlign: 'center',
+            vertAlign: 'center',
+            lines: [
+                {
+                    text: watermarkText,
+                    color: 'rgba(8, 242, 246, 0.5)',
+                    fontSize: 32,
+                    fontStyle: 'bold',
+                },
+            ],
+        });
 
-        // Add the area series
+        chartRef.current = chart;
+        chart.timeScale().fitContent();
+
+
         const newSeries: ISeriesApi<'Area'> = chart.addSeries(AreaSeries, {
             lineColor,
             topColor: areaTopColor,
@@ -154,16 +160,13 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             }
         };
     }, [
-        // Dependencies for initial chart creation and styling.
-        // Keep only what was there or is directly related to chart init colors/layout.
+
         backgroundColor, textColor,
         vertLinesColor, horzLinesColor, // Grid colors kept as they were (visible: false)
         showWatermark, watermarkText, watermarkTextColor, // Watermark props kept as they were
         lineColor, areaTopColor, areaBottomColor, // Area series colors
     ]);
 
-    // Removed the separate useEffect for data updates.
-    // Updates will now be handled directly by calling the exposed `updateData` function from the parent.
 
     return (
         <div
