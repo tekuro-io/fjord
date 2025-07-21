@@ -6,6 +6,12 @@ import { useWebSocket } from '../lib/websocket'; // Import the WebSocket hook
 import { ChartComponent, ChartHandle, ChartDataPoint } from './Chart'; // Import your ChartComponent
 import { Time } from 'lightweight-charts'; // Import Time type for strictness
 
+interface StockDataPayload {
+  ticker: string;
+  timestamp: number; // In milliseconds, as sent by Python producer
+  price: number;
+}
+
 interface LiveChartProps {
   defaultTicker: string; // e.g., "AVGO", "MSFT" - used to derive the initial topic
 }
@@ -50,7 +56,7 @@ const [initialChartData, setInitialChartData] = useState<ChartDataPoint[]>([]);
   }, []); 
 
 
-  const { isConnected, error, lastMessage, sendMessage } = useWebSocket(wsUrl, {
+  const { isConnected, error, lastMessage, sendMessage } = useWebSocket<StockDataPayload>(wsUrl, {
     shouldReconnect: true,
     reconnectInterval: 3000,
   });

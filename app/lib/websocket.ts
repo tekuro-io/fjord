@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 
-interface WebSocketMessage<T = any> {
+interface WebSocketMessage<T = unknown> {
   data: T;
   timestamp: number;
 }
@@ -18,7 +18,7 @@ interface UseWebSocketOptions {
  * @param options Configuration options for the WebSocket behavior.
  * @returns An object containing connection status, error, received messages, and a send function.
  */
-export const useWebSocket = <T = any>(
+export const useWebSocket = <T = unknown>(
   url: string | null, // URL can be null initially if fetched dynamically
   options: UseWebSocketOptions = {}
 ) => {

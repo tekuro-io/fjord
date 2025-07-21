@@ -175,3 +175,5 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         />
     );
 });
+
+ChartComponent.displayName = 'ChartComponent';
