@@ -29,6 +29,7 @@ export interface StockItem {
   volume: number | null;
   multiplier: number | null;
   timestamp?: string;
+  first_seen?: string; 
 }
 
 const columnHelper = createColumnHelper<StockItem>();
@@ -547,9 +548,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 <React.Fragment key={row.id}> {/* This key is now stable because row.id is based on ticker */}
                   <tr
             
-                    onClick={() => toggleRowExpansion(row.id)} // Now the whole row is clickable
+                    onClick={() => toggleRowExpansion(row.id)}
 
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
+                    title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -614,6 +616,24 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 function formatCurrency(val: number | null) {
   return val != null ? `$${val.toFixed(2)}` : "-";
 }
+
+function formatDateTime(isoString?: string) {
+  if (!isoString) return "Unknown";
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      hour12: true,
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }) + ' ET';
+  } catch (e) {
+    return "Invalid date";
+  }
+}
+
 
 function formatLargeNumber(val: number | null) {
   if (val == null) return "-";
