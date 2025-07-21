@@ -543,10 +543,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
+    
                 <React.Fragment key={row.id}> {/* This key is now stable because row.id is based on ticker */}
                   <tr
-                    // Removed onClick from tr to prevent double-toggling,
-                    // as the button inside the ticker cell handles it.
+            
+                    onClick={() => toggleRowExpansion(row.id)} // Now the whole row is clickable
+
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
