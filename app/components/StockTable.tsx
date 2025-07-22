@@ -39,7 +39,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [sorting, setSorting] = React.useState([
     { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
-  const [numStocksToShow, setNumStocksToShow] = React.useState(50); // Renamed and initialized for "Top N"
+  const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
 
   const [isAlertActive, setIsAlertActive] = React.useState(false);
