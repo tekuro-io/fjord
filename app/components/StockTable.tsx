@@ -39,7 +39,7 @@ const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [multiplierFilter, setMultiplierFilter] = React.useState(1.0); // Re-added multiplier filter state, default 1.0
@@ -181,7 +181,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         setExpandedRows(newExpandedRows);
       } else { // If currently locked, about to unlock
         setLockedViewData(null); // Clear locked data
-        setExpandedRows(new Set()); // Clear expanded rows when unlocking
+        // setExpandedRows(new Set()); // Removed this line to persist expanded charts on unlock
       }
       return !prev;
     });
@@ -374,7 +374,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         // Determine text color based on the chosen background color
         // Default to white, then override for lighter backgrounds
         let textColor = "text-white";
-        if ((val > 0.005)|| (val < 0.005)) {
+        if (bg === "bg-emerald-400" || bg === "bg-red-400") {
           textColor = "text-gray-900"; // Darker text for lighter 400 shades
         }
 
