@@ -8,20 +8,22 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install dependencies based on the preferred package manager
-COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* .npmrc* ./
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm i --frozen-lockfile; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
-
+# Install dependencies based on npm and package-lock.json
+# Copy package.json and package-lock.json
+COPY package.json package-lock.json ./
+# Use npm ci for clean and reproducible installs based on package-lock.json
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
+# Copy node_modules from the deps stage
 COPY --from=deps /app/node_modules ./node_modules
+# Explicitly copy package.json and package-lock.json from the deps stage
+# This ensures they are present for the build command, bypassing any .dockerignore or cache issues for these files.
+COPY --from=deps /app/package.json ./package.json
+COPY --from=deps /app/package-lock.json ./package-lock.json
+# Copy the rest of your application source code
 COPY . .
 
 # Next.js collects completely anonymous telemetry data about general usage.
@@ -29,12 +31,8 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN \
-  if [ -f yarn.lock ]; then yarn run build; \
-  elif [ -f package-lock.json ]; then npm run build; \
-  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm run build; \
-  else echo "Lockfile not found." && exit 1; \
-  fi
+# Run the Next.js build command
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
