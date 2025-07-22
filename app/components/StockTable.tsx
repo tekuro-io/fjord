@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 
 import * as Tone from 'tone';
-// import Sentiment from "./Sentiment"; // Commented out Sentiment
 import LiveChart from "./LiveChart"; // Changed import from ChartComponent to LiveChart
 
 // Define the interface for your stock data structure
@@ -29,13 +28,12 @@ export interface StockItem {
   volume: number | null;
   multiplier: number | null;
   timestamp?: string;
-  first_seen?: string; 
 }
 
 const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
-const MULTIPLIER_THRESHOLD = 1.5;
+const MULTIPLIER_THRESHOLD = 4.5;
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
@@ -284,14 +282,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         if (val == null) return "-";
 
         let bg = "bg-transparent";
-        if (val > 0.1) bg = "bg-emerald-700";
-        else if (val > 0.05) bg = "bg-emerald-600";
-        else if (val > 0.03) bg = "bg-emerald-500";
-        else if (val > 0.015) bg = "bg-emerald-400";
-        else if (val < -0.015) bg = "bg-red-700";
-        else if (val < -0.03) bg = "bg-red-600";
-        else if (val < -0.04) bg = "bg-red-500";
-        else if (val < -0.1) bg = "bg-red-400";
+        if (val > 0.45) bg = "bg-emerald-700";
+        else if (val > 0.3) bg = "bg-emerald-600";
+        else if (val > 0.15) bg = "bg-emerald-500";
+        else if (val > DELTA_THRESHOLD) bg = "bg-emerald-400";
+        else if (val < -0.45) bg = "bg-red-700";
+        else if (val < -0.3) bg = "bg-red-600";
+        else if (val < -0.15) bg = "bg-red-500";
+        else if (val < -DELTA_THRESHOLD) bg = "bg-red-400";
 
         return (
           <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
@@ -370,9 +368,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-
-    getRowId: (row) => row.ticker, // Use the 'ticker' as the unique row ID
-
     debugTable: false,
   });
 
@@ -544,14 +539,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               </tr>
             ) : (
               table.getRowModel().rows.map((row) => (
-    
-                <React.Fragment key={row.id}> {/* This key is now stable because row.id is based on ticker */}
+                <React.Fragment key={row.id}>
                   <tr
-            
-                    onClick={() => toggleRowExpansion(row.id)}
-
+                    // Removed onClick from tr to prevent double-toggling,
+                    // as the button inside the ticker cell handles it.
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
-                    title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -616,24 +608,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 function formatCurrency(val: number | null) {
   return val != null ? `$${val.toFixed(2)}` : "-";
 }
-
-function formatDateTime(isoString?: string) {
-  if (!isoString) return "Unknown";
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      hour12: true,
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    }) + ' ET';
-  } catch (e) {
-    return "Invalid date";
-  }
-}
-
 
 function formatLargeNumber(val: number | null) {
   if (val == null) return "-";
