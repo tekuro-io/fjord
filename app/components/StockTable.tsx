@@ -39,7 +39,7 @@ const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [multiplierFilter, setMultiplierFilter] = React.useState(1.0); // Re-added multiplier filter state, default 1.0
@@ -166,8 +166,19 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       if (!prev) { // If currently unlocked, about to lock
         // Capture the currently displayed data as the locked view
         // Ensure we capture the *sliced* and *sorted* data that is currently visible
-        setLockedViewData(table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original));
-        setExpandedRows(new Set()); // Clear expanded rows when locking
+        const currentVisibleRowsData = table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original);
+        setLockedViewData(currentVisibleRowsData);
+
+        // Filter expandedRows to only include those present in the new lockedViewData
+        const newExpandedRows = new Set<string>();
+        const currentVisibleTickers = new Set(currentVisibleRowsData.map(stock => stock.ticker));
+
+        expandedRows.forEach(ticker => {
+          if (currentVisibleTickers.has(ticker)) {
+            newExpandedRows.add(ticker);
+          }
+        });
+        setExpandedRows(newExpandedRows);
       } else { // If currently locked, about to unlock
         setLockedViewData(null); // Clear locked data
         setExpandedRows(new Set()); // Clear expanded rows when unlocking
@@ -304,7 +315,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center"> {/* Changed px-2 to px-0.5 */}
+                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center">
             {info.getValue() as string}
           </span>
         </div>
@@ -450,6 +461,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     debugTable: false,
+    getRowId: (stock) => stock.ticker, // Crucial: Use ticker as stable row ID
   });
 
   const getHeaderClasses = (headerId: string) => {
@@ -610,7 +622,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       )}
 
       {/* Table Container with horizontal overflow */}
-      <div className="overflow-x-auto px-0 sm:px-6 pb-6"> {/* Changed px-6 to px-0 sm:px-6 */}
+      <div className="overflow-x-auto px-0 sm:px-6 pb-6">
         <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg">
           <thead className="bg-gray-700">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -619,7 +631,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <th
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${ // Changed px-3 to px-0.5
+                    className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${
                       header.column.getCanSort() ? "cursor-pointer select-none hover:bg-gray-600 transition-colors duration-200" : ""
                     } ${getHeaderClasses(header.id)}`}
                     onClick={header.column.getToggleSortingHandler()}
@@ -658,7 +670,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`} // Changed px-3 to px-0.5
+                        className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`}
                       >
                         {cell.column.id === 'ticker' ? (
                           <div className="flex items-center gap-2">
@@ -669,7 +681,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                               {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center"> {/* Changed px-1 to px-0.5 */}
+                                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center">
                               {cell.getValue() as string}
                             </span>
                           </div>
