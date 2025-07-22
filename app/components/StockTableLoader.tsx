@@ -1,5 +1,5 @@
 import { connection } from "next/server";
-import { StockTable } from "../components/StockTable"; 
+import StockTable from "../components/StockTable"; 
 import { getStockDataFromRedis, StockItem } from "../lib/redis"; 
 
 export const dynamic = "force-dynamic";
