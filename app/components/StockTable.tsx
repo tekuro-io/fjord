@@ -33,6 +33,8 @@ export interface StockItem {
 
 const columnHelper = createColumnHelper<StockItem>();
 
+const DELTA_THRESHOLD = 0.08;
+const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
@@ -210,10 +212,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             }
             // Set alert message
             setNewStocksAlert(newData.filter(stock => newlyAppearingStocks.includes(stock.ticker)));
-
-            // IMPORTANT FIX: Update the snapshot to include the newly detected stocks
-            setAlertSnapshotTickers(prevSnapshot => [...prevSnapshot, ...newlyAppearingStocks]);
           }
+          // IMPORTANT FIX: Update the snapshot to the current top N tickers for the next comparison
+          setAlertSnapshotTickers(currentTopNTickers);
         }
         setCurrentData(newData);
       } catch (error) {
@@ -541,7 +542,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               id="multiplier-filter-slider"
               type="range"
               min="0"
-              max="50"
+              max="20"
               step="0.1"
               value={multiplierFilter}
               onChange={(e) => setMultiplierFilter(parseFloat(e.target.value))}
