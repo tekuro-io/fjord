@@ -37,7 +37,7 @@ const columnHelper = createColumnHelper<StockItem>();
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(50); // Renamed and initialized for "Top N"
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
@@ -524,7 +524,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               type="range"
               min="10" // Minimum number of stocks to show
               max="200" // Maximum number of stocks to show
-              step="10" // Step by 10 stocks
+              step="1" // Step by 10 stocks
               value={numStocksToShow}
               onChange={(e) => setNumStocksToShow(parseInt(e.target.value))}
               className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
