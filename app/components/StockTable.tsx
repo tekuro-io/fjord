@@ -33,15 +33,13 @@ export interface StockItem {
 
 const columnHelper = createColumnHelper<StockItem>();
 
-const DELTA_THRESHOLD = 0.08;
-const MULTIPLIER_THRESHOLD = 1.5;
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "delta", desc: true },
+    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
-  const [multiplierFilter, setMultiplierFilter] = React.useState(MULTIPLIER_THRESHOLD);
+  const [numStocksToShow, setNumStocksToShow] = React.useState(50); // Renamed and initialized for "Top N"
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
 
   const [isAlertActive, setIsAlertActive] = React.useState(false);
@@ -167,13 +165,36 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
         setConnectionStatus('connected');
 
-        const newFilteredDataForAlert = newData.filter((stock: StockItem) =>
-          stock.multiplier == null || stock.multiplier >= multiplierFilter
-        );
+        // Apply global filter and sorting to new data to determine the "current top N" for alerts
+        let processedNewDataForAlert = newData;
+        if (globalFilter) {
+          const lowerCaseFilter = globalFilter.toLowerCase();
+          processedNewDataForAlert = processedNewDataForAlert.filter((stock: StockItem) =>
+            stock.ticker.toLowerCase().includes(lowerCaseFilter) ||
+            (stock.prev_price != null && stock.prev_price.toString().includes(lowerCaseFilter)) ||
+            (stock.price != null && stock.price.toString().includes(lowerCaseFilter)) ||
+            (stock.delta != null && (stock.delta * 100).toFixed(1).includes(lowerCaseFilter)) ||
+            (stock.float != null && formatLargeNumber(stock.float).toLowerCase().includes(lowerCaseFilter)) ||
+            (stock.mav10 != null && formatLargeNumber(stock.mav10).toLowerCase().includes(lowerCaseFilter)) ||
+            (stock.volume != null && formatLargeNumber(stock.volume).toLowerCase().includes(lowerCaseFilter)) ||
+            (stock.multiplier != null && (stock.multiplier).toFixed(1).includes(lowerCaseFilter))
+          );
+        }
+
+        // Sort the data to get the top stocks based on multiplier (default sorting)
+        const sortedNewDataForAlert = [...processedNewDataForAlert].sort((a, b) => {
+          // Assuming 'multiplier' is the primary sorting key for 'top amount'
+          const aVal = a.multiplier ?? -Infinity;
+          const bVal = b.multiplier ?? -Infinity;
+          // Sort descending for top values
+          return bVal - aVal;
+        });
+
+        // Get the tickers of the current top N stocks that would be displayed
+        const currentTopNTickers = sortedNewDataForAlert.slice(0, numStocksToShow).map(stock => stock.ticker);
 
         if (isAlertActive) { // Only check if alert is active
-          const currentFilteredTickers = newFilteredDataForAlert.map(stock => stock.ticker);
-          const newlyAppearingStocks = currentFilteredTickers.filter(ticker =>
+          const newlyAppearingStocks = currentTopNTickers.filter(ticker =>
             !alertSnapshotTickers.includes(ticker)
           );
 
@@ -183,7 +204,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               synthRef.current.triggerAttackRelease("C5", "8n");
             }
             // Set alert message
-            setNewStocksAlert(newFilteredDataForAlert.filter(stock => newlyAppearingStocks.includes(stock.ticker)));
+            setNewStocksAlert(newData.filter(stock => newlyAppearingStocks.includes(stock.ticker)));
 
             // IMPORTANT FIX: Update the snapshot to include the newly detected stocks
             setAlertSnapshotTickers(prevSnapshot => [...prevSnapshot, ...newlyAppearingStocks]);
@@ -200,7 +221,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     fetchData();
     const intervalId = setInterval(fetchData, 10000);
     return () => clearInterval(intervalId);
-  }, [isAlertActive, alertSnapshotTickers, multiplierFilter]); // alertSnapshotTickers is now a dependency
+  }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow]); // Updated dependencies
 
   React.useEffect(() => {
     if (newStocksAlert.length > 0) {
@@ -215,10 +236,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     if (!currentData) return [];
     let data = currentData;
 
-    data = data.filter((stock: StockItem) =>
-      stock.multiplier == null || stock.multiplier >= multiplierFilter
-    );
-
+    // Apply global search filter first
     if (globalFilter) {
       const lowerCaseFilter = globalFilter.toLowerCase();
       data = data.filter((stock: StockItem) =>
@@ -233,10 +251,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       );
     }
 
-    return data;
-  }, [currentData, multiplierFilter, globalFilter]);
+    // The table itself is already sorted by `sorting` state (which defaults to multiplier desc)
+    // So, we just need to slice the data to show the "Top N" after sorting.
+    // The `useReactTable` hook handles sorting based on the `sorting` state.
+    // We will let the table's `getSortedRowModel` handle the actual sorting for display.
+    // The `numStocksToShow` will act as a limit on the number of rows displayed.
+    return data; // Return all data, let table handle sorting and slicing for display
+  }, [currentData, globalFilter]);
 
-  const columns = [
+
+
+  const columns = React.useMemo(() => [
     columnHelper.accessor("ticker", {
       header: () => (
         <div className="flex items-center gap-1">
@@ -364,11 +389,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       },
       sortingFn: "basic",
     }),
-  ];
+  ], [expandedRows, toggleRowExpansion]); // Added toggleRowExpansion to dependencies as it's used in column definition
 
   const table = useReactTable<StockItem>({
-    data: filteredData,
-    columns,
+    data: filteredData, // This data is already filtered by global search
+    columns, // Now correctly in scope
     state: {
       sorting,
       globalFilter,
@@ -376,7 +401,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(),
+    getSortedRowModel: getSortedRowModel(), // This will sort `filteredData`
     debugTable: false,
   });
 
@@ -491,17 +516,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       {showOptionsDrawer && (
         <div className="mx-6 mb-6 p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-4 transition-all duration-300 ease-in-out">
           <div className="flex flex-col sm:flex-row items-center justify-between">
-            <label htmlFor="multiplier-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-              Filter Multiplier (Min): <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
+            <label htmlFor="num-stocks-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
+              Show Count: <span className="text-blue-400">{numStocksToShow}</span>
             </label>
             <input
-              id="multiplier-slider"
+              id="num-stocks-slider"
               type="range"
-              min="0"
-              max="20"
-              step="0.5"
-              value={multiplierFilter}
-              onChange={(e) => setMultiplierFilter(parseFloat(e.target.value))}
+              min="10" // Minimum number of stocks to show
+              max="200" // Maximum number of stocks to show
+              step="10" // Step by 10 stocks
+              value={numStocksToShow}
+              onChange={(e) => setNumStocksToShow(parseInt(e.target.value))}
               className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
             />
           </div>
@@ -536,7 +561,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             ))}
           </thead>
           <tbody className="bg-gray-800">
-            {table.getRowModel().rows.length === 0 ? (
+            {/* Slice the rows here to display only the top N */}
+            {table.getRowModel().rows.slice(0, numStocksToShow).length === 0 ? (
               <tr>
                 <td colSpan={columns.length} className="text-center py-8 text-gray-400">
                   <div className="flex flex-col items-center justify-center">
@@ -547,11 +573,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row) => (
+              table.getRowModel().rows.slice(0, numStocksToShow).map((row) => (
                 <React.Fragment key={row.id}>
                   <tr
-                    // Removed onClick from tr to prevent double-toggling,
-                    // as the button inside the ticker cell handles it.
                     title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
                   >
@@ -562,12 +586,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       >
                         {cell.column.id === 'ticker' ? (
                           <div className="flex items-center gap-2">
-                            {/* Updated onClick to use toggleRowExpansion */}
                             <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
-                              e.stopPropagation(); // Prevent row click from propagating
-                              toggleRowExpansion(row.id); // Use the new toggle function
+                              e.stopPropagation();
+                              toggleRowExpansion(row.id);
                             }}>
-                              {/* Check if the current row is in the expandedRows set */}
                               {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
@@ -581,12 +603,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       </td>
                     ))}
                   </tr>
-                  {/* Render LiveChart if this row is in the expandedRows set */}
                   {expandedRows.has(row.id) && (
                     <tr>
                       <td colSpan={columns.length} className="p-4 bg-gray-900">
                         <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                          {/* Replaced ChartComponent with LiveChart */}
                           <LiveChart defaultTicker={row.original.ticker} />
                         </div>
                       </td>
