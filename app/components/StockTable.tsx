@@ -284,14 +284,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         if (val == null) return "-";
 
         let bg = "bg-transparent";
-        if (val > 0.45) bg = "bg-emerald-700";
-        else if (val > 0.3) bg = "bg-emerald-600";
-        else if (val > 0.15) bg = "bg-emerald-500";
-        else if (val > DELTA_THRESHOLD) bg = "bg-emerald-400";
-        else if (val < -0.45) bg = "bg-red-700";
-        else if (val < -0.3) bg = "bg-red-600";
-        else if (val < -0.15) bg = "bg-red-500";
-        else if (val < -DELTA_THRESHOLD) bg = "bg-red-400";
+        if (val > 0.1) bg = "bg-emerald-700";
+        else if (val > 0.05) bg = "bg-emerald-600";
+        else if (val > 0.03) bg = "bg-emerald-500";
+        else if (val > 0.015) bg = "bg-emerald-400";
+        else if (val < -0.015) bg = "bg-red-700";
+        else if (val < -0.03) bg = "bg-red-600";
+        else if (val < -0.04) bg = "bg-red-500";
+        else if (val < -0.1) bg = "bg-red-400";
 
         return (
           <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
