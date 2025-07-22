@@ -35,7 +35,7 @@ export interface StockItem {
 const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
-const MULTIPLIER_THRESHOLD = 4.5;
+const MULTIPLIER_THRESHOLD = 1.5;
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
