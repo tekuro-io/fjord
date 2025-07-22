@@ -284,7 +284,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[50px] text-center">
             {info.getValue() as string}
           </span>
         </div>
@@ -628,7 +628,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                               {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[50px] text-center">
                               {cell.getValue() as string}
                             </span>
                           </div>
