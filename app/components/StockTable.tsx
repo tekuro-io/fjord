@@ -10,8 +10,8 @@ import {
 } from "@tanstack/react-table";
 import {
   SlidersHorizontal, Bell, BellRing, ArrowUp, ArrowDown, X,
-  Tag, DollarSign, Percent, BarChart2, Activity, WifiOff, Search, Clock, // BarChart2 is already here!
-  ChevronRight, ChevronDown, Frown
+  Tag, DollarSign, Percent, BarChart2, Activity, WifiOff, Search, Clock,
+  ChevronRight, ChevronDown, Frown, Lock, Unlock // Imported Lock and Unlock icons
 } from 'lucide-react';
 
 import * as Tone from 'tone';
@@ -39,7 +39,7 @@ const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [multiplierFilter, setMultiplierFilter] = React.useState(1.0); // Re-added multiplier filter state, default 1.0
@@ -56,8 +56,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const [connectionStatus, setConnectionStatus] = React.useState('connected');
 
-  // Changed from single expanded row ID to a Set for multiple expanded rows
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
+
+  // New state for lock functionality
+  const [isLocked, setIsLocked] = React.useState(false);
+  const [lockedViewData, setLockedViewData] = React.useState<StockItem[] | null>(null);
 
   const synthRef = React.useRef<Tone.Synth | null>(null);
 
@@ -156,6 +159,22 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
     setIsAlertActive(prev => !prev);
   };
+
+  // New function to toggle lock state
+  const toggleLock = () => {
+    setIsLocked(prev => {
+      if (!prev) { // If currently unlocked, about to lock
+        // Capture the currently displayed data as the locked view
+        setLockedViewData(table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original));
+        // Optionally clear sorting when locking to prevent immediate re-sort on unlock
+        // setSorting([]);
+      } else { // If currently locked, about to unlock
+        setLockedViewData(null); // Clear locked data
+      }
+      return !prev;
+    });
+  };
+
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -284,7 +303,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block min-w-[50px] text-center">
+                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center"> {/* Changed px-2 to px-0.5 */}
             {info.getValue() as string}
           </span>
         </div>
@@ -298,6 +317,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
       ),
       cell: (info) => formatCurrency(info.getValue() as number | null),
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("price", {
       header: () => (
@@ -307,6 +327,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
       ),
       cell: (info) => formatCurrency(info.getValue() as number | null),
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("delta", {
       header: () => (
@@ -320,6 +341,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         if (val == null) return "-";
 
         let bg = "bg-transparent";
+
         // Determine background color based on value
         // Positive Delta (Green shades - ordered from highest to lowest threshold)
         if (val > 0.15) bg = "bg-emerald-900"; // Very strong positive
@@ -344,14 +366,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           textColor = "text-gray-900"; // Darker text for lighter 400 shades
         }
 
-
         return (
-          <span className={`px-2 py-1 rounded-md ${textColor} font-medium ${bg} shadow-sm`}>
+          <span className={`px-2 py-1 rounded-md font-medium ${bg} ${textColor} shadow-sm`}>
             {(val * 100).toFixed(1)}%
           </span>
         );
       },
       sortingFn: "basic",
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("float", {
       header: () => (
@@ -361,15 +383,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
       ),
       cell: (info) => formatLargeNumber(info.getValue() as number | null),
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("mav10", {
       header: () => (
         <div className="flex items-center gap-1">
           <BarChart2 className="w-4 h-4 text-gray-400" />
-          <span>MAV10</span>
+          <span>MA10 Volume</span>
         </div>
       ),
       cell: (info) => formatLargeNumber(info.getValue() as number | null),
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("volume", {
       header: () => (
@@ -379,12 +403,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         </div>
       ),
       cell: (info) => formatLargeNumber(info.getValue() as number | null),
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("multiplier", {
       header: () => (
         <div className="flex items-center gap-1">
           <Activity className="w-4 h-4 text-gray-400" />
-          <span>Mult</span>
+          <span>Multiplier</span>
         </div>
       ),
       cell: (info) => {
@@ -408,17 +433,18 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         );
       },
       sortingFn: "basic",
+      enableSorting: !isLocked, // Disable sorting when locked
     }),
-  ], [expandedRows, toggleRowExpansion]);
+  ], [expandedRows, toggleRowExpansion, isLocked]); // Added isLocked to columns dependency array
 
   const table = useReactTable<StockItem>({
-    data: filteredData,
+    data: isLocked && lockedViewData ? lockedViewData : filteredData, // Use locked data when locked
     columns,
     state: {
       sorting,
       globalFilter,
     },
-    onSortingChange: setSorting,
+    onSortingChange: isLocked ? () => {} : setSorting, // Disable sorting when locked
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -513,6 +539,20 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             <span className="md:hidden">Alert</span>
             {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
+
+          {/* New Lock/Unlock Button */}
+          <button
+            onClick={toggleLock}
+            className={`px-2 py-1 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
+              isLocked
+                ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
+                : 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500'
+            } text-white font-semibold focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm`}
+          >
+            <span className="hidden md:inline-block">{isLocked ? 'Unlock View' : 'Lock View'}</span>
+            <span className="md:hidden">{isLocked ? 'Unlock' : 'Lock'}</span>
+            {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          </button>
         </div>
 
         {/* Clock and Market Status remain here */}
@@ -569,7 +609,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       )}
 
       {/* Table Container with horizontal overflow */}
-      <div className="overflow-x-auto px-0 px-6 pb-6 sm:px-6">
+      <div className="overflow-x-auto px-0 sm:px-6 pb-6"> {/* Changed px-6 to px-0 sm:px-6 */}
         <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg">
           <thead className="bg-gray-700">
             {table.getHeaderGroups().map((headerGroup) => (
@@ -578,7 +618,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <th
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`px-1 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${
+                    className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${ // Changed px-3 to px-0.5
                       header.column.getCanSort() ? "cursor-pointer select-none hover:bg-gray-600 transition-colors duration-200" : ""
                     } ${getHeaderClasses(header.id)}`}
                     onClick={header.column.getToggleSortingHandler()}
@@ -617,7 +657,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     {row.getVisibleCells().map((cell) => (
                       <td
                         key={cell.id}
-                        className={`px-3 py-2 align-middle ${getCellClasses(cell.column.id)}`}
+                        className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`} // Changed px-3 to px-0.5
                       >
                         {cell.column.id === 'ticker' ? (
                           <div className="flex items-center gap-2">
@@ -628,7 +668,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                               {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[50px] text-center">
+                                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center"> {/* Changed px-1 to px-0.5 */}
                               {cell.getValue() as string}
                             </span>
                           </div>
@@ -641,7 +681,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   {expandedRows.has(row.id) && (
                     <tr>
                       <td colSpan={columns.length} className="p-4 bg-gray-900">
-                        <div className="p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
+                        <div className="p-2 sm:p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
                           <LiveChart defaultTicker={row.original.ticker} />
                         </div>
                       </td>
