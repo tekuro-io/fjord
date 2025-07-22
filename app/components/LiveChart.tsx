@@ -58,7 +58,6 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
     fetchWsUrl();
   }, []);
 
-  // FIXED: Changed <any> to <WebSocketMessage> to satisfy the ESLint rule
   const { isConnected, error: wsError, lastMessage, sendMessage } = useWebSocket<WebSocketMessage>(wsUrl, {
     shouldReconnect: true,
     reconnectInterval: 3000,
@@ -89,41 +88,47 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
         setLoading(false);
         setHasReceivedFirstData(true);
       } else {
-        setLoading(true);
+        setLoading(true); // Keep loading if no initial data, waiting for live data
         setHasReceivedFirstData(false);
       }
     }
   }, [initialChartData, stockData.ticker]);
 
   useEffect(() => {
+    // Log ALL messages received by useWebSocket to see what's coming in
     if (lastMessage) {
-      console.log("LiveChart: Raw lastMessage received:", lastMessage);
+      console.log("LiveChart: Raw lastMessage received (from useWebSocket):", lastMessage);
 
-      let parsedData: WebSocketMessage | undefined; // Use the union type here too
+      let parsedData: WebSocketMessage | undefined;
       try {
+        // Attempt to parse if lastMessage.data is a string (raw WebSocket message)
         if (typeof lastMessage.data === 'string') {
           parsedData = JSON.parse(lastMessage.data);
         } else {
+          // Otherwise, assume it's already an object (if useWebSocket already parsed it)
           parsedData = lastMessage.data;
         }
       } catch (e) {
-        console.error("LiveChart: Error parsing lastMessage.data:", e);
+        console.error("LiveChart: Error parsing lastMessage.data:", e, "Raw data:", lastMessage.data);
         console.warn("LiveChart: Skipping malformed message (parsing error):", lastMessage);
-        return;
+        return; // Skip processing if parsing fails
       }
 
       console.log("LiveChart: parsedData (after potential parsing):", parsedData);
 
       // Type guard to check if parsedData is a StockDataPayload
-      const isStockDataPayload = (data: WebSocketMessage): data is StockDataPayload => {
-        return (data as StockDataPayload).ticker !== undefined &&
-               (data as StockDataPayload).timestamp !== undefined &&
-               (data as StockDataPayload).price !== undefined;
+      const isStockDataPayload = (data: WebSocketMessage | any): data is StockDataPayload => {
+        // Ensure data is an object and has the expected properties
+        return typeof data === 'object' && data !== null &&
+               'ticker' in data && typeof data.ticker === 'string' && data.ticker.trim() !== '' &&
+               'timestamp' in data && typeof data.timestamp === 'number' &&
+               'price' in data && typeof data.price === 'number';
       };
 
-      if (parsedData && isStockDataPayload(parsedData)) { // Use the type guard
-        const stockPayload = parsedData; // No need for 'as StockDataPayload' here now
+      if (parsedData && isStockDataPayload(parsedData)) {
+        const stockPayload = parsedData; // Type is now correctly inferred as StockDataPayload
 
+        // IMPORTANT: Filter messages to ensure they belong to this chart's subscribed topic
         if (stockPayload.ticker.toUpperCase() === stockData.ticker.toUpperCase()) {
           const newChartPoint: ChartDataPoint = {
             time: stockPayload.timestamp,
@@ -131,10 +136,13 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
           };
 
           if (chartRef.current) {
+            console.log(`LiveChart (${stockData.ticker}): Sending new point to chart:`, newChartPoint); // NEW LOG
             chartRef.current.updateData(newChartPoint);
             setLoading(false);
-            setHasReceivedFirstData(true);
+            setHasReceivedFirstData(true); // Mark that we've received actual data
           }
+        } else {
+          console.log(`LiveChart: Received data for different ticker (${stockPayload.ticker}), skipping this chart.`);
         }
       } else if (parsedData) {
           console.warn("LiveChart: Received non-stock data message or malformed stock data, skipping:", parsedData);
@@ -149,11 +157,20 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
     return 'An unknown error occurred';
   };
 
-  if (loading && !hasReceivedFirstData) return <div className="text-gray-400">Loading chart...</div>;
-  if (wsError || error) return <div className="text-red-400">Error: {getErrorMessage(wsError || error)}</div>;
-  if (!loading && !wsError && !error && !hasReceivedFirstData) {
-    return <div className="text-gray-400">No historical data available for {stockData.ticker}.</div>;
+  // Adjust loading and "No data" display logic
+  // Show "Loading chart..." initially, or if waiting for first data point
+  if (loading && !hasReceivedFirstData) {
+    return <div className="text-gray-400">Loading chart...</div>;
   }
+  // Show error if there's a WebSocket or other fetch error
+  if (wsError || error) {
+    return <div className="text-red-400">Error: {getErrorMessage(wsError || error)}</div>;
+  }
+  // Show "No historical data" only if no initial data and no live data has ever arrived
+  if (!hasReceivedFirstData && initialChartData.length === 0) {
+    return <div className="text-gray-400">No historical data available for {stockData.ticker}. Waiting for live data...</div>;
+  }
+
 
   return (
     <div className="p-4 rounded-lg shadow-inner relative">
