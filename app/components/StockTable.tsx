@@ -39,7 +39,7 @@ const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [multiplierFilter, setMultiplierFilter] = React.useState(1.0); // Re-added multiplier filter state, default 1.0
