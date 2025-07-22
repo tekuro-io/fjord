@@ -100,7 +100,8 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
 
   // Effect to process live messages from this chart's own WebSocket
   useEffect(() => {
-    if (lastMessage && lastMessage.data.ticker) {
+    // IMPORTANT FIX: Add more robust checks for lastMessage.data and its properties
+    if (lastMessage && lastMessage.data && typeof lastMessage.data.ticker === 'string' && lastMessage.data.ticker.trim() !== '' && lastMessage.data.timestamp != null && lastMessage.data.price != null) {
       // IMPORTANT: Filter messages to ensure they belong to this chart's subscribed topic
       if (lastMessage.data.ticker.toUpperCase() === stockData.ticker.toUpperCase()) {
         const newChartPoint: ChartDataPoint = {
@@ -113,6 +114,9 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
           setLoading(false); // Data is now flowing, so loading is complete
         }
       }
+    } else if (lastMessage) {
+        // Log invalid message structure for debugging
+        console.warn("LiveChart: Received malformed or incomplete WebSocket message, skipping:", lastMessage);
     }
   }, [lastMessage, stockData.ticker]);
 
