@@ -1,12 +1,13 @@
 'use client';
 
-import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark  } from 'lightweight-charts';
+import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark } from 'lightweight-charts';
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
-export interface ChartDataPoint {
-    time: Time; // Can be BusinessDay, number (timestamp), or string
-    value: number;
-}
+// REMOVED: Local ChartDataPoint interface definition to avoid type conflicts.
+// It will now be imported from StockTable.tsx.
+
+// Import ChartDataPoint from StockTable to ensure consistency across components
+import { ChartDataPoint } from './StockTable'; // Corrected import path if needed
 
 interface ChartColors {
     backgroundColor?: string;
@@ -19,7 +20,7 @@ interface ChartColors {
 }
 
 interface ChartComponentProps {
-    initialData: ChartDataPoint[]; // Changed prop name for clarity: this is for the initial load
+    initialData: ChartDataPoint[]; // This is for the very first chart load
     colors?: ChartColors;
     showWatermark?: boolean;
     watermarkText?: string;
@@ -29,8 +30,7 @@ interface ChartComponentProps {
 // Define the shape of the ref handle that this component will expose to its parent
 export interface ChartHandle {
     updateData: (point: ChartDataPoint) => void;
-    // You could expose other methods here, e.g., to reset data or change options dynamically
-    // resetData: (data: ChartDataPoint[]) => void;
+    setData: (data: ChartDataPoint[]) => void; // Method to set/reset all data
 }
 
 // Wrap the component with forwardRef to allow parent components to get a ref to it
@@ -56,14 +56,19 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
     // useImperativeHandle: This hook is used to customize the instance value that is exposed to parent components when using ref.
-    // Here, we expose an `updateData` method.
+    // Here, we expose an `updateData` and `setData` method.
     useImperativeHandle(ref, () => ({
         updateData: (point: ChartDataPoint) => {
             if (seriesRef.current) {
-                // Use series.update() for efficient adding/updating of a single data point
-                seriesRef.current.update(point);
-                // Optional: Fit content after update if you want the chart to always adjust
-                // chartRef.current?.timeScale().fitContent(); // Removed to maintain scroll position during live updates
+                // Ensure time is in seconds for lightweight-charts
+                seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
+            }
+        },
+        setData: (data: ChartDataPoint[]) => { // Implementation for setting all data
+            if (seriesRef.current) {
+                // Ensure all times are in seconds for lightweight-charts
+                seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+                chartRef.current?.timeScale().fitContent();
             }
         },
     }));
@@ -92,8 +97,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     visible: false, // Keep as per your current setup
                 },
             },
-
-
             // --- Configure the timeScale for intraday seconds ---
             timeScale: {
                 rightOffset: 2,         // Small offset for real-time updates
@@ -102,21 +105,20 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 visible: true,
                 timeVisible: true,      // Show time (hours, minutes)
                 secondsVisible: true,   // Crucial: Show seconds
-                lockVisibleTimeRangeOnResize: true, 
+                lockVisibleTimeRangeOnResize: true,
                 rightBarStaysOnScroll: true,
-
                 minBarSpacing: 0.5,
-
             },
         });
 
+        // Add Watermark (only once on initialization)
         createTextWatermark(chart.panes()[0], {
             horzAlign: 'center',
             vertAlign: 'center',
             lines: [
                 {
                     text: watermarkText,
-                    color: 'rgba(8, 242, 246, 0.5)',
+                    color: 'rgba(8, 242, 246, 0.5)', // Your existing color
                     fontSize: 32,
                     fontStyle: 'bold',
                 },
@@ -124,8 +126,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         });
 
         chartRef.current = chart;
-        chart.timeScale().fitContent();
-
+        chart.timeScale().fitContent(); // Fit content on initial load
 
         const newSeries: ISeriesApi<'Area'> = chart.addSeries(AreaSeries, {
             lineColor,
@@ -136,9 +137,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         seriesRef.current = newSeries; // Store series instance in ref
 
         // Set the initial historical data using setData
-        // This runs only once with the initialData prop
+        // This runs only once with the initialData prop when the chart is created
         if (initialData.length > 0) {
-            newSeries.setData(initialData);
+            // Ensure initialData times are in seconds
+            newSeries.setData(initialData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
         }
 
         // Handle window resizing
@@ -160,13 +162,12 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             }
         };
     }, [
-
         backgroundColor, textColor,
         vertLinesColor, horzLinesColor, // Grid colors kept as they were (visible: false)
-        showWatermark, watermarkText, watermarkTextColor, // Watermark props kept as they were
+        showWatermark, // Watermark visibility prop
+        // Removed watermarkText and watermarkTextColor from dependencies as they are static
         lineColor, areaTopColor, areaBottomColor, // Area series colors
     ]);
-
 
     return (
         <div

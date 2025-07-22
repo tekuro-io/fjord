@@ -31,10 +31,19 @@ export interface StockItem {
   first_seen?: string;
 }
 
+// Define a type for historical chart data points (Exported for LiveChart to use)
+export interface ChartDataPoint {
+  time: number; // Unix timestamp (milliseconds)
+  value: number; // Price value
+}
+
 const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
 const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
+
+// Max data points to keep in the sliding window for each stock's chart history
+const MAX_CHART_HISTORY_POINTS = 100; // Keep last 100 data points for live charts
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
@@ -63,7 +72,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [isLocked, setIsLocked] = React.useState(false);
   const [lockedViewData, setLockedViewData] = React.useState<StockItem[] | null>(null);
 
+  // New state: Map to store sliding window of chart data for each ticker
+  const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
+
   const synthRef = React.useRef<Tone.Synth | null>(null);
+  const wsRef = React.useRef<WebSocket | null>(null); // New: WebSocket reference
 
   // Helper function to toggle row expansion
   const toggleRowExpansion = (rowId: string) => {
@@ -145,6 +158,92 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     };
   }, []);
 
+  // New: Centralized WebSocket connection management
+  React.useEffect(() => {
+    const connectWebSocket = () => {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        return; // Already connected
+      }
+
+      // IMPORTANT: Replace with your actual Hermes WebSocket server URL
+      // This URL should be configured to stream updates for all dashboard stocks.
+      // Assuming it sends an array of StockItem or a single StockItem.
+      const ws = new WebSocket("ws://localhost:8080/ws/data"); // Placeholder URL, adjust as needed
+
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("WebSocket connected.");
+        setConnectionStatus('connected');
+        // You might send a message here to subscribe to specific topics if Hermes supports it
+        // e.g., ws.send(JSON.stringify({ type: 'subscribe', topics: ['all_dashboard_stocks'] }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          // Assuming Hermes sends an array of updated StockItem objects, or a single object
+          const updates: StockItem[] | StockItem = JSON.parse(event.data);
+          const updateArray = Array.isArray(updates) ? updates : [updates]; // Ensure it's an array
+
+          setCurrentData(prevData => {
+            const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
+            updateArray.forEach(update => {
+              // Merge new updates with existing data
+              newDataMap.set(update.ticker, { ...newDataMap.get(update.ticker), ...update });
+            });
+            return Array.from(newDataMap.values());
+          });
+
+          // Update stockChartHistory with new live data points
+          setStockChartHistory(prevHistory => {
+            const newHistory = new Map(prevHistory);
+            updateArray.forEach(update => {
+              if (update.ticker && update.price != null && update.timestamp) {
+                const currentTickerHistory = newHistory.get(update.ticker) || [];
+                // Ensure timestamp is in milliseconds for consistency with JS Date.getTime()
+                const newPoint: ChartDataPoint = {
+                  time: new Date(update.timestamp).getTime(), // Convert ISO string to Unix timestamp in ms
+                  value: update.price,
+                };
+                // Add new point and maintain sliding window size
+                const updatedTickerHistory = [...currentTickerHistory, newPoint].slice(-MAX_CHART_HISTORY_POINTS);
+                newHistory.set(update.ticker, updatedTickerHistory);
+              }
+            });
+            return newHistory;
+          });
+
+        } catch (error) {
+          console.error("Error parsing WebSocket message:", error);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket disconnected. Attempting to reconnect...");
+        setConnectionStatus('disconnected');
+        // Implement a reconnect strategy with a delay
+        setTimeout(connectWebSocket, 5000); // Try to reconnect after 5 seconds
+      };
+
+      ws.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        setConnectionStatus('disconnected');
+        ws.close(); // Force close to trigger onclose and reconnect logic
+      };
+    };
+
+    connectWebSocket(); // Initial connection attempt
+
+    // Cleanup function: close WebSocket when component unmounts
+    return () => {
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    };
+  }, []); // Empty dependency array means this runs once on mount and cleanup on unmount
+
+
   const toggleAlert = async () => {
     if (!isAlertActive) {
       setAlertSnapshotTickers(filteredData.map(stock => stock.ticker));
@@ -182,84 +281,21 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         setExpandedRows(newExpandedRows);
       } else { // If currently locked, about to unlock
         setLockedViewData(null); // Clear locked data
-        // setExpandedRows(new Set()); // Removed this line to persist expanded charts on unlock
+        // The line `setExpandedRows(new Set());` was intentionally removed here
+        // to persist expanded charts on unlock, as per your request.
       }
       return !prev;
     });
   };
 
 
-  React.useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch('/api/stock-data');
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const newData: StockItem[] = await response.json();
-
-        setConnectionStatus('connected');
-
-        // Apply multiplier filter for alerts
-        let processedNewDataForAlert = newData.filter((stock: StockItem) =>
-          stock.multiplier == null || stock.multiplier >= multiplierFilter
-        );
-
-        // Apply global filter for alerts
-        if (globalFilter) {
-          const lowerCaseFilter = globalFilter.toLowerCase();
-          processedNewDataForAlert = processedNewDataForAlert.filter((stock: StockItem) =>
-            stock.ticker.toLowerCase().includes(lowerCaseFilter) ||
-            (stock.prev_price != null && stock.prev_price.toString().includes(lowerCaseFilter)) ||
-            (stock.price != null && stock.price.toString().includes(lowerCaseFilter)) ||
-            (stock.delta != null && (stock.delta * 100).toFixed(1).includes(lowerCaseFilter)) ||
-            (stock.float != null && formatLargeNumber(stock.float).toLowerCase().includes(lowerCaseFilter)) ||
-            (stock.mav10 != null && formatLargeNumber(stock.mav10).toLowerCase().includes(lowerCaseFilter)) ||
-            (stock.volume != null && formatLargeNumber(stock.volume).toLowerCase().includes(lowerCaseFilter)) ||
-            (stock.multiplier != null && (stock.multiplier).toFixed(1).includes(lowerCaseFilter))
-          );
-        }
-
-        // Sort the data to get the top stocks based on multiplier for alerts
-        const sortedNewDataForAlert = [...processedNewDataForAlert].sort((a, b) => {
-          // Assuming 'multiplier' is the primary sorting key for 'top amount'
-          const aVal = a.multiplier ?? -Infinity;
-          const bVal = b.multiplier ?? -Infinity;
-          // Sort descending for top values
-          return bVal - aVal;
-        });
-
-        // Get the tickers of the current top N stocks that would be displayed for alerts
-        const currentTopNTickers = sortedNewDataForAlert.slice(0, numStocksToShow).map(stock => stock.ticker);
-
-        if (isAlertActive) { // Only check if alert is active
-          const newlyAppearingStocks = currentTopNTickers.filter(ticker =>
-            !alertSnapshotTickers.includes(ticker)
-          );
-
-          if (newlyAppearingStocks.length > 0) {
-            // Play sound
-            if (synthRef.current) {
-              synthRef.current.triggerAttackRelease("C5", "8n");
-            }
-            // Set alert message
-            setNewStocksAlert(newData.filter(stock => newlyAppearingStocks.includes(stock.ticker)));
-          }
-          // IMPORTANT FIX: Update the snapshot to the current top N tickers for the next comparison
-          setAlertSnapshotTickers(currentTopNTickers);
-        }
-        setCurrentData(newData);
-      } catch (error) {
-        console.error("Failed to fetch stock data:", error);
-        // Set connection status to disconnected on fetch error
-        setConnectionStatus('disconnected');
-      }
-    };
-
-    fetchData();
-    const intervalId = setInterval(fetchData, 10000);
-    return () => clearInterval(intervalId);
-  }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow, multiplierFilter]); // Updated dependencies
+  // Removed the periodic fetchData useEffect as WebSocket now handles live updates
+  // React.useEffect(() => {
+  //   const fetchData = async () => { /* ... */ };
+  //   fetchData();
+  //   const intervalId = setInterval(fetchData, 10000);
+  //   return () => clearInterval(intervalId);
+  // }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow, multiplierFilter]);
 
   React.useEffect(() => {
     if (newStocksAlert.length > 0) {
@@ -294,8 +330,22 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       );
     }
 
+    // If unlocked, ensure any currently expanded stocks are included,
+    // even if they don't meet current filters/top N.
+    // This is crucial for keeping charts open when unlocking.
+    if (!isLocked && expandedRows.size > 0) {
+      const dataTickers = new Set(data.map(item => item.ticker));
+      const expandedButNotFiltered = Array.from(expandedRows).filter(ticker => !dataTickers.has(ticker));
+
+      if (expandedButNotFiltered.length > 0) {
+        // Find the full stock objects for these tickers from currentData
+        const additionalStocks = currentData.filter(stock => expandedButNotFiltered.includes(stock.ticker));
+        data = [...data, ...additionalStocks];
+      }
+    }
+
     return data;
-  }, [currentData, globalFilter, multiplierFilter]);
+  }, [currentData, globalFilter, multiplierFilter, isLocked, expandedRows]); // Add isLocked and expandedRows to dependencies
 
   const columns = React.useMemo(() => [
     columnHelper.accessor("ticker", {
@@ -375,7 +425,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         // Determine text color based on the chosen background color
         // Default to white, then override for lighter backgrounds
         let textColor = "text-white";
-        if ((val > 0.005) || (val < -0.005)) {
+        if ((val > 0.005) || (val < -0.005)) { // Your existing color logic
           textColor = "text-gray-900"; // Darker text for lighter 400 shades
         }
 
@@ -696,7 +746,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     <tr>
                       <td colSpan={columns.length} className="p-4 bg-gray-900">
                         <div className="p-2 sm:p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                          <LiveChart defaultTicker={row.original.ticker} />
+                          {/* Pass the entire stock object AND its chart history */}
+                          <LiveChart
+                            stockData={row.original}
+                            initialChartData={stockChartHistory.get(row.original.ticker) || []}
+                          />
                         </div>
                       </td>
                     </tr>

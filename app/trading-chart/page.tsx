@@ -14,7 +14,8 @@ const TradingChartPage = () => {
 
 
       <div style={{ maxWidth: '900px', margin: '0 auto', border: '0px solid #4B5563', borderRadius: '8px', overflow: 'hidden' }}>
-        <LiveChart defaultTicker="AVGO" />
+       {/* <LiveChart defaultTicker="AVGO" />*/
+       }
       </div>
 
       {/* You can add more LiveChart instances here for other tickers if needed */}
