@@ -14,26 +14,28 @@ import {
 } from '@tanstack/react-table';
 import LiveChart from './LiveChart'; // Ensure this import is correct
 
-// Define the structure of a stock item for the table
+// REVERTED: Define the StockItem interface to match what Redis *actually* provides initially
+// and what your table originally displayed.
 export interface StockItem {
   ticker: string;
-  name: string;
-  price: number;
-  open: number;
-  high: number;
-  low: number;
-  volume: number;
-  change: number;
-  changePercent: number;
+  prev_price: number | null;
+  price: number | null;
+  delta: number | null;
+  float: number | null;
+  mav10: number | null;
+  volume: number | null; // Keep volume as it seems to be in original data
+  multiplier: number | null;
+  timestamp?: string; // Optional, if Redis provides it
+  first_seen?: string; // Optional, if Redis provides it
 }
 
-// Define the structure of a chart data point
+// Define the structure of a chart data point (still needed for LiveChart)
 export interface ChartDataPoint {
   time: number; // Unix timestamp in milliseconds
   value: number; // Price
 }
 
-// Define the structure of the WebSocket payload for stock data
+// Define the structure of the WebSocket payload for stock data (THIS IS WHAT HERMES SENDS)
 interface StockDataPayload {
   ticker: string;
   timestamp: number; // In milliseconds, as sent by Python producer
@@ -43,7 +45,7 @@ interface StockDataPayload {
   low: number;
   volume: number;
   change: number;
-  change_percent: number; // Note: 'change_percent' from backend, 'changePercent' for frontend StockItem
+  change_percent: number; // Note: 'change_percent' from backend
 }
 
 // Define an interface for the informational message type
@@ -55,20 +57,22 @@ interface InfoMessage {
 // Define a union type for all expected WebSocket messages
 type WebSocketMessage = StockDataPayload | InfoMessage;
 
-// NEW: Define the size of the historical data window for charts
-const HISTORY_WINDOW_SIZE = 200; // Keep the last 200 data points for the chart history
+const HISTORY_WINDOW_SIZE = 200;
 
-export function StockTable() {
-  const [data, setData] = useState<StockItem[]>([]);
+// Define props interface for StockTable
+interface StockTableProps {
+  data: StockItem[]; // The initial data passed from StockTableLoader (now matching the simpler StockItem)
+}
+
+export function StockTable({ data: initialTableData }: StockTableProps) {
+  const [data, setData] = useState<StockItem[]>(initialTableData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null); // State to manage expanded row
-  // State to store historical chart data for each ticker
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [stockChartHistory, setStockChartHistory] = useState<Map<string, ChartDataPoint[]>>(new Map());
 
-  // Helper function to safely get an error message
   const getErrorMessage = (err: string | Error | null): string => {
     if (!err) return '';
     if (typeof err === 'string') return err;
@@ -76,7 +80,6 @@ export function StockTable() {
     return 'An unknown error occurred';
   };
 
-  // Fetch WebSocket URL on component mount
   useEffect(() => {
     const fetchWsUrl = async () => {
       try {
@@ -96,17 +99,13 @@ export function StockTable() {
     fetchWsUrl();
   }, []);
 
-  // Initialize WebSocket connection using the custom hook
   const { isConnected, error: wsError, lastMessage, sendMessage } = useWebSocket<WebSocketMessage>(wsUrl, {
     shouldReconnect: true,
     reconnectInterval: 3000,
   });
 
-  // Effect to handle incoming WebSocket messages
   useEffect(() => {
     if (lastMessage) {
-      // console.log("StockTable: Raw lastMessage received:", lastMessage); // Keep this for debugging if needed
-
       let parsedData: WebSocketMessage | undefined;
       try {
         if (typeof lastMessage.data === 'string') {
@@ -116,11 +115,9 @@ export function StockTable() {
         }
       } catch (e) {
         console.error("StockTable: Error parsing lastMessage.data:", e, "Raw data:", lastMessage.data);
-        // Optionally, return or handle this malformed message more gracefully
         return;
       }
 
-      // Type guard to check if parsedData is a StockDataPayload
       const isStockDataPayload = (data: WebSocketMessage): data is StockDataPayload => {
         return typeof data === 'object' && data !== null &&
                'ticker' in data && typeof data.ticker === 'string' &&
@@ -130,61 +127,65 @@ export function StockTable() {
       if (parsedData && isStockDataPayload(parsedData)) {
         const stockPayload = parsedData;
 
-        // NEW: Update stockChartHistory with sliding window logic
         setStockChartHistory(prevHistory => {
-            const newHistory = new Map(prevHistory); // Create a new map to ensure immutability
+            const newHistory = new Map(prevHistory);
             const ticker = stockPayload.ticker.toUpperCase();
             const currentPoints = newHistory.get(ticker) || [];
 
             const newPoint: ChartDataPoint = {
-                time: stockPayload.timestamp, // Assuming timestamp is in milliseconds
+                time: stockPayload.timestamp,
                 value: stockPayload.price,
             };
 
-            // Add the new point
             const updatedPoints = [...currentPoints, newPoint];
-
-            // Trim the array to maintain the sliding window size
             if (updatedPoints.length > HISTORY_WINDOW_SIZE) {
                 newHistory.set(ticker, updatedPoints.slice(updatedPoints.length - HISTORY_WINDOW_SIZE));
             } else {
                 newHistory.set(ticker, updatedPoints);
             }
-
             return newHistory;
         });
 
-        // Update main stock data for the table display
+        // FIXED: Update table data using *only* the fields available in StockItem
+        // and add/update other fields from stockPayload as needed for display.
+        // This means we might need to extend StockItem or display some fields conditionally.
         setData(prevData => {
           const existingIndex = prevData.findIndex(
             (item) => item.ticker === stockPayload.ticker
           );
 
+          // Create a new StockItem from the incoming payload, mapping fields
+          // Note: If 'prev_price', 'delta', 'float', 'mav10', 'multiplier', 'first_seen'
+          // are *only* coming from Redis, they will not be updated by WebSocket here.
+          // You need to decide how to handle these. For now, we'll try to keep them
+          // if they exist, and overwrite with new price/volume from WebSocket.
+          const currentStock = existingIndex !== -1 ? prevData[existingIndex] : null;
+
           const updatedStockItem: StockItem = {
             ticker: stockPayload.ticker,
-            name: stockPayload.ticker, // Assuming name is same as ticker for now or fetched elsewhere
             price: stockPayload.price,
-            open: stockPayload.open,
-            high: stockPayload.high,
-            low: stockPayload.low,
-            volume: stockPayload.volume,
-            change: stockPayload.change,
-            changePercent: stockPayload.change_percent, // Use change_percent from backend
+            volume: stockPayload.volume, // Volume is now coming from WebSocket
+            // For other fields, either use the existing value or set to null/default
+            prev_price: currentStock ? currentStock.price : null, // Use current price as prev_price for next update
+            delta: stockPayload.change, // Map WebSocket 'change' to 'delta'
+            multiplier: stockPayload.change_percent, // Map WebSocket 'change_percent' to 'multiplier' (if this is the intended use)
+            float: currentStock ? currentStock.float : null, // Preserve if exists, else null
+            mav10: currentStock ? currentStock.mav10 : null, // Preserve if exists, else null
+            timestamp: stockPayload.timestamp.toString(), // Convert timestamp to string
+            first_seen: currentStock ? currentStock.first_seen : new Date().toISOString(), // Preserve or set now
           };
 
+
           if (existingIndex !== -1) {
-            // Update existing item
             const newData = [...prevData];
             newData[existingIndex] = updatedStockItem;
             return newData;
           } else {
-            // Add new item (initial load of a new ticker)
             return [...prevData, updatedStockItem];
           }
         });
-        setLoading(false); // Data is coming in, so stop loading state
+        setLoading(false);
       } else if (parsedData && (parsedData as InfoMessage).type === 'info') {
-        // Handle info messages if necessary
         console.log("StockTable: Info message received:", (parsedData as InfoMessage).message);
       } else {
           console.warn("StockTable: Received unrecognized message format:", parsedData);
@@ -207,52 +208,39 @@ export function StockTable() {
         ),
       },
       {
-        accessorKey: 'name',
-        header: 'Name',
-        cell: (info) => info.getValue(),
-      },
-      {
         accessorKey: 'price',
         header: 'Price',
-        cell: (info) => (info.getValue() as number).toFixed(2),
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-", // Handle null
       },
       {
-        accessorKey: 'change',
-        header: 'Change',
+        accessorKey: 'delta', // Now mapped from WebSocket 'change'
+        header: 'Delta',
         cell: (info) => {
-          const value = info.getValue() as number;
+          const value = info.getValue() as number | null;
+          if (value == null) return "-";
           const colorClass = value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-gray-400';
           return <span className={colorClass}>{value.toFixed(2)}</span>;
         },
       },
       {
-        accessorKey: 'changePercent',
-        header: 'Change %',
+        accessorKey: 'volume', // Now coming from WebSocket
+        header: 'Volume',
+        cell: (info) => (info.getValue() as number | null)?.toLocaleString() || "-", // Handle null
+      },
+      {
+        accessorKey: 'multiplier', // Now mapped from WebSocket 'change_percent'
+        header: 'Multiplier',
         cell: (info) => {
-          const value = info.getValue() as number;
+          const value = info.getValue() as number | null;
+          if (value == null) return "-";
           const colorClass = value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-gray-400';
-          return <span className={colorClass}>{value.toFixed(2)}%</span>;
+          return <span className={colorClass}>{value.toFixed(2)}%</span>; // Display as percentage
         },
       },
-      {
-        accessorKey: 'volume',
-        header: 'Volume',
-        cell: (info) => (info.getValue() as number).toLocaleString(),
-      },
-      {
-        accessorKey: 'open',
-        header: 'Open',
-        cell: (info) => (info.getValue() as number).toFixed(2),
-      },
-      {
-        accessorKey: 'high',
-        header: 'High',
-        cell: (info) => (info.getValue() as number).toFixed(2),
-      },
-      {
-        accessorKey: 'low',
-        cell: (info) => (info.getValue() as number).toFixed(2),
-      },
+      // Removed 'name', 'open', 'high', 'low', 'change', 'changePercent' from columns
+      // as they were not consistently present in Redis data or original StockItem.
+      // If you want to display these, they need to be added back to StockItem
+      // and handled in the data update logic.
     ],
     []
   );
@@ -274,10 +262,10 @@ export function StockTable() {
   }
 
   if (wsError || error) {
-    // FIXED: Use the getErrorMessage helper function
+    const displayError = getErrorMessage(wsError || error);
     return (
       <div className="text-red-500 text-center py-4">
-        Error: {getErrorMessage(wsError || error)}. Please refresh or try again later.
+        Error: {displayError}. Please refresh or try again later.
       </div>
     );
   }
