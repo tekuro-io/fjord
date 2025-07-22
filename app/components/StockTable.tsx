@@ -38,7 +38,7 @@ const MULTIPLIER_THRESHOLD = 1.5;
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "multiplier", desc: true },
+    { id: "delta", desc: true },
   ]);
   const [multiplierFilter, setMultiplierFilter] = React.useState(MULTIPLIER_THRESHOLD);
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
