@@ -13,6 +13,12 @@ interface StockDataPayload {
   price: number;
 }
 
+// Define an interface for the informational message type
+interface InfoMessage {
+  type: string;
+  message: string;
+}
+
 // Updated LiveChartProps to accept stockData and initialChartData
 interface LiveChartProps {
   stockData: StockItem; // The current stock data for live updates
@@ -56,7 +62,8 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   }, []);
 
   // Correctly destructure useWebSocket hook's return values here
-  const { isConnected, error: wsError, lastMessage, sendMessage } = useWebSocket<StockDataPayload>(wsUrl, {
+  // The type of lastMessage might need to be more generic if it receives non-StockDataPayloads
+  const { isConnected, error: wsError, lastMessage, sendMessage } = useWebSocket<any>(wsUrl, { // Changed to 'any' for lastMessage to allow for different types
     shouldReconnect: true,
     reconnectInterval: 3000,
   });
@@ -103,32 +110,53 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
     // Debugging: Log the raw lastMessage as soon as it's received
     if (lastMessage) {
       console.log("LiveChart: Raw lastMessage received:", lastMessage);
-      console.log("LiveChart: lastMessage.data (before checks):", lastMessage.data);
-    }
 
-    // IMPORTANT FIX: Use optional chaining and explicit type checks for robustness
-    if (
-      lastMessage?.data &&
-      typeof lastMessage.data.ticker === 'string' &&
-      lastMessage.data.ticker.trim() !== '' &&
-      lastMessage.data.timestamp != null &&
-      lastMessage.data.price != null
-    ) {
-      // IMPORTANT: Filter messages to ensure they belong to this chart's subscribed topic
-      if (lastMessage.data.ticker.toUpperCase() === stockData.ticker.toUpperCase()) {
-        const newChartPoint: ChartDataPoint = {
-          time: lastMessage.data.timestamp, // Keep time as number (milliseconds) as per StockTable.ChartDataPoint
-          value: lastMessage.data.price,
-        };
-
-        if (chartRef.current) {
-          chartRef.current.updateData(newChartPoint);
-          setLoading(false); // Data is now flowing, so loading is complete
+      let parsedData: StockDataPayload | InfoMessage | undefined;
+      try {
+        // If lastMessage.data is a string, attempt to parse it
+        if (typeof lastMessage.data === 'string') {
+          parsedData = JSON.parse(lastMessage.data);
+        } else {
+          // Otherwise, assume it's already an object (e.g., if useWebSocket already parsed it)
+          parsedData = lastMessage.data;
         }
+      } catch (e) {
+        console.error("LiveChart: Error parsing lastMessage.data:", e);
+        console.warn("LiveChart: Skipping malformed message (parsing error):", lastMessage);
+        return; // Skip processing if parsing fails
       }
-    } else if (lastMessage) {
-        // Log invalid message structure for debugging
-        console.warn("LiveChart: Received malformed or incomplete WebSocket message, skipping:", lastMessage);
+
+      console.log("LiveChart: parsedData (after potential parsing):", parsedData);
+
+      // IMPORTANT FIX: Check if parsedData is a StockDataPayload before accessing ticker
+      // Use a type guard or check for specific properties that define StockDataPayload
+      if (
+        parsedData &&
+        (parsedData as StockDataPayload).ticker && // Check for ticker property
+        typeof (parsedData as StockDataPayload).ticker === 'string' &&
+        (parsedData as StockDataPayload).ticker.trim() !== '' &&
+        (parsedData as StockDataPayload).timestamp != null &&
+        (parsedData as StockDataPayload).price != null
+      ) {
+        const stockPayload = parsedData as StockDataPayload;
+
+        // IMPORTANT: Filter messages to ensure they belong to this chart's subscribed topic
+        if (stockPayload.ticker.toUpperCase() === stockData.ticker.toUpperCase()) {
+          const newChartPoint: ChartDataPoint = {
+            time: stockPayload.timestamp, // Keep time as number (milliseconds) as per StockTable.ChartDataPoint
+            value: stockPayload.price,
+          };
+
+          if (chartRef.current) {
+            chartRef.current.updateData(newChartPoint);
+            setLoading(false); // Data is now flowing, so loading is complete
+          }
+        }
+      } else if (parsedData) {
+          // Log invalid message structure for debugging, but only if it's not a valid StockDataPayload
+          // This will catch the "info" messages without throwing an error
+          console.warn("LiveChart: Received non-stock data message or malformed stock data, skipping:", parsedData);
+      }
     }
   }, [lastMessage, stockData.ticker]);
 
@@ -144,7 +172,7 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   if (loading) return <div className="text-gray-400">Loading chart...</div>;
   if (wsError || error) return <div className="text-red-400">Error: {getErrorMessage(wsError || error)}</div>;
   // Only show "No data" if not loading, no error, no initial data, AND no live data has come in for this ticker
-  if (!loading && !wsError && !error && initialChartData.length === 0 && (!lastMessage || lastMessage.data.ticker.toUpperCase() !== stockData.ticker.toUpperCase())) {
+  if (!loading && !wsError && !error && initialChartData.length === 0 && (!lastMessage || stockData.ticker.toUpperCase() !== (lastMessage?.data as StockDataPayload)?.ticker?.toUpperCase())) {
     return <div className="text-gray-400">No historical data available for {stockData.ticker}.</div>;
   }
 
