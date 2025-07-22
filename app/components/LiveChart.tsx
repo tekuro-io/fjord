@@ -32,7 +32,8 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   // Derived from stockData.ticker prop now
   const [subscribedTopic, setSubscribedTopic] = useState(`stock:${stockData.ticker.toUpperCase()}`);
 
-  // 1. Fetch the WebSocket URL from the Next.js API route (preserved)
+  // 1. Fetch the WebSocket URL from the Next.js API route
+  // This effect runs once on mount to get the WS URL.
   useEffect(() => {
     const fetchWsUrl = async () => {
       try {
@@ -42,28 +43,28 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
         }
         const data = await response.json();
         setWsUrl(data.websocketUrl);
-        console.log('Fetched WebSocket URL:', data.websocketUrl);
+        console.log('LiveChart: Fetched WebSocket URL:', data.websocketUrl);
+        // setLoading(false); // Moved this to the effect that uses wsUrl
       } catch (e) {
-        console.error('Failed to fetch WebSocket URL from API:', e);
+        console.error('LiveChart: Failed to fetch WebSocket URL from API:', e);
+        setError('Failed to get WebSocket URL.');
         setWsUrl(null);
+        setLoading(false); // Stop loading if URL fetch fails
       }
     };
     fetchWsUrl();
   }, []);
 
   // Correctly destructure useWebSocket hook's return values here
-  // The error "Cannot find name 'isConnected'" implies these weren't correctly destructured
-  // or the hook itself isn't returning them as expected.
-  // Assuming the useWebSocket hook in '../lib/websocket.ts' is correctly implemented
-  // and returns { isConnected, error, lastMessage, sendMessage }.
   const { isConnected, error: wsError, lastMessage, sendMessage } = useWebSocket<StockDataPayload>(wsUrl, {
     shouldReconnect: true,
     reconnectInterval: 3000,
   });
 
-  // Effect to handle WebSocket subscription (preserved, now uses stockData.ticker)
+  // Effect to handle WebSocket subscription
+  // This effect now explicitly depends on wsUrl being set.
   useEffect(() => {
-    // Update subscribedTopic if defaultTicker changes (e.g., if LiveChart is reused for a different stock)
+    // Update subscribedTopic if stockData.ticker changes
     setSubscribedTopic(`stock:${stockData.ticker.toUpperCase()}`);
 
     if (isConnected && wsUrl && subscribedTopic) {
@@ -72,49 +73,48 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
         topic: subscribedTopic
       };
       sendMessage(JSON.stringify(subscribeMessage));
-      console.log(`Sent subscribe message for topic: ${subscribedTopic}`);
-
-      // When a new subscription happens, ensure chart is cleared or re-initialized
-      // This is now handled by the chart initialization useEffect below, using initialChartData prop.
+      console.log(`LiveChart: Sent subscribe message for topic: ${subscribedTopic}`);
+      setLoading(false); // Chart loading should stop once subscription is sent and connection is live
+    } else if (!wsUrl) {
+      console.log("LiveChart: wsUrl not set, skipping subscription message.");
+      // Keep loading true if wsUrl is not yet available, as we're still waiting for it
+    } else if (!isConnected) {
+      console.log("LiveChart: Not connected, skipping subscription message.");
+      // Keep loading true if not connected, as we're waiting for connection
     }
-  }, [isConnected, wsUrl, stockData.ticker, sendMessage, subscribedTopic]); // Added stockData.ticker to dependencies
+  }, [isConnected, wsUrl, stockData.ticker, sendMessage, subscribedTopic]); // Added subscribedTopic to dependencies
+
 
   // Effect for initializing the chart with initialChartData from StockTable
-  // This runs when the component mounts or when initialChartData/stockData.ticker changes.
   useEffect(() => {
     if (chartRef.current) {
       if (initialChartData && initialChartData.length > 0) {
-        // If initialChartData is provided (from StockTable's sliding window), use it directly.
-        // ChartComponent's internal useEffect will pick this up via its initialData prop.
-        setLoading(false); // Data is available immediately
+        chartRef.current.setData(initialChartData);
+        // setLoading(false); // This can be set here if initial data is the primary loading indicator
       } else {
-        // If StockTable didn't have history (e.g., brand new stock),
-        // we might still want a fallback to fetch historical data here.
-        // For now, we'll assume StockTable provides enough or live data will fill it.
-        // If no initial data and not loading, it will show "No historical data".
-        setLoading(false); // No data to load immediately, but not an error
+        // If no initial data, we'll rely on live data to populate the chart.
+        // Keep loading true until live data starts flowing or an error occurs.
       }
     }
   }, [initialChartData, stockData.ticker]); // Re-run if initial data or ticker changes
 
-  // Effect to process live messages from this chart's own WebSocket (preserved)
+  // Effect to process live messages from this chart's own WebSocket
   useEffect(() => {
     if (lastMessage && lastMessage.data.ticker) {
       // IMPORTANT: Filter messages to ensure they belong to this chart's subscribed topic
-      if (lastMessage.data.ticker.toUpperCase() === stockData.ticker.toUpperCase()) { // Use stockData.ticker directly
+      if (lastMessage.data.ticker.toUpperCase() === stockData.ticker.toUpperCase()) {
         const newChartPoint: ChartDataPoint = {
           time: lastMessage.data.timestamp, // Keep time as number (milliseconds) as per StockTable.ChartDataPoint
           value: lastMessage.data.price,
         };
 
         if (chartRef.current) {
-          // Pass newChartPoint to ChartComponent, which will handle the conversion to seconds
           chartRef.current.updateData(newChartPoint);
-          setLoading(false); // Data is now flowing, so not loading
+          setLoading(false); // Data is now flowing, so loading is complete
         }
       }
     }
-  }, [lastMessage, stockData.ticker]); // Use stockData.ticker for filtering
+  }, [lastMessage, stockData.ticker]);
 
   // Helper function to get the error message safely
   const getErrorMessage = (err: string | Error | null): string => {
@@ -125,16 +125,16 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   };
 
   // Display loading, error, or no data messages
-  // Using wsError for WebSocket-specific errors, and local 'error' state for other issues.
   if (loading) return <div className="text-gray-400">Loading chart...</div>;
   if (wsError || error) return <div className="text-red-400">Error: {getErrorMessage(wsError || error)}</div>;
-  if (!loading && initialChartData.length === 0 && (!lastMessage || lastMessage.data.ticker.toUpperCase() !== stockData.ticker.toUpperCase())) {
+  // Only show "No data" if not loading, no error, no initial data, AND no live data has come in for this ticker
+  if (!loading && !wsError && !error && initialChartData.length === 0 && (!lastMessage || lastMessage.data.ticker.toUpperCase() !== stockData.ticker.toUpperCase())) {
     return <div className="text-gray-400">No historical data available for {stockData.ticker}.</div>;
   }
 
   return (
     <div className="p-4 rounded-lg shadow-inner relative">
-      {/* Connection Status Indicator - Positioned absolutely OVER the chart (preserved) */}
+      {/* Connection Status Indicator - Positioned absolutely OVER the chart */}
       {wsUrl ? (
         <div className="absolute top-10 left-10 z-10">
           {isConnected ? (
@@ -149,7 +149,7 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
             </span>
           )}
           {/* Use wsError for displaying WebSocket related errors */}
-          {!isConnected && (wsError || error) && ( // Check both wsError and local error state
+          {!isConnected && (wsError || error) && (
             <p className="text-red-400 text-xs mt-1 text-right">{getErrorMessage(wsError || error)}</p>
           )}
         </div>
