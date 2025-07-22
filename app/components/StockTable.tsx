@@ -570,7 +570,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {/* Table Container with horizontal overflow */}
       <div className="overflow-x-auto px-6 pb-6">
-        <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 shadow-lg">
+        <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg">
           <thead className="bg-gray-700">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="h-12">
