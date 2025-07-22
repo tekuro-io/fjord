@@ -77,6 +77,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const synthRef = React.useRef<Tone.Synth | null>(null);
   const wsRef = React.useRef<WebSocket | null>(null); // New: WebSocket reference
+  const [wsUrl, setWsUrl] = React.useState<string | null>(null); // ADDED: State for WebSocket URL
 
   // Helper function to toggle row expansion
   const toggleRowExpansion = (rowId: string) => {
@@ -158,22 +159,45 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     };
   }, []);
 
+  // ADDED: Effect to fetch WebSocket URL from /api/ws
+  React.useEffect(() => {
+    const fetchWsUrl = async () => {
+      try {
+        const response = await fetch('/api/ws'); // API route path
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        setWsUrl(data.websocketUrl);
+        console.log('StockTable: Fetched WebSocket URL:', data.websocketUrl);
+      } catch (e) {
+        console.error('StockTable: Failed to fetch WebSocket URL from API:', e);
+        setWsUrl(null);
+        setConnectionStatus('disconnected'); // Indicate connection issue
+      }
+    };
+    fetchWsUrl();
+  }, []); // Run once on mount
+
   // New: Centralized WebSocket connection management
   React.useEffect(() => {
+    if (!wsUrl) {
+      console.log("StockTable: WebSocket URL not yet available, skipping connection.");
+      return; // Wait for wsUrl to be fetched
+    }
+
     const connectWebSocket = () => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         return; // Already connected
       }
 
-      // IMPORTANT: Replace with your actual Hermes WebSocket server URL
-      // This URL should be configured to stream updates for all dashboard stocks.
-      // Assuming it sends an array of StockItem or a single StockItem.
-      const ws = new WebSocket("ws://localhost:8080/ws/data"); // Placeholder URL, adjust as needed
+      console.log(`StockTable: Attempting to connect to WebSocket at: ${wsUrl}`);
+      const ws = new WebSocket(wsUrl); // Use the dynamically fetched URL
 
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log("WebSocket connected.");
+        console.log("StockTable: WebSocket connected.");
         setConnectionStatus('connected');
         // You might send a message here to subscribe to specific topics if Hermes supports it
         // e.g., ws.send(JSON.stringify({ type: 'subscribe', topics: ['all_dashboard_stocks'] }));
@@ -214,25 +238,25 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           });
 
         } catch (error) {
-          console.error("Error parsing WebSocket message:", error);
+          console.error("StockTable: Error parsing WebSocket message:", error);
         }
       };
 
       ws.onclose = () => {
-        console.log("WebSocket disconnected. Attempting to reconnect...");
+        console.log("StockTable: WebSocket disconnected. Attempting to reconnect...");
         setConnectionStatus('disconnected');
         // Implement a reconnect strategy with a delay
         setTimeout(connectWebSocket, 5000); // Try to reconnect after 5 seconds
       };
 
       ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
+        console.error("StockTable: WebSocket error:", error);
         setConnectionStatus('disconnected');
         ws.close(); // Force close to trigger onclose and reconnect logic
       };
     };
 
-    connectWebSocket(); // Initial connection attempt
+    connectWebSocket(); // Initial connection attempt when wsUrl becomes available
 
     // Cleanup function: close WebSocket when component unmounts
     return () => {
@@ -241,7 +265,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         wsRef.current = null;
       }
     };
-  }, []); // Empty dependency array means this runs once on mount and cleanup on unmount
+  }, [wsUrl]); // DEPENDENCY: Re-run this effect when wsUrl changes (i.e., when it's fetched)
 
 
   const toggleAlert = async () => {
