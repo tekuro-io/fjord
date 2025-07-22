@@ -14,19 +14,28 @@ import {
 } from '@tanstack/react-table';
 import LiveChart from './LiveChart'; // Ensure this import is correct
 
-// REVERTED: Define the StockItem interface to match what Redis *actually* provides initially
-// and what your table originally displayed.
+// REVISED StockItem: This interface now represents the *full* set of properties
+// that a stock item can have in the table's state.
+// Properties that only come from WebSocket are marked as optional or nullable.
 export interface StockItem {
   ticker: string;
-  prev_price: number | null;
-  price: number | null;
-  delta: number | null;
-  float: number | null;
-  mav10: number | null;
-  volume: number | null; // Keep volume as it seems to be in original data
-  multiplier: number | null;
-  timestamp?: string; // Optional, if Redis provides it
-  first_seen?: string; // Optional, if Redis provides it
+  prev_price: number | null; // From Redis
+  price: number | null; // From Redis, updated by WebSocket
+  delta: number | null; // From Redis, updated by WebSocket (mapped from change)
+  float: number | null; // From Redis
+  mav10: number | null; // From Redis
+  volume: number | null; // From Redis, updated by WebSocket
+  multiplier: number | null; // From Redis, updated by WebSocket (mapped from change_percent)
+  timestamp?: string; // From Redis or WebSocket
+  first_seen?: string; // From Redis
+
+  // Properties that primarily come from WebSocket, optional for initial Redis load
+  open?: number | null;
+  high?: number | null;
+  low?: number | null;
+  change?: number | null; // Raw change from WebSocket
+  changePercent?: number | null; // Raw change_percent from WebSocket
+  name?: string; // If you want to add a 'name' field, it would be optional
 }
 
 // Define the structure of a chart data point (still needed for LiveChart)
@@ -36,6 +45,7 @@ export interface ChartDataPoint {
 }
 
 // Define the structure of the WebSocket payload for stock data (THIS IS WHAT HERMES SENDS)
+// This should accurately reflect the data coming from your Hermes server.
 interface StockDataPayload {
   ticker: string;
   timestamp: number; // In milliseconds, as sent by Python producer
@@ -44,8 +54,8 @@ interface StockDataPayload {
   high: number;
   low: number;
   volume: number;
-  change: number;
-  change_percent: number; // Note: 'change_percent' from backend
+  change: number; // Absolute change
+  change_percent: number; // Percentage change
 }
 
 // Define an interface for the informational message type
@@ -61,10 +71,11 @@ const HISTORY_WINDOW_SIZE = 200;
 
 // Define props interface for StockTable
 interface StockTableProps {
-  data: StockItem[]; // The initial data passed from StockTableLoader (now matching the simpler StockItem)
+  data: StockItem[]; // The initial data passed from StockTableLoader
 }
 
 export function StockTable({ data: initialTableData }: StockTableProps) {
+  // Initialize 'data' state with the initialTableData from Redis
   const [data, setData] = useState<StockItem[]>(initialTableData);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +90,22 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
     if (err instanceof Error) return err.message;
     return 'An unknown error occurred';
   };
+
+  // Set loading to false after initial data is processed or after a timeout
+  useEffect(() => {
+    if (initialTableData.length > 0) {
+      setLoading(false);
+    } else {
+      const timer = setTimeout(() => {
+        if (loading) {
+          setLoading(false);
+          console.log("StockTable: Initial data empty, setting loading to false after timeout.");
+        }
+      }, 3000); // Wait 3 seconds before assuming no initial data will come
+
+      return () => clearTimeout(timer);
+    }
+  }, [initialTableData]);
 
   useEffect(() => {
     const fetchWsUrl = async () => {
@@ -106,6 +133,8 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
 
   useEffect(() => {
     if (lastMessage) {
+      console.log("StockTable: Raw lastMessage received:", lastMessage);
+
       let parsedData: WebSocketMessage | undefined;
       try {
         if (typeof lastMessage.data === 'string') {
@@ -118,14 +147,18 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
         return;
       }
 
+      console.log("StockTable: Parsed data BEFORE type check:", parsedData);
+
       const isStockDataPayload = (data: WebSocketMessage): data is StockDataPayload => {
         return typeof data === 'object' && data !== null &&
-               'ticker' in data && typeof data.ticker === 'string' &&
-               'price' in data && typeof data.price === 'number';
+               'ticker' in data && typeof data.ticker === 'string' && data.ticker.trim() !== '' &&
+               'price' in data && typeof data.price === 'number' &&
+               'timestamp' in data && typeof data.timestamp === 'number';
       };
 
       if (parsedData && isStockDataPayload(parsedData)) {
         const stockPayload = parsedData;
+        console.log("StockTable: Processed StockDataPayload (PASSED TYPE CHECK):", stockPayload);
 
         setStockChartHistory(prevHistory => {
             const newHistory = new Map(prevHistory);
@@ -146,35 +179,37 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
             return newHistory;
         });
 
-        // FIXED: Update table data using *only* the fields available in StockItem
-        // and add/update other fields from stockPayload as needed for display.
-        // This means we might need to extend StockItem or display some fields conditionally.
         setData(prevData => {
           const existingIndex = prevData.findIndex(
             (item) => item.ticker === stockPayload.ticker
           );
 
-          // Create a new StockItem from the incoming payload, mapping fields
-          // Note: If 'prev_price', 'delta', 'float', 'mav10', 'multiplier', 'first_seen'
-          // are *only* coming from Redis, they will not be updated by WebSocket here.
-          // You need to decide how to handle these. For now, we'll try to keep them
-          // if they exist, and overwrite with new price/volume from WebSocket.
+          // Get the current stock item to preserve Redis-only fields
           const currentStock = existingIndex !== -1 ? prevData[existingIndex] : null;
 
+          // Create a new updated StockItem by merging existing data with WebSocket payload
           const updatedStockItem: StockItem = {
             ticker: stockPayload.ticker,
             price: stockPayload.price,
-            volume: stockPayload.volume, // Volume is now coming from WebSocket
-            // For other fields, either use the existing value or set to null/default
-            prev_price: currentStock ? currentStock.price : null, // Use current price as prev_price for next update
+            volume: stockPayload.volume, // Volume comes from WebSocket
             delta: stockPayload.change, // Map WebSocket 'change' to 'delta'
-            multiplier: stockPayload.change_percent, // Map WebSocket 'change_percent' to 'multiplier' (if this is the intended use)
-            float: currentStock ? currentStock.float : null, // Preserve if exists, else null
-            mav10: currentStock ? currentStock.mav10 : null, // Preserve if exists, else null
-            timestamp: stockPayload.timestamp.toString(), // Convert timestamp to string
-            first_seen: currentStock ? currentStock.first_seen : new Date().toISOString(), // Preserve or set now
-          };
+            multiplier: stockPayload.change_percent, // Map WebSocket 'change_percent' to 'multiplier'
 
+            // Preserve Redis-only fields if they exist, otherwise null
+            prev_price: currentStock ? currentStock.price : null, // This should be updated by WS if needed
+            float: currentStock ? currentStock.float : null,
+            mav10: currentStock ? currentStock.mav10 : null,
+            first_seen: currentStock ? currentStock.first_seen : new Date().toISOString(), // Or a default
+
+            // Optional fields from WebSocket
+            open: stockPayload.open,
+            high: stockPayload.high,
+            low: stockPayload.low,
+            change: stockPayload.change, // Keep raw change
+            changePercent: stockPayload.change_percent, // Keep raw change_percent
+            timestamp: stockPayload.timestamp.toString(), // Convert timestamp to string
+            name: currentStock ? currentStock.name : stockPayload.ticker, // Preserve name or default to ticker
+          };
 
           if (existingIndex !== -1) {
             const newData = [...prevData];
@@ -184,11 +219,11 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
             return [...prevData, updatedStockItem];
           }
         });
-        setLoading(false);
+        // setLoading(false); // Removed from here, handled by new useEffect
       } else if (parsedData && (parsedData as InfoMessage).type === 'info') {
         console.log("StockTable: Info message received:", (parsedData as InfoMessage).message);
       } else {
-          console.warn("StockTable: Received unrecognized message format:", parsedData);
+          console.warn("StockTable: Received unrecognized message format or non-stock data, skipping:", parsedData);
       }
     }
   }, [lastMessage]);
@@ -210,11 +245,26 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
       {
         accessorKey: 'price',
         header: 'Price',
-        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-", // Handle null
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-",
       },
       {
-        accessorKey: 'delta', // Now mapped from WebSocket 'change'
+        accessorKey: 'delta', // Mapped from WebSocket 'change' or from Redis
         header: 'Delta',
+        cell: (info) => {
+          const value = info.getValue() as number | null;
+          if (value == null) return "-";
+          const colorClass = value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-gray-400';
+          return <span className={colorClass}>{(value * 100).toFixed(1)}%</span>;
+        },
+      },
+      {
+        accessorKey: 'volume', // From Redis, updated by WebSocket
+        header: 'Volume',
+        cell: (info) => (info.getValue() as number | null)?.toLocaleString() || "-",
+      },
+      {
+        accessorKey: 'multiplier', // Mapped from WebSocket 'change_percent' or from Redis
+        header: 'Multiplier',
         cell: (info) => {
           const value = info.getValue() as number | null;
           if (value == null) return "-";
@@ -222,25 +272,44 @@ export function StockTable({ data: initialTableData }: StockTableProps) {
           return <span className={colorClass}>{value.toFixed(2)}</span>;
         },
       },
+      // You can add back other columns here if you want to display them,
+      // e.g., 'open', 'high', 'low', 'change', 'changePercent', 'name'.
+      // Remember to handle their potential null/undefined states.
       {
-        accessorKey: 'volume', // Now coming from WebSocket
-        header: 'Volume',
-        cell: (info) => (info.getValue() as number | null)?.toLocaleString() || "-", // Handle null
+        accessorKey: 'open',
+        header: 'Open',
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-",
       },
       {
-        accessorKey: 'multiplier', // Now mapped from WebSocket 'change_percent'
-        header: 'Multiplier',
-        cell: (info) => {
-          const value = info.getValue() as number | null;
-          if (value == null) return "-";
-          const colorClass = value > 0 ? 'text-green-400' : value < 0 ? 'text-red-400' : 'text-gray-400';
-          return <span className={colorClass}>{value.toFixed(2)}%</span>; // Display as percentage
-        },
+        accessorKey: 'high',
+        header: 'High',
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-",
       },
-      // Removed 'name', 'open', 'high', 'low', 'change', 'changePercent' from columns
-      // as they were not consistently present in Redis data or original StockItem.
-      // If you want to display these, they need to be added back to StockItem
-      // and handled in the data update logic.
+      {
+        accessorKey: 'low',
+        header: 'Low',
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-",
+      },
+      {
+        accessorKey: 'change',
+        header: 'Abs Change',
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) || "-",
+      },
+      {
+        accessorKey: 'changePercent',
+        header: 'Change %',
+        cell: (info) => (info.getValue() as number | null)?.toFixed(2) + '%' || "-",
+      },
+      {
+        accessorKey: 'float',
+        header: 'Float',
+        cell: (info) => (info.getValue() as number | null)?.toLocaleString() || "-",
+      },
+      {
+        accessorKey: 'mav10',
+        header: 'MAV10',
+        cell: (info) => (info.getValue() as number | null)?.toLocaleString() || "-",
+      },
     ],
     []
   );
