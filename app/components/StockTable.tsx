@@ -550,7 +550,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   >
                     <div className="flex items-center gap-1">
                       {flexRender(header.column.columnDef.header, header.getContext())}
-                      <span className="text-sm text-gray-400 w-4 inline-block text-center">
+                      <span className="text-sm text-blue-400 w-4 inline-block text-center">
                         {header.column.getIsSorted() === "asc" ? <ArrowUp className="w-4 h-4" /> :
                          header.column.getIsSorted() === "desc" ? <ArrowDown className="w-4 h-4" /> : null}
                       </span>
