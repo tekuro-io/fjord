@@ -346,7 +346,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
 
         return (
-          <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
+          <span className={`px-2 py-1 rounded-md ${textColor} font-medium ${bg} shadow-sm`}>
             {(val * 100).toFixed(1)}%
           </span>
         );
