@@ -344,8 +344,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         else if (multiplierValue > 300) bg = "bg-teal-800";
         else if (multiplierValue > 40) bg = "bg-teal-700";
         else if (multiplierValue > 10) bg = "bg-teal-600";
-        else if (multiplierValue > 5) bg = "bg-teal-500";
-        else if (multiplierValue > MULTIPLIER_THRESHOLD) bg = "bg-teal-400";
+        else if (multiplierValue > 7) bg = "bg-teal-500";
+        else if (multiplierValue > 4) bg = "bg-teal-400";
 
         return (
           <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
