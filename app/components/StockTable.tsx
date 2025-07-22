@@ -39,7 +39,7 @@ const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [multiplierFilter, setMultiplierFilter] = React.useState(1.0); // Re-added multiplier filter state, default 1.0
@@ -165,11 +165,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     setIsLocked(prev => {
       if (!prev) { // If currently unlocked, about to lock
         // Capture the currently displayed data as the locked view
+        // Ensure we capture the *sliced* and *sorted* data that is currently visible
         setLockedViewData(table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original));
-        // Optionally clear sorting when locking to prevent immediate re-sort on unlock
-        // setSorting([]);
+        setExpandedRows(new Set()); // Clear expanded rows when locking
       } else { // If currently locked, about to unlock
         setLockedViewData(null); // Clear locked data
+        setExpandedRows(new Set()); // Clear expanded rows when unlocking
       }
       return !prev;
     });
