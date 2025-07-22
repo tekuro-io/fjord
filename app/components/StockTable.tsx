@@ -375,7 +375,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         // Determine text color based on the chosen background color
         // Default to white, then override for lighter backgrounds
         let textColor = "text-white";
-        if (bg === "bg-emerald-400" || bg === "bg-red-400") {
+        if ((val > 0.005) || (val < 0.005)) {
           textColor = "text-gray-900"; // Darker text for lighter 400 shades
         }
 
