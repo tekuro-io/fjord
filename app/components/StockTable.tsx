@@ -28,6 +28,7 @@ export interface StockItem {
   volume: number | null;
   multiplier: number | null;
   timestamp?: string;
+  first_seen?: string;
 }
 
 const columnHelper = createColumnHelper<StockItem>();
@@ -551,6 +552,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <tr
                     // Removed onClick from tr to prevent double-toggling,
                     // as the button inside the ticker cell handles it.
+                    title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
@@ -615,6 +617,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 // Utilities
 function formatCurrency(val: number | null) {
   return val != null ? `$${val.toFixed(2)}` : "-";
+}
+
+function formatDateTime(isoString?: string) {
+  if (!isoString) return "Unknown";
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      hour12: true,
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit'
+    }) + ' ET';
+  } catch (e) {
+    return "Invalid date";
+  }
 }
 
 function formatLargeNumber(val: number | null) {
