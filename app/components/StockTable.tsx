@@ -77,7 +77,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   const synthRef = React.useRef<Tone.Synth | null>(null);
   const wsRef = React.useRef<WebSocket | null>(null); // New: WebSocket reference
-  const [wsUrl, setWsUrl] = React.useState<string | null>(null); // ADDED: State for WebSocket URL
+  const [wsUrl, setWsUrl] = React.useState<string | null>(null); // State for WebSocket URL
 
   // Helper function to toggle row expansion
   const toggleRowExpansion = (rowId: string) => {
@@ -212,17 +212,25 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           setCurrentData(prevData => {
             const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
             updateArray.forEach(update => {
-              // Merge new updates with existing data
-              newDataMap.set(update.ticker, { ...newDataMap.get(update.ticker), ...update });
+              // IMPORTANT FIX: Only process updates if 'ticker' is a non-empty string
+              if (update.ticker && typeof update.ticker === 'string' && update.ticker.trim() !== '') {
+                newDataMap.set(update.ticker, { ...newDataMap.get(update.ticker), ...update });
+              } else {
+                console.warn("StockTable: Received stock update with invalid ticker, skipping:", update);
+              }
             });
-            return Array.from(newDataMap.values());
+            // Filter out any existing invalid tickers from the map before converting to array
+            const filteredMapEntries = Array.from(newDataMap.entries()).filter(([ticker]) =>
+              ticker && typeof ticker === 'string' && ticker.trim() !== ''
+            );
+            return filteredMapEntries.map(([, value]) => value);
           });
 
           // Update stockChartHistory with new live data points
           setStockChartHistory(prevHistory => {
             const newHistory = new Map(prevHistory);
             updateArray.forEach(update => {
-              if (update.ticker && update.price != null && update.timestamp) {
+              if (update.ticker && typeof update.ticker === 'string' && update.ticker.trim() !== '' && update.price != null && update.timestamp) {
                 const currentTickerHistory = newHistory.get(update.ticker) || [];
                 // Ensure timestamp is in milliseconds for consistency with JS Date.getTime()
                 const newPoint: ChartDataPoint = {
@@ -232,6 +240,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 // Add new point and maintain sliding window size
                 const updatedTickerHistory = [...currentTickerHistory, newPoint].slice(-MAX_CHART_HISTORY_POINTS);
                 newHistory.set(update.ticker, updatedTickerHistory);
+              } else {
+                console.warn("StockTable: Skipping chart history update for invalid stock:", update);
               }
             });
             return newHistory;
