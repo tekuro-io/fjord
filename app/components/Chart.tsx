@@ -3,9 +3,6 @@
 import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark } from 'lightweight-charts';
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
-// REMOVED: Local ChartDataPoint interface definition to avoid type conflicts.
-// It will now be imported from StockTable.tsx.
-
 // Import ChartDataPoint from StockTable to ensure consistency across components
 import { ChartDataPoint } from './StockTable'; // Corrected import path if needed
 
@@ -62,13 +59,16 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             if (seriesRef.current) {
                 // Ensure time is in seconds for lightweight-charts
                 seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
+                // NEW: After updating data, try to scroll to the most recent point
+                // This is a more subtle way to ensure visibility without aggressive fitContent
+                chartRef.current?.timeScale().scrollToRealTime();
             }
         },
         setData: (data: ChartDataPoint[]) => { // Implementation for setting all data
             if (seriesRef.current) {
                 // Ensure all times are in seconds for lightweight-charts
                 seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
-                chartRef.current?.timeScale().fitContent();
+                chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
             }
         },
     }));
@@ -97,7 +97,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     visible: false, // Keep as per your current setup
                 },
             },
-            // --- Configure the timeScale for intraday seconds ---
             timeScale: {
                 rightOffset: 2,         // Small offset for real-time updates
                 barSpacing: 5,          // Adjust for denser intraday data
@@ -106,8 +105,13 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 timeVisible: true,      // Show time (hours, minutes)
                 secondsVisible: true,   // Crucial: Show seconds
                 lockVisibleTimeRangeOnResize: true,
-                rightBarStaysOnScroll: true,
+                rightBarStaysOnScroll: true, // This should help with auto-scrolling
                 minBarSpacing: 0.5,
+            },
+            // FIXED: Price scale configuration moved under rightPriceScale
+            rightPriceScale: { // Use rightPriceScale to configure the default price scale
+                autoScale: true, // Automatically adjust the price scale
+                borderVisible: false,
             },
         });
 
@@ -126,22 +130,28 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         });
 
         chartRef.current = chart;
-        chart.timeScale().fitContent(); // Fit content on initial load
+        // Initial fitContent is crucial, even if initialData is empty, to set up the view
+        chart.timeScale().fitContent();
 
         const newSeries: ISeriesApi<'Area'> = chart.addSeries(AreaSeries, {
             lineColor,
             topColor: areaTopColor,
             bottomColor: areaBottomColor,
-            lineWidth: 1, // Common setting for line width
+            lineWidth: 1,
         });
-        seriesRef.current = newSeries; // Store series instance in ref
+        seriesRef.current = newSeries;
 
         // Set the initial historical data using setData
         // This runs only once with the initialData prop when the chart is created
         if (initialData.length > 0) {
-            // Ensure initialData times are in seconds
             newSeries.setData(initialData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+            chart.timeScale().fitContent(); // Fit again after setting initial data
+        } else {
+            // If no initial data, explicitly set empty data to ensure the series is initialized
+            newSeries.setData([]);
+            chart.timeScale().fitContent(); // Fit content even for empty data
         }
+
 
         // Handle window resizing
         const handleResize = () => {
@@ -163,10 +173,12 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         };
     }, [
         backgroundColor, textColor,
-        vertLinesColor, horzLinesColor, // Grid colors kept as they were (visible: false)
-        showWatermark, // Watermark visibility prop
-        // Removed watermarkText and watermarkTextColor from dependencies as they are static
-        lineColor, areaTopColor, areaBottomColor, // Area series colors
+        vertLinesColor, horzLinesColor,
+        showWatermark,
+        watermarkText,
+        watermarkTextColor,
+        lineColor, areaTopColor, areaBottomColor,
+        initialData // Keep initialData in dependencies to re-initialize if it changes
     ]);
 
     return (
