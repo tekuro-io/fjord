@@ -33,11 +33,13 @@ export interface StockItem {
 
 const columnHelper = createColumnHelper<StockItem>();
 
+const DELTA_THRESHOLD = 0.08;
+const FIXED_MULTIPLIER_THRESHOLD = 1.5; // Re-introduced as a fixed constant
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
@@ -165,8 +167,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
         setConnectionStatus('connected');
 
-        // Apply global filter and sorting to new data to determine the "current top N" for alerts
-        let processedNewDataForAlert = newData;
+        // Apply the fixed multiplier threshold first for alerts
+        let processedNewDataForAlert = newData.filter((stock: StockItem) =>
+          stock.multiplier == null || stock.multiplier >= FIXED_MULTIPLIER_THRESHOLD
+        );
+
+        // Apply global filter for alerts
         if (globalFilter) {
           const lowerCaseFilter = globalFilter.toLowerCase();
           processedNewDataForAlert = processedNewDataForAlert.filter((stock: StockItem) =>
@@ -181,7 +187,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           );
         }
 
-        // Sort the data to get the top stocks based on multiplier (default sorting)
+        // Sort the data to get the top stocks based on multiplier for alerts
         const sortedNewDataForAlert = [...processedNewDataForAlert].sort((a, b) => {
           // Assuming 'multiplier' is the primary sorting key for 'top amount'
           const aVal = a.multiplier ?? -Infinity;
@@ -190,7 +196,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           return bVal - aVal;
         });
 
-        // Get the tickers of the current top N stocks that would be displayed
+        // Get the tickers of the current top N stocks that would be displayed for alerts
         const currentTopNTickers = sortedNewDataForAlert.slice(0, numStocksToShow).map(stock => stock.ticker);
 
         if (isAlertActive) { // Only check if alert is active
@@ -236,7 +242,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     if (!currentData) return [];
     let data = currentData;
 
-    // Apply global search filter first
+    // Apply the fixed multiplier threshold for display
+    data = data.filter((stock: StockItem) =>
+      stock.multiplier == null || stock.multiplier >= FIXED_MULTIPLIER_THRESHOLD
+    );
+
+    // Apply global search filter
     if (globalFilter) {
       const lowerCaseFilter = globalFilter.toLowerCase();
       data = data.filter((stock: StockItem) =>
@@ -251,15 +262,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       );
     }
 
-    // The table itself is already sorted by `sorting` state (which defaults to multiplier desc)
-    // So, we just need to slice the data to show the "Top N" after sorting.
-    // The `useReactTable` hook handles sorting based on the `sorting` state.
-    // We will let the table's `getSortedRowModel` handle the actual sorting for display.
-    // The `numStocksToShow` will act as a limit on the number of rows displayed.
-    return data; // Return all data, let table handle sorting and slicing for display
+    return data;
   }, [currentData, globalFilter]);
-
-
 
   const columns = React.useMemo(() => [
     columnHelper.accessor("ticker", {
@@ -389,11 +393,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       },
       sortingFn: "basic",
     }),
-  ], [expandedRows, toggleRowExpansion]); // Added toggleRowExpansion to dependencies as it's used in column definition
+  ], [expandedRows, toggleRowExpansion]);
 
   const table = useReactTable<StockItem>({
-    data: filteredData, // This data is already filtered by global search
-    columns, // Now correctly in scope
+    data: filteredData,
+    columns,
     state: {
       sorting,
       globalFilter,
@@ -401,7 +405,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
-    getSortedRowModel: getSortedRowModel(), // This will sort `filteredData`
+    getSortedRowModel: getSortedRowModel(),
     debugTable: false,
   });
 
@@ -524,7 +528,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               type="range"
               min="10" // Minimum number of stocks to show
               max="200" // Maximum number of stocks to show
-              step="1" // Step by 10 stocks
+              step="1" // Changed step to 1
               value={numStocksToShow}
               onChange={(e) => setNumStocksToShow(parseInt(e.target.value))}
               className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
