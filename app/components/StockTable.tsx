@@ -33,15 +33,14 @@ export interface StockItem {
 
 const columnHelper = createColumnHelper<StockItem>();
 
-const DELTA_THRESHOLD = 0.08;
-const FIXED_MULTIPLIER_THRESHOLD = 1.5; // Re-introduced as a fixed constant
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "multiplier", desc: true }, // Changed default sorting to multiplier for "Top N"
+    { id: "delta", desc: true }, // Changed default sorting to multiplier for "Top N"
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
+  const [multiplierFilter, setMultiplierFilter] = React.useState(1.0); // Re-added multiplier filter state, default 1.0
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
 
   const [isAlertActive, setIsAlertActive] = React.useState(false);
@@ -167,9 +166,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
         setConnectionStatus('connected');
 
-        // Apply the fixed multiplier threshold first for alerts
+        // Apply multiplier filter for alerts
         let processedNewDataForAlert = newData.filter((stock: StockItem) =>
-          stock.multiplier == null || stock.multiplier >= FIXED_MULTIPLIER_THRESHOLD
+          stock.multiplier == null || stock.multiplier >= multiplierFilter
         );
 
         // Apply global filter for alerts
@@ -227,7 +226,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     fetchData();
     const intervalId = setInterval(fetchData, 10000);
     return () => clearInterval(intervalId);
-  }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow]); // Updated dependencies
+  }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow, multiplierFilter]); // Updated dependencies
 
   React.useEffect(() => {
     if (newStocksAlert.length > 0) {
@@ -242,9 +241,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     if (!currentData) return [];
     let data = currentData;
 
-    // Apply the fixed multiplier threshold for display
+    // Apply multiplier filter for display
     data = data.filter((stock: StockItem) =>
-      stock.multiplier == null || stock.multiplier >= FIXED_MULTIPLIER_THRESHOLD
+      stock.multiplier == null || stock.multiplier >= multiplierFilter
     );
 
     // Apply global search filter
@@ -263,7 +262,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
 
     return data;
-  }, [currentData, globalFilter]);
+  }, [currentData, globalFilter, multiplierFilter]);
 
   const columns = React.useMemo(() => [
     columnHelper.accessor("ticker", {
@@ -519,7 +518,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {showOptionsDrawer && (
         <div className="mx-6 mb-6 p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-4 transition-all duration-300 ease-in-out">
-          <div className="flex flex-col sm:flex-row items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between mb-4">
             <label htmlFor="num-stocks-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
               Show Count: <span className="text-blue-400">{numStocksToShow}</span>
             </label>
@@ -531,6 +530,21 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               step="1" // Changed step to 1
               value={numStocksToShow}
               onChange={(e) => setNumStocksToShow(parseInt(e.target.value))}
+              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+            />
+          </div>
+          <div className="flex flex-col sm:flex-row items-center justify-between">
+            <label htmlFor="multiplier-filter-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
+              Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
+            </label>
+            <input
+              id="multiplier-filter-slider"
+              type="range"
+              min="0"
+              max="50"
+              step="0.1"
+              value={multiplierFilter}
+              onChange={(e) => setMultiplierFilter(parseFloat(e.target.value))}
               className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
             />
           </div>
