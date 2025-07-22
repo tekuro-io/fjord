@@ -320,16 +320,30 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         if (val == null) return "-";
 
         let bg = "bg-transparent";
-        if (val > 0.1) bg = "bg-emerald-700";
-        else if (val > 0.05) bg = "bg-emerald-700";
-        else if (val > 0.03) bg = "bg-emerald-600";
-        else if (val > 0.015) bg = "bg-emerald-500";
-        else if (val > 0.01) bg = "bg-emerald-400";
-        else if (val < -0.01) bg = "bg-red-800";
-        else if (val < -0.015) bg = "bg-red-700";
-        else if (val < -0.03) bg = "bg-red-600";
-        else if (val < -0.05) bg = "bg-red-500";
-        else if (val < -0.1) bg = "bg-red-400";
+        // Determine background color based on value
+        // Positive Delta (Green shades - ordered from highest to lowest threshold)
+        if (val > 0.15) bg = "bg-emerald-900"; // Very strong positive
+        else if (val > 0.10) bg = "bg-emerald-800";
+        else if (val > 0.07) bg = "bg-emerald-700";
+        else if (val > 0.04) bg = "bg-emerald-600";
+        else if (val > 0.02) bg = "bg-emerald-500";
+        else if (val > 0.005) bg = "bg-emerald-400"; // Slight positive
+
+        // Negative Delta (Red shades - ordered from lowest (most negative) to highest threshold)
+        else if (val < -0.15) bg = "bg-red-900"; // Very strong negative
+        else if (val < -0.10) bg = "bg-red-800";
+        else if (val < -0.07) bg = "bg-red-700";
+        else if (val < -0.04) bg = "bg-red-600";
+        else if (val < -0.02) bg = "bg-red-500";
+        else if (val < -0.005) bg = "bg-red-400"; // Slight negative
+
+        // Determine text color based on the chosen background color
+        // Default to white, then override for lighter backgrounds
+        let textColor = "text-white";
+        if (bg === "bg-emerald-400" || bg === "bg-red-400") {
+          textColor = "text-gray-900"; // Darker text for lighter 400 shades
+        }
+
 
         return (
           <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
