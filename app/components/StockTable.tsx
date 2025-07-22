@@ -170,20 +170,28 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           stock.multiplier == null || stock.multiplier >= multiplierFilter
         );
 
-        if (isAlertActive && alertSnapshotTickers.length > 0) {
-          const newlyAppearingStocks = newFilteredDataForAlert.filter((stock: StockItem) =>
-            !alertSnapshotTickers.includes(stock.ticker)
+        if (isAlertActive) { // Only check if alert is active
+          const currentFilteredTickers = newFilteredDataForAlert.map(stock => stock.ticker);
+          const newlyAppearingStocks = currentFilteredTickers.filter(ticker =>
+            !alertSnapshotTickers.includes(ticker)
           );
+
           if (newlyAppearingStocks.length > 0) {
-            setNewStocksAlert(newlyAppearingStocks);
+            // Play sound
             if (synthRef.current) {
               synthRef.current.triggerAttackRelease("C5", "8n");
             }
+            // Set alert message
+            setNewStocksAlert(newFilteredDataForAlert.filter(stock => newlyAppearingStocks.includes(stock.ticker)));
+
+            // IMPORTANT FIX: Update the snapshot to include the newly detected stocks
+            setAlertSnapshotTickers(prevSnapshot => [...prevSnapshot, ...newlyAppearingStocks]);
           }
         }
         setCurrentData(newData);
       } catch (error) {
         console.error("Failed to fetch stock data:", error);
+        // Set connection status to disconnected on fetch error
         setConnectionStatus('disconnected');
       }
     };
@@ -191,7 +199,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     fetchData();
     const intervalId = setInterval(fetchData, 10000);
     return () => clearInterval(intervalId);
-  }, [isAlertActive, alertSnapshotTickers, multiplierFilter]);
+  }, [isAlertActive, alertSnapshotTickers, multiplierFilter]); // alertSnapshotTickers is now a dependency
 
   React.useEffect(() => {
     if (newStocksAlert.length > 0) {
@@ -246,7 +254,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
           <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
             {info.getValue() as string}
           </span>
         </div>
@@ -402,9 +410,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
-        
-          <BarChart2 className="w-6 h-6 text-blue-400" /> 
-          <h2 className="text-xl font-bold text-white">Momentum Scanner</h2> 
+
+          <BarChart2 className="w-6 h-6 text-blue-400" />
+          <h2 className="text-xl font-bold text-white">Momentum Scanner</h2>
         </div>
 
         <div className="flex items-center text-gray-400 text-sm">
@@ -561,7 +569,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                               {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                                    bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
+                                                 bg-gray-700 px-2 py-0.5 rounded-md inline-block min-w-[70px] text-center">
                               {cell.getValue() as string}
                             </span>
                           </div>
