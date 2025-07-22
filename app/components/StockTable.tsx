@@ -324,6 +324,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         else if (val > 0.05) bg = "bg-emerald-600";
         else if (val > 0.03) bg = "bg-emerald-500";
         else if (val > 0.015) bg = "bg-emerald-400";
+        else if (val > 0.01) bg = "bg-emerald-300";
+        else if (val < -0.01) bg = "bg-red-800";
         else if (val < -0.015) bg = "bg-red-700";
         else if (val < -0.03) bg = "bg-red-600";
         else if (val < -0.05) bg = "bg-red-500";
