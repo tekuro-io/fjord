@@ -77,7 +77,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   // New state for lock functionality
   const [isLocked, setIsLocked] = React.useState(false);
-  const [lockedViewData, setLockedViewData] = React.useState<StockItem[] | null>(null);
+  const [lockedTickers, setLockedTickers] = React.useState<Set<string>>(new Set()); // Stores tickers to display when locked
 
   // New state: Map to store sliding window of chart data for each ticker
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
@@ -270,11 +270,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             stockUpdates.forEach(update => {
               const existingStock = newDataMap.get(update.ticker);
 
-              // Determine the price that was "previous" to this new update.
-              // Priority: 1. The 'price' from our existing state for this stock.
-              //           2. The 'prev_price' provided by the incoming update (useful for initial load of a new stock).
-              //           3. Null if neither is available.
-              const priceForDeltaCalculation = existingStock?.price ?? update.prev_price;
+              // *** CRITICAL CHANGE HERE ***
+              // The 'prev_price' for delta calculation should *always* be the initial prev_price
+              // or the prev_price from the existing stock if it's already in our state.
+              // It should NOT be updated with the 'price' from the previous tick.
+              const priceForDeltaCalculation = existingStock?.prev_price ?? update.prev_price;
 
               // The new current price comes directly from the incoming update.
               const newCurrentPrice = update.price;
@@ -291,16 +291,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               }
 
               // Log for debugging:
-              console.log(`StockTable Debug: Ticker: ${update.ticker}, Price Before Update (for delta calc): ${priceForDeltaCalculation}, New Price: ${newCurrentPrice}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
+              console.log(`StockTable Debug: Ticker: ${update.ticker}, Fixed Prev Price (for delta calc): ${priceForDeltaCalculation}, New Price: ${newCurrentPrice}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
 
               newDataMap.set(update.ticker, {
                 ...existingStock, // Retain any other properties from the existing stock
-                ...update, // Apply new properties from the incoming update
-                // Set the 'prev_price' for the *displayed column*.
-                // This should be the 'price' from the previous state, or the incoming 'prev_price' if it's a new stock.
-                prev_price: existingStock?.price ?? update.prev_price,
-                price: newCurrentPrice, // Set the new current price for the 'price' column
-                delta: calculatedDelta // Set the newly calculated delta
+                ...update, // Apply new properties from the incoming update (e.g., price, volume, multiplier, timestamp)
+                // IMPORTANT: prev_price is NOT updated here to reflect the *previous tick's price*.
+                // It retains its initial loaded value or the value it had when first added.
+                prev_price: existingStock?.prev_price ?? update.prev_price, // Ensure prev_price stays fixed
+                price: newCurrentPrice, // Always update the current price
+                delta: calculatedDelta // Calculate and set the delta based on fixed prev_price
               });
             });
             return Array.from(newDataMap.values());
@@ -383,38 +383,29 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const toggleLock = () => {
     setIsLocked(prev => {
       if (!prev) { // If currently unlocked, about to lock
-        // Capture the currently displayed data as the locked view
-        // Ensure we capture the *sliced* and *sorted* data that is currently visible
-        const currentVisibleRowsData = table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original);
-        setLockedViewData(currentVisibleRowsData);
+        // Capture the tickers of the currently displayed rows (after filters and top N)
+        const currentVisibleTickers = new Set(
+          table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original.ticker)
+        );
+        setLockedTickers(currentVisibleTickers);
 
         // Filter expandedRows to only include those present in the new lockedViewData
         const newExpandedRows = new Set<string>();
-        const currentVisibleTickers = new Set(currentVisibleRowsData.map(stock => stock.ticker));
-
-        expandedRows.forEach(ticker => {
-          if (currentVisibleTickers.has(ticker)) {
+        currentVisibleTickers.forEach(ticker => {
+          if (expandedRows.has(ticker)) {
             newExpandedRows.add(ticker);
           }
         });
         setExpandedRows(newExpandedRows);
+
       } else { // If currently locked, about to unlock
-        setLockedViewData(null); // Clear locked data
-        // The line `setExpandedRows(new Set());` was intentionally removed here
-        // to persist expanded charts on unlock, as per your request.
+        setLockedTickers(new Set()); // Clear locked tickers
+        // Expanded rows are intentionally kept, as per previous request
       }
       return !prev;
     });
   };
 
-
-  // Removed the periodic fetchData useEffect as WebSocket now handles live updates
-  // React.useEffect(() => {
-  //   const fetchData = async () => { /* ... */ };
-  //   fetchData();
-  //   const intervalId = setInterval(setInterval(fetchData, 10000);
-  //   return () => clearInterval(intervalId);
-  // }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow, multiplierFilter]);
 
   React.useEffect(() => {
     if (newStocksAlert.length > 0) {
@@ -449,23 +440,26 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         (stock.multiplier != null && (stock.multiplier).toFixed(1).includes(lowerCaseFilter))
       );
     }
-
-    // If unlocked, ensure any currently expanded stocks are included,
-    // even if they don't meet current filters/top N.
-    // This is crucial for keeping charts open when unlocking.
-    if (!isLocked && expandedRows.size > 0) {
-      const dataTickers = new Set(data.map(item => item.ticker));
-      const expandedButNotFiltered = Array.from(expandedRows).filter(ticker => !dataTickers.has(ticker));
-
-      if (expandedButNotFiltered.length > 0) {
-        // Find the full stock objects for these tickers from currentData
-        const additionalStocks = currentData.filter(stock => expandedButNotFiltered.includes(stock.ticker));
-        data = [...data, ...additionalStocks];
-      }
-    }
-
     return data;
-  }, [currentData, globalFilter, multiplierFilter, isLocked, expandedRows]); // Add isLocked and expandedRows to dependencies
+  }, [currentData, globalFilter, multiplierFilter]); // Removed isLocked and expandedRows from dependencies, as this memo is for the *unlocked* filtered data
+
+  const tableDisplayData = React.useMemo(() => {
+    if (!isLocked) {
+      return filteredData; // If unlocked, use the regular filtered data
+    } else {
+      // If locked, filter currentData to only include the locked tickers
+      const lockedStocks: StockItem[] = [];
+      lockedTickers.forEach(ticker => {
+        const latestData = currentData.find(s => s.ticker === ticker);
+        if (latestData) {
+          lockedStocks.push(latestData);
+        }
+      });
+      // Important: Re-apply sorting to lockedStocks if desired, or keep the order they were locked in.
+      // Since sorting is disabled when locked, the order will be whatever was captured when locked.
+      return lockedStocks;
+    }
+  }, [isLocked, filteredData, lockedTickers, currentData]); // Dependencies for tableDisplayData
 
   const columns = React.useMemo(() => [
     columnHelper.accessor("ticker", {
@@ -618,7 +612,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   ], [expandedRows, toggleRowExpansion, isLocked]); // Added isLocked to columns dependency array
 
   const table = useReactTable<StockItem>({
-    data: isLocked && lockedViewData ? lockedViewData : filteredData, // Use locked data when locked
+    data: tableDisplayData, // Use the new tableDisplayData memo
     columns,
     state: {
       sorting,
