@@ -55,30 +55,36 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
     // useImperativeHandle: Expose updateData and setData methods to the parent via ref
-    useImperativeHandle(ref, () => ({
-        updateData: (point: ChartDataPoint) => {
-            if (seriesRef.current) {
-                console.log('ChartComponent: updateData called with point:', point);
-                // Ensure time is in seconds for lightweight-charts
-                seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
-                chartRef.current?.timeScale().scrollToRealTime(); // Keep chart scrolled to the latest point
-            } else {
-                console.warn('ChartComponent: seriesRef.current not available for updateData.');
-            }
-        },
-        setData: (data: ChartDataPoint[]) => {
-            if (seriesRef.current) {
-                console.log('ChartComponent: setData called with data length:', data.length);
-                // Ensure all times are in seconds for lightweight-charts
-                seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
-                if (data.length > 0) {
-                    chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
+    useImperativeHandle(ref, () => {
+        console.log('ChartComponent: useImperativeHandle callback executed.');
+        // This object is what chartRef.current in the parent will point to
+        const handle = {
+            updateData: (point: ChartDataPoint) => {
+                if (seriesRef.current) {
+                    console.log('ChartComponent: updateData called with point:', point);
+                    // Ensure time is in seconds for lightweight-charts
+                    seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
+                    chartRef.current?.timeScale().scrollToRealTime(); // Keep chart scrolled to the latest point
+                } else {
+                    console.warn('ChartComponent: seriesRef.current not available for updateData (inside handle).');
                 }
-            } else {
-                console.warn('ChartComponent: seriesRef.current not available for setData.');
-            }
-        },
-    }));
+            },
+            setData: (data: ChartDataPoint[]) => {
+                if (seriesRef.current) {
+                    console.log('ChartComponent: setData called with data length:', data.length);
+                    // Ensure all times are in seconds for lightweight-charts
+                    seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+                    if (data.length > 0) {
+                        chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
+                    }
+                } else {
+                    console.warn('ChartComponent: seriesRef.current not available for setData (inside handle).');
+                }
+            },
+        };
+        console.log('ChartComponent: useImperativeHandle returning handle:', handle);
+        return handle;
+    });
 
     // Effect for chart initialization and cleanup (runs once on mount)
     useEffect(() => {
@@ -147,16 +153,20 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             lineWidth: 1,
         });
         seriesRef.current = newSeries;
-        console.log('ChartComponent: Chart and AreaSeries initialized.');
+        console.log('ChartComponent: Chart and AreaSeries initialized and refs assigned.');
+        console.log('ChartComponent: chartRef.current after assignment:', chartRef.current);
+        console.log('ChartComponent: seriesRef.current after assignment:', seriesRef.current);
+
 
         // Set the initial historical data using setData
         // This runs only once with the initialData prop when the chart is created
         if (initialData.length > 0) {
-            console.log('ChartComponent: Setting initial data during initialization.');
+            console.log('ChartComponent: Setting initial data during initialization (from initialData prop). Data length:', initialData.length);
             newSeries.setData(initialData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
             chart.timeScale().fitContent(); // Fit content after setting initial data
         } else {
             // If no initial data, explicitly set empty data to ensure the series is initialized
+            console.log('ChartComponent: Initial data is empty, setting empty series data.');
             newSeries.setData([]);
             chart.timeScale().fitContent(); // Fit content even for empty data
         }
@@ -165,6 +175,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         if (onChartReady) {
             onChartReady();
             console.log('ChartComponent: Called onChartReady callback.');
+        } else {
+            console.log('ChartComponent: onChartReady callback not provided.');
         }
 
         // Handle window resizing
