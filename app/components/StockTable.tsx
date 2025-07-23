@@ -451,7 +451,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     return newState;
                   });
                   flashTimers.current.delete(newStockFromRedis.ticker); // Clean up timer reference
-                }, 800); // Flash duration (matches CSS animation)
+                }, 300); // Flash duration (matches CSS animation)
                 flashTimers.current.set(newStockFromRedis.ticker, timer);
               }
             } else {
@@ -478,7 +478,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       return newState;
                     });
                     flashTimers.current.delete(newStockFromRedis.ticker);
-                  }, 800); // Flash duration (matches CSS animation)
+                  }, 300); // Flash duration (matches CSS animation)
                   flashTimers.current.set(newStockFromRedis.ticker, timer);
 
             }
@@ -829,7 +829,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         }
 
         .flash-effect {
-          animation: flash-animation 0.8s ease-out; /* Match the 0.8s duration for consistency */
+          animation: flash-animation 1s ease-out; /* Match the 0.8s duration for consistency */
         }
       `}</style>
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
