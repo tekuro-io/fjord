@@ -49,7 +49,7 @@ const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
 const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
-const DELTA_FLASH_THRESHOLD = 0.001; // New: Only flash if delta changes by more than this (0.01%)
+const DELTA_FLASH_THRESHOLD = 0.005; // Only flash if delta changes by more than this (0.5%)
 
 
 // Max data points to keep in the sliding window for each stock's chart history
@@ -704,7 +704,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         }
 
         const stockTicker = info.row.original.ticker; // Get ticker for lookup
-        const flashClass = flashingStates.get(stockTicker) ? 'flash-effect' : '';
+        const flashClass = flashingStates.get(stockTicker) ? 'delta-highlight-effect' : '';
 
         return (
           <span className={`px-2 py-1 rounded-md font-medium ${bg} ${textColor} shadow-sm ${flashClass} `}>
@@ -822,15 +822,15 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
       <style>{`
-        @keyframes flash-animation {
-          0% { background-color: transparent; }
-          50% { background-color: rgba(74, 222, 128, 0.3); } /* Subtle green flash */
-          100% { background-color: transparent; }
-        }
+          @keyframes delta-fade-highlight {
+            0% { color: inherit; } /* Start with the inherited text color */
+            50% { color: #86efac; } /* Fade to a subtle light green (Tailwind's emerald-300/400 range) */
+            100% { color: inherit; } /* Fade back to the inherited text color */
+          }
 
-        .flash-effect {
-          animation: flash-animation 1s ease-out; /* Match the 0.8s duration for consistency */
-        }
+          .delta-highlight-effect {
+            animation: delta-fade-highlight 0.8s ease-out; /* 0.8 seconds duration for a smooth fade */
+          }
       `}</style>
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
