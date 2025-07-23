@@ -97,6 +97,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         // Create the chart instance
         const chart = createChart(chartContainerRef.current, {
             layout: {
+                attributionLogo: false,
                 background: { type: ColorType.Solid, color: backgroundColor },
                 textColor,
             },
@@ -137,7 +138,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 {
                     text: watermarkText,
                     color: 'rgba(8, 242, 246, 0.5)',
-                    fontSize: 42,
+                    fontSize: 100,
                     fontStyle: 'bold',
                 },
             ],
