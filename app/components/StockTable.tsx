@@ -704,7 +704,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         }
 
         const stockTicker = info.row.original.ticker; // Get ticker for lookup
-        const flashClass = flashingStates.get(stockTicker) ? 'delta-highlight-effect' : '';
+        const flashClass = flashingStates.get(stockTicker) ? 'flash-effect' : '';
 
         return (
           <span className={`px-2 py-1 rounded-md font-medium ${bg} ${textColor} shadow-sm ${flashClass} `}>
@@ -822,14 +822,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
       <style>{`
-        @keyframes delta-fade-highlight {
-          0% { color: inherit; } /* Start with current color */
-          50% { color: #4ade80; } /* Fade to a subtle green */
-          100% { color: inherit; } /* Fade back to original */
+        @keyframes flash-animation {
+          0% { background-color: transparent; }
+          50% { background-color: rgba(74, 222, 128, 0.3); } /* Subtle green flash */
+          100% { background-color: transparent; }
         }
 
-        .delta-highlight-effect {
-          animation: delta-fade-highlight 0.8s ease-out; /* Adjusted duration for smoother fade */
+        .flash-effect {
+          animation: flash-animation 0.8s ease-out; /* Match the 0.8s duration for consistency */
         }
       `}</style>
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
