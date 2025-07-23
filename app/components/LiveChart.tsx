@@ -2,21 +2,8 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-// Removed: import { useWebSocket } from '../lib/websocket'; // No longer needed
 import { ChartComponent, ChartHandle } from './Chart';
 import { StockItem, ChartDataPoint } from './StockTable';
-
-// Removed: StockDataPayload and InfoMessage interfaces as LiveChart no longer processes raw WebSocket messages
-// interface StockDataPayload {
-//   ticker: string;
-//   timestamp: number;
-//   price: number;
-// }
-// interface InfoMessage {
-//   type: string;
-//   message: string;
-// }
-// Removed: type WebSocketMessage = StockDataPayload | InfoMessage;
 
 interface LiveChartProps {
   stockData: StockItem;
@@ -30,24 +17,25 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   const [error, setError] = useState<string | null>(null);
   const [hasData, setHasData] = useState(false); // Renamed from hasSetInitialChartData for clarity
 
-  // Removed: wsUrl state and its useEffect to fetch WebSocket URL
-  // Removed: useWebSocket hook and its states/functions (isConnected, wsError, lastMessage, sendMessage)
-  // Removed: subscribedTopic state and its useEffect to send subscription messages
-
   // Effect to set chart data whenever initialChartData prop changes
   // This will now handle both initial load and subsequent live updates from StockTable
   useEffect(() => {
-    console.log(`LiveChart (${stockData.ticker}): initialChartData prop updated:`, initialChartData);
+    console.log(`LiveChart (${stockData.ticker}): useEffect triggered for initialChartData. Current initialChartData length:`, initialChartData.length);
     if (chartRef.current) {
+      console.log(`LiveChart (${stockData.ticker}): chartRef.current is available.`);
       if (initialChartData && initialChartData.length > 0) {
+        console.log(`LiveChart (${stockData.ticker}): Calling chartRef.current.setData with data length:`, initialChartData.length);
         chartRef.current.setData(initialChartData); // Set the entire dataset
         setLoading(false);
         setHasData(true); // Indicate that data has been received and set
       } else {
+        console.log(`LiveChart (${stockData.ticker}): initialChartData is empty or null. Calling chartRef.current.setData([])`);
         chartRef.current.setData([]); // Set empty if no data
         setLoading(true); // Keep loading if no data, waiting for updates
         setHasData(false);
       }
+    } else {
+      console.log(`LiveChart (${stockData.ticker}): chartRef.current is NOT available yet.`);
     }
     // The chart needs to re-render when initialChartData changes (new points added by StockTable)
     // or when stockData.ticker changes (meaning a different chart is being displayed).
@@ -62,28 +50,22 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   };
 
   // Conditional rendering for loading, error, or no data states
-  // The connection status indicators related to LiveChart's own WS are removed.
   if (loading && !hasData) {
+    console.log(`LiveChart (${stockData.ticker}): Rendering loading state.`);
     return <div className="text-gray-400 p-4">Loading chart for {stockData.ticker}...</div>;
   }
-  // If there was an error fetching initial data (e.g., from StockTableLoader, though not directly handled here)
-  // or if for some reason initialChartData becomes null/undefined, this might catch it.
-  if (error) { // wsError is removed, only general error state remains
+  if (error) {
+    console.error(`LiveChart (${stockData.ticker}): Rendering error state:`, error);
     return <div className="text-red-400 p-4">Error: {getErrorMessage(error)}</div>;
   }
   if (!hasData && initialChartData.length === 0) {
+    console.log(`LiveChart (${stockData.ticker}): Rendering no data state.`);
     return <div className="text-gray-400 p-4">No historical data available for {stockData.ticker}. Waiting for data...</div>;
   }
 
+  console.log(`LiveChart (${stockData.ticker}): Rendering ChartComponent.`);
   return (
     <div className="p-4 rounded-lg shadow-inner relative">
-      {/* Removed: Live/Offline status indicators as LiveChart no longer has its own WS */}
-      {/* <div className="absolute top-10 left-10 z-10">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500 bg-opacity-20 text-gray-300">
-          Data from Table
-        </span>
-      </div> */}
-
       <div className="bg-black p-4 rounded-lg shadow-inner border border-gray-700">
         <ChartComponent
           ref={chartRef}
