@@ -268,22 +268,42 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           setCurrentData(prevData => {
             const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
             stockUpdates.forEach(update => {
-              // Recalculate delta on the client-side
+              const existingStock = newDataMap.get(update.ticker);
+
+              // Determine the price that was "previous" to this new update.
+              // Priority: 1. The 'price' from our existing state for this stock.
+              //           2. The 'prev_price' provided by the incoming update (useful for initial load of a new stock).
+              //           3. Null if neither is available.
+              const priceForDeltaCalculation = existingStock?.price ?? update.prev_price;
+
+              // The new current price comes directly from the incoming update.
+              const newCurrentPrice = update.price;
+
               let calculatedDelta: number | null = null;
-              if (update.price != null && update.prev_price != null && update.prev_price !== 0) {
-                calculatedDelta = (update.price - update.prev_price) / update.prev_price;
-              } else if (update.price != null && update.prev_price === 0) {
-                // Handle case where prev_price is 0, delta might be infinite or undefined, set to 0 or null
-                calculatedDelta = 0;
+              if (newCurrentPrice != null && priceForDeltaCalculation != null) {
+                if (priceForDeltaCalculation === 0) {
+                  // If the previous price was zero, and the new price is not null,
+                  // the delta is effectively infinite. Setting to 0 for display.
+                  calculatedDelta = 0;
+                } else {
+                  calculatedDelta = (newCurrentPrice - priceForDeltaCalculation) / priceForDeltaCalculation;
+                }
               }
 
+              // Log for debugging:
+              console.log(`StockTable Debug: Ticker: ${update.ticker}, Price Before Update (for delta calc): ${priceForDeltaCalculation}, New Price: ${newCurrentPrice}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
+
               newDataMap.set(update.ticker, {
-                ...newDataMap.get(update.ticker),
-                ...update,
-                delta: calculatedDelta // Override delta with client-side calculation
+                ...existingStock, // Retain any other properties from the existing stock
+                ...update, // Apply new properties from the incoming update
+                // Set the 'prev_price' for the *displayed column*.
+                // This should be the 'price' from the previous state, or the incoming 'prev_price' if it's a new stock.
+                prev_price: existingStock?.price ?? update.prev_price,
+                price: newCurrentPrice, // Set the new current price for the 'price' column
+                delta: calculatedDelta // Set the newly calculated delta
               });
             });
-            return Array.from(newDataMap.values()); // Convert map values back to array
+            return Array.from(newDataMap.values());
           });
 
           // Update stockChartHistory with new live data points
