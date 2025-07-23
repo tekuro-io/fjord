@@ -49,7 +49,7 @@ const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
 const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
-const DELTA_FLASH_THRESHOLD = 0.001; // New: Only flash if delta changes by more than this (0.01%)
+const DELTA_FLASH_THRESHOLD = 0.01; // New: Only flash if delta changes by more than this (0.01%)
 
 
 // Max data points to keep in the sliding window for each stock's chart history
