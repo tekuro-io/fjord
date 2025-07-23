@@ -1,10 +1,10 @@
 'use client';
 
 import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark } from 'lightweight-charts';
-import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
 
 // Import ChartDataPoint from StockTable to ensure consistency across components
-import { ChartDataPoint } from './StockTable'; // Corrected import path if needed
+import { ChartDataPoint } from './StockTable';
 
 interface ChartColors {
     backgroundColor?: string;
@@ -26,8 +26,8 @@ interface ChartComponentProps {
 
 // Define the shape of the ref handle that this component will expose to its parent
 export interface ChartHandle {
-    updateData: (point: ChartDataPoint) => void;
-    setData: (data: ChartDataPoint[]) => void; // Method to set/reset all data
+    // We'll simplify this to just setData, and handle incremental updates internally
+    setData: (data: ChartDataPoint[]) => void;
 }
 
 // Wrap the component with forwardRef to allow parent components to get a ref to it
@@ -43,33 +43,22 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             vertLinesColor = '#374151',
             horzLinesColor = '#374151',
         } = {},
-        showWatermark = true, // Keep this as per your current setup
-        watermarkText = 'BOOP', // Keep this as per your current setup
-        watermarkTextColor = 'rgba(250, 6, 6, 0.75)', // Keep this as per your current setup
+        showWatermark = true,
+        watermarkText = 'BOOP',
+        watermarkTextColor = 'rgba(250, 6, 6, 0.75)',
     } = props;
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
-    // useImperativeHandle: This hook is used to customize the instance value that is exposed to parent components when using ref.
-    // Here, we expose an `updateData` and `setData` method.
+    // Internal state to hold the chart data, which will be incrementally updated
+    const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+
+    // useImperativeHandle: Expose a setData method for parent to update data
     useImperativeHandle(ref, () => ({
-        updateData: (point: ChartDataPoint) => {
-            if (seriesRef.current) {
-                // Ensure time is in seconds for lightweight-charts
-                seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
-                // NEW: After updating data, try to scroll to the most recent point
-                // This is a more subtle way to ensure visibility without aggressive fitContent
-                chartRef.current?.timeScale().scrollToRealTime();
-            }
-        },
-        setData: (data: ChartDataPoint[]) => { // Implementation for setting all data
-            if (seriesRef.current) {
-                // Ensure all times are in seconds for lightweight-charts
-                seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
-                chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
-            }
+        setData: (data: ChartDataPoint[]) => {
+            setChartData(data); // Update internal state, which will trigger the useEffect below
         },
     }));
 
@@ -79,7 +68,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             return;
         }
 
-        // Create the chart instance
         const chart = createChart(chartContainerRef.current, {
             layout: {
                 background: { type: ColorType.Solid, color: backgroundColor },
@@ -90,39 +78,37 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             grid: {
                 vertLines: {
                     color: vertLinesColor,
-                    visible: false, // Keep as per your current setup
+                    visible: false,
                 },
                 horzLines: {
                     color: horzLinesColor,
-                    visible: false, // Keep as per your current setup
+                    visible: false,
                 },
             },
             timeScale: {
-                rightOffset: 2,         // Small offset for real-time updates
-                barSpacing: 5,          // Adjust for denser intraday data
+                rightOffset: 2,
+                barSpacing: 5,
                 borderVisible: false,
                 visible: true,
-                timeVisible: true,      // Show time (hours, minutes)
-                secondsVisible: true,   // Crucial: Show seconds
+                timeVisible: true,
+                secondsVisible: true,
                 lockVisibleTimeRangeOnResize: true,
-                rightBarStaysOnScroll: true, // This should help with auto-scrolling
+                rightBarStaysOnScroll: true,
                 minBarSpacing: 0.5,
             },
-            // FIXED: Price scale configuration moved under rightPriceScale
-            rightPriceScale: { // Use rightPriceScale to configure the default price scale
-                autoScale: true, // Automatically adjust the price scale
+            rightPriceScale: {
+                autoScale: true,
                 borderVisible: false,
             },
         });
 
-        // Add Watermark (only once on initialization)
         createTextWatermark(chart.panes()[0], {
             horzAlign: 'center',
             vertAlign: 'center',
             lines: [
                 {
                     text: watermarkText,
-                    color: 'rgba(8, 242, 246, 0.5)', // Your existing color
+                    color: 'rgba(8, 242, 246, 0.5)',
                     fontSize: 32,
                     fontStyle: 'bold',
                 },
@@ -130,9 +116,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         });
 
         chartRef.current = chart;
-        // Initial fitContent is crucial, even if initialData is empty, to set up the view
-        chart.timeScale().fitContent();
-
+        // Correctly use chart.addSeries with AreaSeries constant
         const newSeries: ISeriesApi<'Area'> = chart.addSeries(AreaSeries, {
             lineColor,
             topColor: areaTopColor,
@@ -140,18 +124,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             lineWidth: 1,
         });
         seriesRef.current = newSeries;
-
-        // Set the initial historical data using setData
-        // This runs only once with the initialData prop when the chart is created
-        if (initialData.length > 0) {
-            newSeries.setData(initialData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
-            chart.timeScale().fitContent(); // Fit again after setting initial data
-        } else {
-            // If no initial data, explicitly set empty data to ensure the series is initialized
-            newSeries.setData([]);
-            chart.timeScale().fitContent(); // Fit content even for empty data
-        }
-
 
         // Handle window resizing
         const handleResize = () => {
@@ -177,9 +149,48 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         showWatermark,
         watermarkText,
         watermarkTextColor,
-        lineColor, areaTopColor, areaBottomColor,
-        initialData // Keep initialData in dependencies to re-initialize if it changes
-    ]);
+        lineColor, areaTopColor, areaBottomColor
+    ]); // Dependencies for chart initialization
+
+    // Effect to update chart data when internal chartData state changes
+    useEffect(() => {
+        if (seriesRef.current) {
+            if (chartData.length === 0) {
+                // If chartData becomes empty, clear the chart
+                seriesRef.current.setData([]);
+            } else {
+                // Convert all data to lightweight-charts format (time in seconds)
+                const formattedChartData = chartData.map(p => ({ time: (p.time / 1000) as Time, value: p.value }));
+
+                // Get the last point currently in the series and explicitly cast it
+                const currentSeriesData = seriesRef.current.data();
+                const lastChartPoint = currentSeriesData.length > 0 ? (currentSeriesData[currentSeriesData.length - 1] as { time: Time, value: number }) : null;
+
+                const lastNewPoint = formattedChartData[formattedChartData.length - 1];
+
+                // If the chart is empty or the last point is different, update the chart
+                if (!lastChartPoint || lastChartPoint.time !== lastNewPoint.time || lastChartPoint.value !== lastNewPoint.value) {
+                    // If the series is empty, or the new data represents a full reset/initial load
+                    // (e.g., more than one point added at once, or the first point)
+                    if (currentSeriesData.length === 0 || formattedChartData.length > currentSeriesData.length + 1) {
+                        seriesRef.current.setData(formattedChartData);
+                    } else {
+                        // Otherwise, it's likely a single new point, use update
+                        seriesRef.current.update(lastNewPoint);
+                    }
+                    chartRef.current?.timeScale().scrollToRealTime(); // Scroll to the latest point
+                }
+            }
+        }
+    }, [chartData]); // Dependency on internal chartData state
+
+    // Effect to set initial data from props when component mounts
+    // This runs once to get the initial historical data from StockTable
+    useEffect(() => {
+        if (initialData && initialData.length > 0) {
+            setChartData(initialData);
+        }
+    }, [initialData]); // Only run when initialData prop changes
 
     return (
         <div
