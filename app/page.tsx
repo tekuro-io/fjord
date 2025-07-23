@@ -3,6 +3,13 @@ import StockTableLoader from './components/StockTableLoader';
 import Image from 'next/image'
 import Spinner from './components/Spinner';
 import { CommitLink } from './components/CommitLink';
+import dynamic from 'next/dynamic';
+
+
+const TradingViewWidget = dynamic(
+    () => import('./components/TradingViewWidget'),
+    { ssr: false }
+  );
 
 export default async function HomePage() {
     return (
@@ -16,6 +23,7 @@ export default async function HomePage() {
                     className='inline-block mr-3 my-2'
                 />
             </h1>
+            <TradingViewWidget />
             <Suspense fallback={<Spinner />}>
                 <StockTableLoader />
             </Suspense>
