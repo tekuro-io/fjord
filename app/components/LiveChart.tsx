@@ -1,200 +1,105 @@
+// components/LiveChart.tsx
 'use client';
 
-import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark } from 'lightweight-charts';
-import React, { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+// Removed: import { useWebSocket } from '../lib/websocket'; // No longer needed
+import { ChartComponent, ChartHandle } from './Chart';
+import { StockItem, ChartDataPoint } from './StockTable';
 
-// Import ChartDataPoint from StockTable to ensure consistency across components
-import { ChartDataPoint } from './StockTable';
+// Removed: StockDataPayload and InfoMessage interfaces as LiveChart no longer processes raw WebSocket messages
+// interface StockDataPayload {
+//   ticker: string;
+//   timestamp: number;
+//   price: number;
+// }
+// interface InfoMessage {
+//   type: string;
+//   message: string;
+// }
+// Removed: type WebSocketMessage = StockDataPayload | InfoMessage;
 
-interface ChartColors {
-    backgroundColor?: string;
-    lineColor?: string;
-    textColor?: string;
-    areaTopColor?: string;
-    areaBottomColor?: string;
-    vertLinesColor?: string;
-    horzLinesColor?: string;
+interface LiveChartProps {
+  stockData: StockItem;
+  // This prop will now contain the current, evolving historical data
+  initialChartData: ChartDataPoint[];
 }
 
-interface ChartComponentProps {
-    initialData: ChartDataPoint[]; // This is for the very first chart load
-    colors?: ChartColors;
-    showWatermark?: boolean;
-    watermarkText?: string;
-    watermarkTextColor?: string;
-}
+export default function LiveChart({ stockData, initialChartData }: LiveChartProps) {
+  const chartRef = useRef<ChartHandle | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [hasData, setHasData] = useState(false); // Renamed from hasSetInitialChartData for clarity
 
-// Define the shape of the ref handle that this component will expose to its parent
-export interface ChartHandle {
-    // We'll simplify this to just setData, and handle incremental updates internally
-    setData: (data: ChartDataPoint[]) => void;
-}
+  // Removed: wsUrl state and its useEffect to fetch WebSocket URL
+  // Removed: useWebSocket hook and its states/functions (isConnected, wsError, lastMessage, sendMessage)
+  // Removed: subscribedTopic state and its useEffect to send subscription messages
 
-// Wrap the component with forwardRef to allow parent components to get a ref to it
-export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((props, ref) => {
-    const {
-        initialData, // Use initialData for the very first chart load
-        colors: {
-            backgroundColor = '000000',
-            lineColor = '#5da7f7',
-            textColor = '#296e80',
-            areaTopColor = 'rgba(135, 206, 235, 0.7)',
-            areaBottomColor = 'rgba(135, 206, 235, 0.01)',
-            vertLinesColor = '#374151',
-            horzLinesColor = '#374151',
-        } = {},
-        showWatermark = true,
-        watermarkText = 'BOOP',
-        watermarkTextColor = 'rgba(250, 6, 6, 0.75)',
-    } = props;
+  // Effect to set chart data whenever initialChartData prop changes
+  // This will now handle both initial load and subsequent live updates from StockTable
+  useEffect(() => {
+    console.log(`LiveChart (${stockData.ticker}): initialChartData prop updated:`, initialChartData);
+    if (chartRef.current) {
+      if (initialChartData && initialChartData.length > 0) {
+        chartRef.current.setData(initialChartData); // Set the entire dataset
+        setLoading(false);
+        setHasData(true); // Indicate that data has been received and set
+      } else {
+        chartRef.current.setData([]); // Set empty if no data
+        setLoading(true); // Keep loading if no data, waiting for updates
+        setHasData(false);
+      }
+    }
+    // The chart needs to re-render when initialChartData changes (new points added by StockTable)
+    // or when stockData.ticker changes (meaning a different chart is being displayed).
+  }, [initialChartData, stockData.ticker]);
 
-    const chartContainerRef = useRef<HTMLDivElement>(null);
-    const chartRef = useRef<IChartApi | null>(null);
-    const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+  // Helper function to get error message (still useful for general error state)
+  const getErrorMessage = (err: string | Error | null): string => {
+    if (!err) return '';
+    if (typeof err === 'string') return err;
+    if (err instanceof Error) return err.message;
+    return 'An unknown error occurred';
+  };
 
-    // Internal state to hold the chart data, which will be incrementally updated
-    const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  // Conditional rendering for loading, error, or no data states
+  // The connection status indicators related to LiveChart's own WS are removed.
+  if (loading && !hasData) {
+    return <div className="text-gray-400 p-4">Loading chart for {stockData.ticker}...</div>;
+  }
+  // If there was an error fetching initial data (e.g., from StockTableLoader, though not directly handled here)
+  // or if for some reason initialChartData becomes null/undefined, this might catch it.
+  if (error) { // wsError is removed, only general error state remains
+    return <div className="text-red-400 p-4">Error: {getErrorMessage(error)}</div>;
+  }
+  if (!hasData && initialChartData.length === 0) {
+    return <div className="text-gray-400 p-4">No historical data available for {stockData.ticker}. Waiting for data...</div>;
+  }
 
-    // useImperativeHandle: Expose a setData method for parent to update data
-    useImperativeHandle(ref, () => ({
-        setData: (data: ChartDataPoint[]) => {
-            setChartData(data); // Update internal state, which will trigger the useEffect below
-        },
-    }));
+  return (
+    <div className="p-4 rounded-lg shadow-inner relative">
+      {/* Removed: Live/Offline status indicators as LiveChart no longer has its own WS */}
+      {/* <div className="absolute top-10 left-10 z-10">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-500 bg-opacity-20 text-gray-300">
+          Data from Table
+        </span>
+      </div> */}
 
-    // Effect for chart initialization and cleanup (runs once on mount)
-    useEffect(() => {
-        if (!chartContainerRef.current) {
-            return;
-        }
-
-        const chart = createChart(chartContainerRef.current, {
-            layout: {
-                background: { type: ColorType.Solid, color: backgroundColor },
-                textColor,
-            },
-            width: chartContainerRef.current.clientWidth,
-            height: 300,
-            grid: {
-                vertLines: {
-                    color: vertLinesColor,
-                    visible: false,
-                },
-                horzLines: {
-                    color: horzLinesColor,
-                    visible: false,
-                },
-            },
-            timeScale: {
-                rightOffset: 2,
-                barSpacing: 5,
-                borderVisible: false,
-                visible: true,
-                timeVisible: true,
-                secondsVisible: true,
-                lockVisibleTimeRangeOnResize: true,
-                rightBarStaysOnScroll: true,
-                minBarSpacing: 0.5,
-            },
-            rightPriceScale: {
-                autoScale: true,
-                borderVisible: false,
-            },
-        });
-
-        createTextWatermark(chart.panes()[0], {
-            horzAlign: 'center',
-            vertAlign: 'center',
-            lines: [
-                {
-                    text: watermarkText,
-                    color: 'rgba(8, 242, 246, 0.5)',
-                    fontSize: 32,
-                    fontStyle: 'bold',
-                },
-            ],
-        });
-
-        chartRef.current = chart;
-        const newSeries: ISeriesApi<'Area'> = chart.addAreaSeries({
-            lineColor,
-            topColor: areaTopColor,
-            bottomColor: areaBottomColor,
-            lineWidth: 1,
-        });
-        seriesRef.current = newSeries;
-
-        // Handle window resizing
-        const handleResize = () => {
-            if (chartRef.current && chartContainerRef.current) {
-                chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
-            }
-        };
-
-        window.addEventListener('resize', handleResize);
-
-        // Cleanup function: remove event listener and destroy chart on unmount
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            if (chartRef.current) {
-                chartRef.current.remove();
-                chartRef.current = null;
-                seriesRef.current = null;
-            }
-        };
-    }, [
-        backgroundColor, textColor,
-        vertLinesColor, horzLinesColor,
-        showWatermark,
-        watermarkText,
-        watermarkTextColor,
-        lineColor, areaTopColor, areaBottomColor
-    ]); // Dependencies for chart initialization
-
-    // Effect to update chart data when internal chartData state changes
-    useEffect(() => {
-        if (seriesRef.current && chartData.length > 0) {
-            // Check if the last point in the current series is the same as the last point in chartData
-            // This prevents redundant updates and ensures smooth animation for new points
-            const lastChartPoint = seriesRef.current.dataByIndex(seriesRef.current.data().length - 1);
-            const lastNewPoint = chartData[chartData.length - 1];
-
-            if (!lastChartPoint || lastChartPoint.time !== (lastNewPoint.time / 1000) || lastChartPoint.value !== lastNewPoint.value) {
-                // If the last point is different, update the chart.
-                // For initial load or significant changes, use setData
-                // For single new points, use updateData
-                if (chartData.length === 1 && seriesRef.current.data().length === 0) {
-                    // This is likely the very first point
-                    seriesRef.current.setData(chartData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
-                } else if (chartData.length > 0 && lastNewPoint) {
-                    // Update with the latest point
-                    seriesRef.current.update({ time: (lastNewPoint.time / 1000) as Time, value: lastNewPoint.value });
-                } else {
-                    // Fallback for other cases, or if data is reset
-                    seriesRef.current.setData(chartData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
-                }
-                chartRef.current?.timeScale().scrollToRealTime(); // Scroll to the latest point
-            }
-        } else if (seriesRef.current && chartData.length === 0) {
-            // If chartData becomes empty, clear the chart
-            seriesRef.current.setData([]);
-        }
-    }, [chartData]); // Dependency on internal chartData state
-
-    // Effect to set initial data from props when component mounts
-    // This runs once to get the initial historical data from StockTable
-    useEffect(() => {
-        if (initialData && initialData.length > 0) {
-            setChartData(initialData);
-        }
-    }, [initialData]); // Only run when initialData prop changes
-
-    return (
-        <div
-            ref={chartContainerRef}
-            style={{ width: '100%', height: '300px' }}
+      <div className="bg-black p-4 rounded-lg shadow-inner border border-gray-700">
+        <ChartComponent
+          ref={chartRef}
+          initialData={initialChartData} // Pass the current historical data
+          colors={{
+            backgroundColor: '#000000',
+            lineColor: '#87CEEB',
+            textColor: '#D1D5DB',
+            areaTopColor: 'rgba(135, 206, 235, 0.7)',
+            areaBottomColor: 'rgba(135, 206, 235, 0.01)',
+            vertLinesColor: '#1E293B',
+            horzLinesColor: '#4A5568',
+          }}
+          watermarkText={stockData.ticker} // Use the ticker as watermark text
         />
-    );
-});
-
-ChartComponent.displayName = 'ChartComponent';
+      </div>
+    </div>
+  );
+}
