@@ -29,7 +29,7 @@ export interface StockItem {
   multiplier: number | null;
   timestamp?: string;
   first_seen?: string;
-
+  priceFlashDirection?: 'up' | 'down'; // New: To indicate price flash direction
 }
 
 // Define a type for historical chart data points (Exported for LiveChart to use)
@@ -50,7 +50,7 @@ const columnHelper = createColumnHelper<StockItem>();
 const DELTA_THRESHOLD = 0.08;
 const MULTIPLIER_THRESHOLD = 2.5; // This constant is used for cell styling
 const DELTA_FLASH_THRESHOLD = 0.005; // Only flash if delta changes by more than this (0.5%)
-
+const PRICE_FLASH_THRESHOLD = 0.005; // Only flash price if it changes by more than 0.5%
 
 // Max data points to keep in the sliding window for each stock's chart history
 const MAX_CHART_HISTORY_POINTS = 100; // Keep last 100 data points for live charts
@@ -99,6 +99,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   // New state for managing flash effect independently
   const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
   const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store timers
+   // New state for managing price flash effect independently
+  const [priceFlashingStates, setPriceFlashingStates] = React.useState<Map<string, 'up' | 'down'>>(new Map());
+  const priceFlashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store price flash timers
 
   // New state: Map to store sliding window of chart data for each ticker
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
@@ -305,6 +308,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                      (existingStock?.delta == null || calculatedDelta == null ||
                       Math.abs(existingStock.delta - calculatedDelta) > DELTA_FLASH_THRESHOLD);
 
+              // Determine if price has changed significantly to trigger flash
+              const priceChanged = existingStock?.price !== newCurrentPrice &&
+                     (existingStock?.price == null || newCurrentPrice == null ||
+                      (existingStock.price !== 0 && Math.abs(existingStock.price - newCurrentPrice) / existingStock.price > PRICE_FLASH_THRESHOLD));
+
               newDataMap.set(update.ticker, {
                 ...existingStock, // Retain any other properties from the existing stock
                 ...update, // Apply new properties from the incoming update (e.g., price, volume, multiplier, timestamp)
@@ -331,6 +339,25 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   }, 800); // Flash duration (matches CSS animation)
                   flashTimers.current.set(update.ticker, timer);
                 }
+
+                // Trigger price flash effect if price changed significantly AND it's not currently flashing
+                if (priceChanged && !priceFlashingStates.get(update.ticker)) {
+                    const direction = (newCurrentPrice || 0) > (existingStock?.price || 0) ? 'up' : 'down';
+                    if (priceFlashTimers.current.has(update.ticker)) {
+                        clearTimeout(priceFlashTimers.current.get(update.ticker));
+                    }
+                    setPriceFlashingStates(prev => new Map(prev).set(update.ticker, direction));
+                    const timer = setTimeout(() => {
+                        setPriceFlashingStates(prev => {
+                            const newState = new Map(prev);
+                            newState.delete(update.ticker);
+                            return newState;
+                        });
+                        priceFlashTimers.current.delete(update.ticker);
+                    }, 800); // Price flash duration (0.8s for fade)
+                    priceFlashTimers.current.set(update.ticker, timer);
+                }
+
             });
             return Array.from(newDataMap.values());
           });
@@ -394,6 +421,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       // Cleanup all flash timers on component unmount
       flashTimers.current.forEach(timerId => clearTimeout(timerId));
       flashTimers.current.clear();
+      priceFlashTimers.current.forEach(timerId => clearTimeout(timerId));
+      priceFlashTimers.current.clear();
     };
   }, [wsUrl, tickersToSubscribe]); // DEPENDENCY: Re-run this effect when wsUrl or tickersToSubscribe changes
 
@@ -428,6 +457,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                      (existingStockInState.delta == null || calculatedDelta == null ||
                       Math.abs(existingStockInState.delta - calculatedDelta) > DELTA_FLASH_THRESHOLD);
 
+            // Determine if price has changed significantly to trigger flash
+              const priceChanged = existingStockInState.price !== newStockFromRedis.price &&
+                     (existingStockInState.price == null || newStockFromRedis.price == null ||
+                      (existingStockInState.price !== 0 && Math.abs(existingStockInState.price - newStockFromRedis.price) / existingStockInState.price > PRICE_FLASH_THRESHOLD));
+
               console.log(`StockTable Debug (Redis Update Existing): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Current Live Price (retained): ${currentLivePrice}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
 
               updatedDataMap.set(newStockFromRedis.ticker, {
@@ -454,6 +488,27 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 }, 300); // Flash duration (matches CSS animation)
                 flashTimers.current.set(newStockFromRedis.ticker, timer);
               }
+
+
+              // Trigger price flash effect if price changed significantly AND it's not currently flashing
+              if (priceChanged && !priceFlashingStates.get(newStockFromRedis.ticker)) {
+                  const direction = (newStockFromRedis.price || 0) > (existingStockInState.price || 0) ? 'up' : 'down';
+                  if (priceFlashTimers.current.has(newStockFromRedis.ticker)) {
+                      clearTimeout(priceFlashTimers.current.get(newStockFromRedis.ticker));
+                  }
+                  setPriceFlashingStates(prev => new Map(prev).set(newStockFromRedis.ticker, direction));
+                  const timer = setTimeout(() => {
+                      setPriceFlashingStates(prev => {
+                          const newState = new Map(prev);
+                          newState.delete(newStockFromRedis.ticker);
+                          return newState;
+                      });
+                      priceFlashTimers.current.delete(newStockFromRedis.ticker);
+                  }, 800); // Price flash duration
+                  priceFlashTimers.current.set(newStockFromRedis.ticker, timer);
+              }
+
+
             } else {
               // New stock from Redis: Populate all fields, calculate initial delta
               const calculatedDelta = calculateDelta(newStockFromRedis.price, newStockFromRedis.prev_price);
@@ -480,6 +535,24 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     flashTimers.current.delete(newStockFromRedis.ticker);
                   }, 300); // Flash duration (matches CSS animation)
                   flashTimers.current.set(newStockFromRedis.ticker, timer);
+
+                  // Trigger price flash effect for new stock (only if not already flashing)
+                  if (!priceFlashingStates.get(newStockFromRedis.ticker)) {
+                      const direction = (newStockFromRedis.price || 0) > (newStockFromRedis.prev_price || 0) ? 'up' : 'down';
+                      if (priceFlashTimers.current.has(newStockFromRedis.ticker)) {
+                          clearTimeout(priceFlashTimers.current.get(newStockFromRedis.ticker));
+                      }
+                      setPriceFlashingStates(prev => new Map(prev).set(newStockFromRedis.ticker, direction));
+                      const timer = setTimeout(() => {
+                          setPriceFlashingStates(prev => {
+                              const newState = new Map(prev);
+                              newState.delete(newStockFromRedis.ticker);
+                              return newState;
+                          });
+                          priceFlashTimers.current.delete(newStockFromRedis.ticker);
+                      }, 800); // Price flash duration
+                      priceFlashTimers.current.set(newStockFromRedis.ticker, timer);
+                  }
 
             }
           });
@@ -653,7 +726,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Prev Price</span>
         </div>
       ),
-      cell: (info) => formatCurrency(info.getValue() as number | null),
+      cell: (info) => {
+        const stockTicker = info.row.original.ticker;
+        const flashDirection = priceFlashingStates.get(stockTicker);
+        const flashClass = flashDirection ? (flashDirection === 'up' ? 'price-flash-up-effect' : 'price-flash-down-effect') : '';
+
+        return (
+          <span className={flashClass}>
+            {formatCurrency(info.getValue() as number | null)}
+          </span>
+        );
+      },
       enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("price", {
@@ -775,7 +858,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       sortingFn: "basic",
       enableSorting: !isLocked, // Disable sorting when locked
     }),
-  ], [expandedRows, toggleRowExpansion, isLocked, flashingStates]);
+  ], [expandedRows, toggleRowExpansion, isLocked, flashingStates, priceFlashingStates]);
 
   const table = useReactTable<StockItem>({
     data: tableDisplayData, // Use the new tableDisplayData memo
@@ -830,6 +913,26 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
           .delta-highlight-effect {
             animation: delta-fade-highlight 0.8s ease-out; /* 0.8 seconds duration for a smooth fade */
+          }
+
+          @keyframes price-flash-up {
+            0% { color: inherit; }
+            50% { color: #4ade80; } /* Tailwind green-400 */
+            100% { color: inherit; }
+          }
+
+          @keyframes price-flash-down {
+            0% { color: inherit; }
+            50% { color: #ef4444; } /* Tailwind red-500 */
+            100% { color: inherit; }
+          }
+
+          .price-flash-up-effect {
+            animation: price-flash-up 0.8s ease-out;
+          }
+
+          .price-flash-down-effect {
+            animation: price-flash-down 0.8s ease-out;
           }
       `}</style>
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
