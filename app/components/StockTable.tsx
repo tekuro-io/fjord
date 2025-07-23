@@ -52,6 +52,20 @@ const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 // Max data points to keep in the sliding window for each stock's chart history
 const MAX_CHART_HISTORY_POINTS = 100; // Keep last 100 data points for live charts
 
+// Helper function to calculate delta consistently
+const calculateDelta = (currentPrice: number | null, prevPrice: number | null): number | null => {
+  if (currentPrice == null || prevPrice == null) {
+    return null; // Cannot calculate if either price is missing
+  }
+  if (prevPrice === 0) {
+    // If previous price was 0, and current price is not null, delta is effectively infinite.
+    // Return 0 for display, as a percentage change from 0 is not well-defined for display.
+    return 0;
+  }
+  return (currentPrice - prevPrice) / prevPrice;
+};
+
+
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
@@ -270,36 +284,24 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             stockUpdates.forEach(update => {
               const existingStock = newDataMap.get(update.ticker);
 
-              // *** CRITICAL CHANGE HERE ***
-              // The 'prev_price' for delta calculation should *always* be the initial prev_price
-              // or the prev_price from the existing stock if it's already in our state.
-              // It should NOT be updated with the 'price' from the previous tick.
+              // For WebSocket updates, the 'prev_price' for delta calculation should be the fixed baseline
+              // that was established either on initial load or by the last Redis update.
               const priceForDeltaCalculation = existingStock?.prev_price ?? update.prev_price;
 
-              // The new current price comes directly from the incoming update.
+              // The new current price comes directly from the incoming WebSocket update.
               const newCurrentPrice = update.price;
 
-              let calculatedDelta: number | null = null;
-              if (newCurrentPrice != null && priceForDeltaCalculation != null) {
-                if (priceForDeltaCalculation === 0) {
-                  // If the previous price was zero, and the new price is not null,
-                  // the delta is effectively infinite. Setting to 0 for display.
-                  calculatedDelta = 0;
-                } else {
-                  calculatedDelta = (newCurrentPrice - priceForDeltaCalculation) / priceForDeltaCalculation;
-                }
-              }
+              const calculatedDelta = calculateDelta(newCurrentPrice, priceForDeltaCalculation);
 
               // Log for debugging:
-              console.log(`StockTable Debug: Ticker: ${update.ticker}, Fixed Prev Price (for delta calc): ${priceForDeltaCalculation}, New Price: ${newCurrentPrice}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
+              console.log(`StockTable Debug (WebSocket): Ticker: ${update.ticker}, Fixed Prev Price (for delta calc): ${priceForDeltaCalculation}, New Price: ${newCurrentPrice}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}, Multiplier: ${update.multiplier}`);
 
               newDataMap.set(update.ticker, {
                 ...existingStock, // Retain any other properties from the existing stock
                 ...update, // Apply new properties from the incoming update (e.g., price, volume, multiplier, timestamp)
-                // IMPORTANT: prev_price is NOT updated here to reflect the *previous tick's price*.
-                // It retains its initial loaded value or the value it had when first added.
-                prev_price: existingStock?.prev_price ?? update.prev_price, // Ensure prev_price stays fixed
-                price: newCurrentPrice, // Always update the current price
+                // IMPORTANT: prev_price is NOT updated here by WebSocket. It retains its Redis-sourced value.
+                prev_price: existingStock?.prev_price ?? update.prev_price, // Ensure prev_price stays fixed from Redis source
+                price: newCurrentPrice, // Always update the current price from WebSocket
                 delta: calculatedDelta // Calculate and set the delta based on fixed prev_price
               });
             });
@@ -363,9 +365,94 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   }, [wsUrl, tickersToSubscribe]); // DEPENDENCY: Re-run this effect when wsUrl or tickersToSubscribe changes
 
 
+  // Re-introduce periodic data fetching from Redis
+  React.useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch('/api/stock-data');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const newData: StockItem[] = await response.json();
+
+        setConnectionStatus('connected');
+
+        setCurrentData(prevData => {
+          const updatedDataMap = new Map(prevData.map(item => [item.ticker, item]));
+
+          newData.forEach(newStockFromRedis => {
+            const existingStockInState = updatedDataMap.get(newStockFromRedis.ticker);
+
+            if (existingStockInState) {
+              // Stock exists in current state:
+              // Update all non-derived fields from Redis, EXCEPT 'price'.
+              // 'price' is handled by WebSocket.
+              const priceForDeltaCalculation = newStockFromRedis.prev_price; // Use prev_price from Redis for delta calc
+              const currentLivePrice = existingStockInState.price; // Retain the live price from WebSocket
+
+              const calculatedDelta = calculateDelta(currentLivePrice, priceForDeltaCalculation);
+
+              console.log(`StockTable Debug (Redis Update Existing): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Current Live Price (retained): ${currentLivePrice}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
+
+              updatedDataMap.set(newStockFromRedis.ticker, {
+                ...newStockFromRedis, // Spread new data from Redis to update all non-derived fields
+                price: currentLivePrice, // IMPORTANT: Retain the live price from existing state
+                delta: calculatedDelta, // Recalculate delta using live price and new prev_price from Redis
+              });
+            } else {
+              // New stock from Redis: Populate all fields, calculate initial delta
+              const calculatedDelta = calculateDelta(newStockFromRedis.price, newStockFromRedis.prev_price);
+
+              console.log(`StockTable Debug (Redis New Stock): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Price (from Redis): ${newStockFromRedis.price}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
+
+              updatedDataMap.set(newStockFromRedis.ticker, {
+                ...newStockFromRedis, // Add all properties of the new stock
+                delta: calculatedDelta, // Calculate delta for new stock
+              });
+            }
+          });
+
+          // Handle alert for newly appearing stocks based on the *filtered* data
+          const newFilteredDataForAlert = Array.from(updatedDataMap.values()).filter((stock: StockItem) =>
+            stock.multiplier == null || stock.multiplier >= multiplierFilter
+          );
+
+          if (isAlertActive && alertSnapshotTickers.length > 0) {
+            const newlyAppearingStocks = newFilteredDataForAlert.filter((stock: StockItem) =>
+              !alertSnapshotTickers.includes(stock.ticker)
+            );
+            if (newlyAppearingStocks.length > 0) {
+              setNewStocksAlert(newlyAppearingStocks);
+              if (synthRef.current) {
+                synthRef.current.triggerAttackRelease("C5", "8n");
+              }
+            }
+            console.log(`StockTable Debug (Alert Check): newFilteredDataForAlert (tickers): [${newFilteredDataForAlert.map(s => s.ticker).join(', ')}]`);
+            console.log(`StockTable Debug (Alert Check): newlyAppearingStocks (tickers): [${newlyAppearingStocks.map(s => s.ticker).join(', ')}]`);
+          }
+
+          return Array.from(updatedDataMap.values());
+        });
+
+      } catch (error) {
+        console.error("Failed to fetch stock data from Redis:", error);
+        setConnectionStatus('disconnected');
+      }
+    };
+
+    fetchData(); // Initial fetch on component mount
+    const intervalId = setInterval(fetchData, 10000); // Fetch every 10 seconds
+    return () => clearInterval(intervalId);
+  }, [isAlertActive, alertSnapshotTickers, multiplierFilter]); // Dependencies for Redis fetch
+
+
   const toggleAlert = async () => {
     if (!isAlertActive) {
-      setAlertSnapshotTickers(filteredData.map(stock => stock.ticker));
+      // When activating, snapshot the currently filtered tickers from filteredData
+      // This ensures the snapshot respects the current multiplier and global filters.
+      const currentFilteredTickers = filteredData.map(stock => stock.ticker);
+      setAlertSnapshotTickers(currentFilteredTickers);
+      console.log(`StockTable Debug (Alert Activation): alertSnapshotTickers set to: [${currentFilteredTickers.join(', ')}]`);
       setNewStocksAlert([]);
 
       if (typeof window !== 'undefined' && Tone && Tone.context && Tone.context.state !== 'running') {
@@ -375,11 +462,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     } else {
       setAlertSnapshotTickers([]);
       setNewStocksAlert([]);
+      console.log("StockTable Debug (Alert Deactivation): alertSnapshotTickers cleared.");
     }
     setIsAlertActive(prev => !prev);
   };
 
-  // New function to toggle lock state
+  // New function to toggle lock state - UNCHANGED from previous working version
   const toggleLock = () => {
     setIsLocked(prev => {
       if (!prev) { // If currently unlocked, about to lock
@@ -388,6 +476,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original.ticker)
         );
         setLockedTickers(currentVisibleTickers);
+        console.log(`StockTable Debug (Lock View): lockedTickers set to: [${Array.from(currentVisibleTickers).join(', ')}]`);
 
         // Filter expandedRows to only include those present in the new lockedViewData
         const newExpandedRows = new Set<string>();
@@ -400,6 +489,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       } else { // If currently locked, about to unlock
         setLockedTickers(new Set()); // Clear locked tickers
+        console.log("StockTable Debug (Unlock View): lockedTickers cleared.");
         // Expanded rows are intentionally kept, as per previous request
       }
       return !prev;
@@ -441,7 +531,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       );
     }
     return data;
-  }, [currentData, globalFilter, multiplierFilter]); // Removed isLocked and expandedRows from dependencies, as this memo is for the *unlocked* filtered data
+  }, [currentData, globalFilter, multiplierFilter]); // Dependencies for filteredData memo
 
   const tableDisplayData = React.useMemo(() => {
     if (!isLocked) {
@@ -715,7 +805,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
           </button>
 
-          {/* New Lock/Unlock Button */}
+          {/* New Lock/Unlock Button - UNCHANGED */}
           <button
             onClick={toggleLock}
             className={`px-2 py-1 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
