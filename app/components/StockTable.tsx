@@ -51,9 +51,6 @@ const DELTA_THRESHOLD = 0.08;
 const MULTIPLIER_THRESHOLD = 1.5; // This constant is used for cell styling
 const DELTA_FLASH_THRESHOLD = 0.0001; // New: Only flash if delta changes by more than this (0.01%)
 
-// New state for managing flash effect independently
-const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
-const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store timers
 
 // Max data points to keep in the sliding window for each stock's chart history
 const MAX_CHART_HISTORY_POINTS = 100; // Keep last 100 data points for live charts
@@ -98,6 +95,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   // New state for lock functionality
   const [isLocked, setIsLocked] = React.useState(false);
   const [lockedTickers, setLockedTickers] = React.useState<Set<string>>(new Set()); // Stores tickers to display when locked
+
+  // New state for managing flash effect independently
+  const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
+  const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store timers
 
   // New state: Map to store sliding window of chart data for each ticker
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
