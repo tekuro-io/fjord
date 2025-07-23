@@ -814,7 +814,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <tr
                     title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
-                    onClick={() => toggleRowExpansion(row.id)} {/* Moved onClick here */}
+                    onClick={() => toggleRowExpansion(row.id)}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
