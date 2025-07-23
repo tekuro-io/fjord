@@ -58,13 +58,16 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     // useImperativeHandle: Expose a setData method for parent to update data
     useImperativeHandle(ref, () => ({
         setData: (data: ChartDataPoint[]) => {
+            console.log('ChartComponent: useImperativeHandle setData called with data length:', data.length);
             setChartData(data); // Update internal state, which will trigger the useEffect below
         },
     }));
 
     // Effect for chart initialization and cleanup (runs once on mount)
     useEffect(() => {
+        console.log('ChartComponent: Chart initialization useEffect triggered.');
         if (!chartContainerRef.current) {
+            console.log('ChartComponent: Chart container ref not available.');
             return;
         }
 
@@ -124,6 +127,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             lineWidth: 1,
         });
         seriesRef.current = newSeries;
+        console.log('ChartComponent: Chart and AreaSeries initialized.');
 
         // Handle window resizing
         const handleResize = () => {
@@ -136,11 +140,13 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
         // Cleanup function: remove event listener and destroy chart on unmount
         return () => {
+            console.log('ChartComponent: Cleanup function triggered.');
             window.removeEventListener('resize', handleResize);
             if (chartRef.current) {
                 chartRef.current.remove();
                 chartRef.current = null;
                 seriesRef.current = null;
+                console.log('ChartComponent: Chart destroyed during cleanup.');
             }
         };
     }, [
@@ -154,41 +160,57 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
     // Effect to update chart data when internal chartData state changes
     useEffect(() => {
+        console.log('ChartComponent: chartData update useEffect triggered. chartData length:', chartData.length);
         if (seriesRef.current) {
             if (chartData.length === 0) {
-                // If chartData becomes empty, clear the chart
+                console.log('ChartComponent: Clearing chart data (chartData is empty).');
                 seriesRef.current.setData([]);
             } else {
                 // Convert all data to lightweight-charts format (time in seconds)
                 const formattedChartData = chartData.map(p => ({ time: (p.time / 1000) as Time, value: p.value }));
+                console.log('ChartComponent: Formatted chart data for lightweight-charts:', formattedChartData);
 
                 // Get the last point currently in the series and explicitly cast it
                 const currentSeriesData = seriesRef.current.data();
                 const lastChartPoint = currentSeriesData.length > 0 ? (currentSeriesData[currentSeriesData.length - 1] as { time: Time, value: number }) : null;
+                console.log('ChartComponent: Last point currently in chart series:', lastChartPoint);
 
                 const lastNewPoint = formattedChartData[formattedChartData.length - 1];
+                console.log('ChartComponent: Last new point from updated chartData:', lastNewPoint);
 
                 // If the chart is empty or the last point is different, update the chart
                 if (!lastChartPoint || lastChartPoint.time !== lastNewPoint.time || lastChartPoint.value !== lastNewPoint.value) {
+                    console.log('ChartComponent: New data detected or chart is empty, updating series.');
                     // If the series is empty, or the new data represents a full reset/initial load
                     // (e.g., more than one point added at once, or the first point)
                     if (currentSeriesData.length === 0 || formattedChartData.length > currentSeriesData.length + 1) {
+                        console.log('ChartComponent: Calling setData with full formattedChartData.');
                         seriesRef.current.setData(formattedChartData);
                     } else {
                         // Otherwise, it's likely a single new point, use update
+                        console.log('ChartComponent: Calling update with lastNewPoint.');
                         seriesRef.current.update(lastNewPoint);
                     }
                     chartRef.current?.timeScale().scrollToRealTime(); // Scroll to the latest point
+                    console.log('ChartComponent: Chart scrolled to real time.');
+                } else {
+                    console.log('ChartComponent: No new data or last point is the same, skipping series update.');
                 }
             }
+        } else {
+            console.log('ChartComponent: seriesRef.current is not available for update effect.');
         }
     }, [chartData]); // Dependency on internal chartData state
 
     // Effect to set initial data from props when component mounts
     // This runs once to get the initial historical data from StockTable
     useEffect(() => {
+        console.log('ChartComponent: initialData prop useEffect triggered. initialData length:', initialData.length);
         if (initialData && initialData.length > 0) {
+            console.log('ChartComponent: Setting chartData from initialData prop.');
             setChartData(initialData);
+        } else {
+            console.log('ChartComponent: initialData prop is empty or null.');
         }
     }, [initialData]); // Only run when initialData prop changes
 
