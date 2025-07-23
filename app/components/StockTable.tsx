@@ -726,6 +726,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Prev Price</span>
         </div>
       ),
+      cell: (info) => formatCurrency(info.getValue() as number | null),
+      enableSorting: !isLocked, // Disable sorting when locked
+    }),
+    columnHelper.accessor("price", {
+      header: () => (
+        <div className="flex items-center gap-1">
+          <DollarSign className="w-4 h-4 text-gray-400" />
+          <span>Price</span>
+        </div>
+      ),
       cell: (info) => {
         const stockTicker = info.row.original.ticker;
         const flashDirection = priceFlashingStates.get(stockTicker);
@@ -737,16 +747,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </span>
         );
       },
-      enableSorting: !isLocked, // Disable sorting when locked
-    }),
-    columnHelper.accessor("price", {
-      header: () => (
-        <div className="flex items-center gap-1">
-          <DollarSign className="w-4 h-4 text-gray-400" />
-          <span>Price</span>
-        </div>
-      ),
-      cell: (info) => formatCurrency(info.getValue() as number | null),
       enableSorting: !isLocked, // Disable sorting when locked
     }),
     columnHelper.accessor("delta", {
