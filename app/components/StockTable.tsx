@@ -39,8 +39,9 @@ export interface ChartDataPoint {
 
 // Define an interface for the informational message type
 interface InfoMessage {
-  type: string;
+  type: string; // Can be 'info', 'ack_subscribe', or other control types
   message: string;
+  topic?: string; // Optional, for ack_subscribe
 }
 
 const columnHelper = createColumnHelper<StockItem>();
@@ -191,13 +192,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     fetchWsUrl();
   }, []); // Run once on mount
 
-  // REMOVED: The separate useEffect to fetch initial stock data from Redis.
-  // The initialData prop already provides this.
-  // React.useEffect(() => {
-  //   const fetchInitialStocksFromRedis = async () => { /* ... */ };
-  //   fetchInitialStocksFromRedis();
-  // }, []);
-
   // Centralized WebSocket connection management
   React.useEffect(() => {
     if (!wsUrl || tickersToSubscribe.length === 0) {
@@ -206,14 +200,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
 
     const connectWebSocket = () => {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        return; // Already connected
+      // Ensure existing connection is closed before opening a new one
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
       }
 
       console.log(`StockTable: Attempting to connect to WebSocket at: ${wsUrl}`);
       const ws = new WebSocket(wsUrl); // Use the dynamically fetched URL
 
-      wsRef.current = ws;
+      wsRef.current = ws; // Store the new WebSocket instance in the ref
 
       ws.onopen = () => {
         console.log("StockTable: WebSocket connected.");
@@ -231,24 +227,30 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       ws.onmessage = (event) => {
         try {
-          // Parse the incoming data, which could be a StockItem[], a single StockItem, or an InfoMessage
+          // Parse the incoming data
           const parsedData: unknown = JSON.parse(event.data);
-
-          // Type guard for InfoMessage
-          const isInfoMessage = (data: unknown): data is InfoMessage => {
-            return typeof data === 'object' && data !== null && 'type' in data && (data as InfoMessage).type === 'info';
-          };
 
           // Type guard for StockItem
           const isStockItem = (data: unknown): data is StockItem => {
             return typeof data === 'object' && data !== null && 'ticker' in data && typeof (data as StockItem).ticker === 'string' && (data as StockItem).ticker.trim() !== '';
           };
 
+          // Type guard for any message that has a 'type' property AND explicitly does NOT have a 'ticker' property
+          const isInfoOrControlMessage = (data: unknown): data is InfoMessage => {
+            return typeof data === 'object' && data !== null && 'type' in data && !('ticker' in data);
+          };
+
           let stockUpdates: StockItem[] = [];
 
-          if (isInfoMessage(parsedData)) {
-            console.log("StockTable: Received info message:", parsedData.message);
-            return; // Skip processing info messages as stock data
+          if (isInfoOrControlMessage(parsedData)) {
+            // This handles 'info' messages, 'ack_subscribe' messages, and any other control messages
+            const controlMsg = parsedData as InfoMessage; // Cast for easier access to properties
+            if (controlMsg.type === 'ack_subscribe') {
+                console.log(`StockTable: Received acknowledgment for subscription to topic: ${controlMsg.topic} - ${controlMsg.message}`);
+            } else {
+                console.log(`StockTable: Received control message of type '${controlMsg.type}': ${controlMsg.message}`);
+            }
+            return; // Skip further processing for control messages
           } else if (Array.isArray(parsedData)) {
             // Filter array to ensure all elements are StockItem
             stockUpdates = parsedData.filter(isStockItem);
@@ -316,6 +318,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     // Cleanup function: close WebSocket when component unmounts
     return () => {
       if (wsRef.current) {
+        // Remove event listeners from the current WebSocket instance
+        wsRef.current.removeEventListener('open', wsRef.current.onopen as EventListener);
+        wsRef.current.removeEventListener('message', wsRef.current.onmessage as EventListener);
+        wsRef.current.removeEventListener('close', wsRef.current.onclose as EventListener);
+        wsRef.current.removeEventListener('error', wsRef.current.onerror as EventListener);
         wsRef.current.close();
         wsRef.current = null;
       }
