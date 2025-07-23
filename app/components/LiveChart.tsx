@@ -15,14 +15,16 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
   const chartRef = useRef<ChartHandle | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasData, setHasData] = useState(false); // Renamed from hasSetInitialChartData for clarity
+  const [hasData, setHasData] = useState(false);
+  const [isChartReady, setIsChartReady] = useState(false); // New state to track ChartComponent readiness
 
   // Effect to set chart data whenever initialChartData prop changes
-  // This will now handle both initial load and subsequent live updates from StockTable
   useEffect(() => {
     console.log(`LiveChart (${stockData.ticker}): useEffect triggered for initialChartData. Current initialChartData length:`, initialChartData.length);
-    if (chartRef.current) {
-      console.log(`LiveChart (${stockData.ticker}): chartRef.current is available.`);
+
+    // Only attempt to set data if the ChartComponent is ready and chartRef.current is available
+    if (isChartReady && chartRef.current) {
+      console.log(`LiveChart (${stockData.ticker}): chartRef.current is available and chart is ready.`);
       if (initialChartData && initialChartData.length > 0) {
         console.log(`LiveChart (${stockData.ticker}): Calling chartRef.current.setData with data length:`, initialChartData.length);
         chartRef.current.setData(initialChartData); // Set the entire dataset
@@ -35,11 +37,17 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
         setHasData(false);
       }
     } else {
-      console.log(`LiveChart (${stockData.ticker}): chartRef.current is NOT available yet.`);
+      console.log(`LiveChart (${stockData.ticker}): chartRef.current is NOT available yet OR chart is not ready.`);
     }
-    // The chart needs to re-render when initialChartData changes (new points added by StockTable)
-    // or when stockData.ticker changes (meaning a different chart is being displayed).
-  }, [initialChartData, stockData.ticker]);
+  }, [initialChartData, stockData.ticker, isChartReady]); // Add isChartReady to dependencies
+
+  // Effect to signal when ChartComponent is ready
+  useEffect(() => {
+    if (chartRef.current) {
+      console.log(`LiveChart (${stockData.ticker}): chartRef.current became available, setting isChartReady to true.`);
+      setIsChartReady(true);
+    }
+  }, [chartRef.current]); // This effect runs when chartRef.current changes from null to an object
 
   // Helper function to get error message (still useful for general error state)
   const getErrorMessage = (err: string | Error | null): string => {
