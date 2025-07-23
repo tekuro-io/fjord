@@ -353,13 +353,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     connectWebSocket(); // Initial connection attempt when wsUrl becomes available
 
 
+    // Cleanup function: close WebSocket when component unmounts
     return () => {
       if (wsRef.current) {
         // Remove event listeners explicitly
+        // Revert these lines to use wsRef.current for consistency and to avoid scope issues
         wsRef.current.removeEventListener('open', wsRef.current.onopen as EventListener);
-        ws.removeEventListener('message', ws.onmessage as EventListener); // Use `ws` directly
-        ws.removeEventListener('close', ws.onclose as EventListener);   // Use `ws` directly
-        ws.removeEventListener('error', ws.onerror as EventListener);   // Use `ws` directly
+        // Corrected lines to use wsRef.current
+        if (wsRef.current.onmessage) wsRef.current.removeEventListener('message', wsRef.current.onmessage as EventListener);
+        if (wsRef.current.onclose) wsRef.current.removeEventListener('close', wsRef.current.onclose as EventListener);
+        if (wsRef.current.onerror) wsRef.current.removeEventListener('error', wsRef.current.onerror as EventListener);
         wsRef.current.close();
         wsRef.current = null;
       }

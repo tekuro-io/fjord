@@ -42,6 +42,10 @@ ENV NODE_ENV=production
 
 ARG COMMIT_HASH
 ENV NEXT_PUBLIC_COMMIT_HASH=$COMMIT_HASH
+
+ARG COMMIT_MESSAGE
+ENV NEXT_PUBLIC_COMMIT_MESSAGE=$COMMIT_MESSAGE
+
 # Uncomment the following line in case you want to disable telemetry during runtime.
 # ENV NEXT_TELEMETRY_DISABLED=1
 
