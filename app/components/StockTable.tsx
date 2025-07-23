@@ -293,8 +293,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
               const calculatedDelta = calculateDelta(newCurrentPrice, priceForDeltaCalculation);
 
-              // Log for debugging:
-              console.log(`StockTable Debug (WebSocket): Ticker: ${update.ticker}, Fixed Prev Price (for delta calc): ${priceForDeltaCalculation}, New Price: ${newCurrentPrice}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}, Multiplier: ${update.multiplier}`);
 
               newDataMap.set(update.ticker, {
                 ...existingStock, // Retain any other properties from the existing stock
