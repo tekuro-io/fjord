@@ -86,7 +86,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [wsUrl, setWsUrl] = React.useState<string | null>(null); // State for WebSocket URL
 
   // State to hold the list of tickers to subscribe to
-  const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>([]);
+  // Initialize directly from initialData prop
+  const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>(
+    initialData.map(item => item.ticker).filter(Boolean) as string[]
+  );
 
   // Helper function to toggle row expansion
   const toggleRowExpansion = (rowId: string) => {
@@ -188,29 +191,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     fetchWsUrl();
   }, []); // Run once on mount
 
-  // NEW: Effect to fetch initial stock data from Redis and set tickersToSubscribe
-  React.useEffect(() => {
-    const fetchInitialStocksFromRedis = async () => {
-      try {
-        // Assuming an API endpoint that returns the initial list of stock items from Redis
-        const response = await fetch('/api/redis-stocks'); // Adjust this API route as needed
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data: StockItem[] = await response.json();
-        setCurrentData(data); // Set initial data for the table
-        // Extract tickers from the initial data to subscribe to
-        setTickersToSubscribe(data.map(item => item.ticker).filter(Boolean) as string[]);
-        console.log('StockTable: Fetched initial stock data from Redis and set tickers to subscribe.');
-      } catch (e) {
-        console.error('StockTable: Failed to fetch initial stock data from Redis:', e);
-        // If initial fetch fails, we might still proceed with WebSocket if it's expected to send full data
-        // or show an error state. For now, we'll just log.
-      }
-    };
-
-    fetchInitialStocksFromRedis();
-  }, []); // Run once on mount to get initial stock list
+  // REMOVED: The separate useEffect to fetch initial stock data from Redis.
+  // The initialData prop already provides this.
+  // React.useEffect(() => {
+  //   const fetchInitialStocksFromRedis = async () => { /* ... */ };
+  //   fetchInitialStocksFromRedis();
+  // }, []);
 
   // Centralized WebSocket connection management
   React.useEffect(() => {
@@ -232,7 +218,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       ws.onopen = () => {
         console.log("StockTable: WebSocket connected.");
         setConnectionStatus('connected');
-        // FIX: Send individual subscription messages for each ticker
+        // Send individual subscription messages for each ticker
         tickersToSubscribe.forEach(ticker => {
           const subscribeMessage = {
             type: "subscribe",
