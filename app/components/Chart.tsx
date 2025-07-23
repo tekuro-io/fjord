@@ -22,12 +22,13 @@ interface ChartComponentProps {
     showWatermark?: boolean;
     watermarkText?: string;
     watermarkTextColor?: string;
+    onChartReady?: () => void; // Callback to notify parent when chart is ready
 }
 
 // Define the shape of the ref handle that this component will expose to its parent
 export interface ChartHandle {
-    // We'll simplify this to just setData, and handle incremental updates internally
-    setData: (data: ChartDataPoint[]) => void;
+    updateData: (point: ChartDataPoint) => void; // Method to add a single new data point
+    setData: (data: ChartDataPoint[]) => void;   // Method to set/reset all data (e.g., initial load)
 }
 
 // Wrap the component with forwardRef to allow parent components to get a ref to it
@@ -46,20 +47,36 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         showWatermark = true,
         watermarkText = 'BOOP',
         watermarkTextColor = 'rgba(250, 6, 6, 0.75)',
+        onChartReady,
     } = props;
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
 
-    // Internal state to hold the chart data, which will be incrementally updated
-    const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
-
-    // useImperativeHandle: Expose a setData method for parent to update data
+    // useImperativeHandle: Expose updateData and setData methods to the parent via ref
     useImperativeHandle(ref, () => ({
+        updateData: (point: ChartDataPoint) => {
+            if (seriesRef.current) {
+                console.log('ChartComponent: updateData called with point:', point);
+                // Ensure time is in seconds for lightweight-charts
+                seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
+                chartRef.current?.timeScale().scrollToRealTime(); // Keep chart scrolled to the latest point
+            } else {
+                console.warn('ChartComponent: seriesRef.current not available for updateData.');
+            }
+        },
         setData: (data: ChartDataPoint[]) => {
-            console.log('ChartComponent: useImperativeHandle setData called with data length:', data.length);
-            setChartData(data); // Update internal state, which will trigger the useEffect below
+            if (seriesRef.current) {
+                console.log('ChartComponent: setData called with data length:', data.length);
+                // Ensure all times are in seconds for lightweight-charts
+                seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+                if (data.length > 0) {
+                    chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
+                }
+            } else {
+                console.warn('ChartComponent: seriesRef.current not available for setData.');
+            }
         },
     }));
 
@@ -71,6 +88,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             return;
         }
 
+        // Create the chart instance
         const chart = createChart(chartContainerRef.current, {
             layout: {
                 background: { type: ColorType.Solid, color: backgroundColor },
@@ -105,6 +123,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             },
         });
 
+        // Add Watermark
         createTextWatermark(chart.panes()[0], {
             horzAlign: 'center',
             vertAlign: 'center',
@@ -119,6 +138,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         });
 
         chartRef.current = chart;
+
         // Correctly use chart.addSeries with AreaSeries constant
         const newSeries: ISeriesApi<'Area'> = chart.addSeries(AreaSeries, {
             lineColor,
@@ -128,6 +148,24 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         });
         seriesRef.current = newSeries;
         console.log('ChartComponent: Chart and AreaSeries initialized.');
+
+        // Set the initial historical data using setData
+        // This runs only once with the initialData prop when the chart is created
+        if (initialData.length > 0) {
+            console.log('ChartComponent: Setting initial data during initialization.');
+            newSeries.setData(initialData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+            chart.timeScale().fitContent(); // Fit content after setting initial data
+        } else {
+            // If no initial data, explicitly set empty data to ensure the series is initialized
+            newSeries.setData([]);
+            chart.timeScale().fitContent(); // Fit content even for empty data
+        }
+
+        // Notify parent that the chart is ready
+        if (onChartReady) {
+            onChartReady();
+            console.log('ChartComponent: Called onChartReady callback.');
+        }
 
         // Handle window resizing
         const handleResize = () => {
@@ -155,64 +193,12 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         showWatermark,
         watermarkText,
         watermarkTextColor,
-        lineColor, areaTopColor, areaBottomColor
+        lineColor, areaTopColor, areaBottomColor,
+        onChartReady // Add onChartReady to dependencies for stability
     ]); // Dependencies for chart initialization
 
-    // Effect to update chart data when internal chartData state changes
-    useEffect(() => {
-        console.log('ChartComponent: chartData update useEffect triggered. chartData length:', chartData.length);
-        if (seriesRef.current) {
-            if (chartData.length === 0) {
-                console.log('ChartComponent: Clearing chart data (chartData is empty).');
-                seriesRef.current.setData([]);
-            } else {
-                // Convert all data to lightweight-charts format (time in seconds)
-                const formattedChartData = chartData.map(p => ({ time: (p.time / 1000) as Time, value: p.value }));
-                console.log('ChartComponent: Formatted chart data for lightweight-charts:', formattedChartData);
-
-                // Get the last point currently in the series and explicitly cast it
-                const currentSeriesData = seriesRef.current.data();
-                const lastChartPoint = currentSeriesData.length > 0 ? (currentSeriesData[currentSeriesData.length - 1] as { time: Time, value: number }) : null;
-                console.log('ChartComponent: Last point currently in chart series:', lastChartPoint);
-
-                const lastNewPoint = formattedChartData[formattedChartData.length - 1];
-                console.log('ChartComponent: Last new point from updated chartData:', lastNewPoint);
-
-                // If the chart is empty or the last point is different, update the chart
-                if (!lastChartPoint || lastChartPoint.time !== lastNewPoint.time || lastChartPoint.value !== lastNewPoint.value) {
-                    console.log('ChartComponent: New data detected or chart is empty, updating series.');
-                    // If the series is empty, or the new data represents a full reset/initial load
-                    // (e.g., more than one point added at once, or the first point)
-                    if (currentSeriesData.length === 0 || formattedChartData.length > currentSeriesData.length + 1) {
-                        console.log('ChartComponent: Calling setData with full formattedChartData.');
-                        seriesRef.current.setData(formattedChartData);
-                    } else {
-                        // Otherwise, it's likely a single new point, use update
-                        console.log('ChartComponent: Calling update with lastNewPoint.');
-                        seriesRef.current.update(lastNewPoint);
-                    }
-                    chartRef.current?.timeScale().scrollToRealTime(); // Scroll to the latest point
-                    console.log('ChartComponent: Chart scrolled to real time.');
-                } else {
-                    console.log('ChartComponent: No new data or last point is the same, skipping series update.');
-                }
-            }
-        } else {
-            console.log('ChartComponent: seriesRef.current is not available for update effect.');
-        }
-    }, [chartData]); // Dependency on internal chartData state
-
-    // Effect to set initial data from props when component mounts
-    // This runs once to get the initial historical data from StockTable
-    useEffect(() => {
-        console.log('ChartComponent: initialData prop useEffect triggered. initialData length:', initialData.length);
-        if (initialData && initialData.length > 0) {
-            console.log('ChartComponent: Setting chartData from initialData prop.');
-            setChartData(initialData);
-        } else {
-            console.log('ChartComponent: initialData prop is empty or null.');
-        }
-    }, [initialData]); // Only run when initialData prop changes
+    // No longer need a separate useEffect for internal chartData state,
+    // as updates are now handled directly by updateData/setData via ref.
 
     return (
         <div
