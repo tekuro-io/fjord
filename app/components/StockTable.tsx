@@ -741,6 +741,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   };
 
   return (
+    
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
 
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
