@@ -37,6 +37,12 @@ export interface ChartDataPoint {
   value: number; // Price value
 }
 
+// Define an interface for the informational message type
+interface InfoMessage {
+  type: string;
+  message: string;
+}
+
 const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
@@ -78,6 +84,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const synthRef = React.useRef<Tone.Synth | null>(null);
   const wsRef = React.useRef<WebSocket | null>(null); // New: WebSocket reference
   const [wsUrl, setWsUrl] = React.useState<string | null>(null); // State for WebSocket URL
+
+  // State to hold the list of tickers to subscribe to
+  const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>([]);
 
   // Helper function to toggle row expansion
   const toggleRowExpansion = (rowId: string) => {
@@ -159,7 +168,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     };
   }, []);
 
-  // ADDED: Effect to fetch WebSocket URL from /api/ws
+  // Effect to fetch WebSocket URL from /api/ws
   React.useEffect(() => {
     const fetchWsUrl = async () => {
       try {
@@ -179,11 +188,35 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     fetchWsUrl();
   }, []); // Run once on mount
 
-  // New: Centralized WebSocket connection management
+  // NEW: Effect to fetch initial stock data from Redis and set tickersToSubscribe
   React.useEffect(() => {
-    if (!wsUrl) {
-      console.log("StockTable: WebSocket URL not yet available, skipping connection.");
-      return; // Wait for wsUrl to be fetched
+    const fetchInitialStocksFromRedis = async () => {
+      try {
+        // Assuming an API endpoint that returns the initial list of stock items from Redis
+        const response = await fetch('/api/redis-stocks'); // Adjust this API route as needed
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data: StockItem[] = await response.json();
+        setCurrentData(data); // Set initial data for the table
+        // Extract tickers from the initial data to subscribe to
+        setTickersToSubscribe(data.map(item => item.ticker).filter(Boolean) as string[]);
+        console.log('StockTable: Fetched initial stock data from Redis and set tickers to subscribe.');
+      } catch (e) {
+        console.error('StockTable: Failed to fetch initial stock data from Redis:', e);
+        // If initial fetch fails, we might still proceed with WebSocket if it's expected to send full data
+        // or show an error state. For now, we'll just log.
+      }
+    };
+
+    fetchInitialStocksFromRedis();
+  }, []); // Run once on mount to get initial stock list
+
+  // Centralized WebSocket connection management
+  React.useEffect(() => {
+    if (!wsUrl || tickersToSubscribe.length === 0) {
+      console.log("StockTable: WebSocket URL or tickers to subscribe not yet available, skipping connection.");
+      return; // Wait for wsUrl and tickers to be fetched
     }
 
     const connectWebSocket = () => {
@@ -199,38 +232,64 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       ws.onopen = () => {
         console.log("StockTable: WebSocket connected.");
         setConnectionStatus('connected');
-        // You might send a message here to subscribe to specific topics if Hermes supports it
-        // e.g., ws.send(JSON.stringify({ type: 'subscribe', topics: ['all_dashboard_stocks'] }));
+        // FIX: Send individual subscription messages for each ticker
+        tickersToSubscribe.forEach(ticker => {
+          const subscribeMessage = {
+            type: "subscribe",
+            topic: `stock:${ticker.toUpperCase()}` // Subscribe to individual stock topics
+          };
+          ws.send(JSON.stringify(subscribeMessage));
+          console.log(`StockTable: Sent subscribe message for topic: stock:${ticker.toUpperCase()}`);
+        });
       };
 
       ws.onmessage = (event) => {
         try {
-          // Assuming Hermes sends an array of updated StockItem objects, or a single object
-          const updates: StockItem[] | StockItem = JSON.parse(event.data);
-          const updateArray = Array.isArray(updates) ? updates : [updates]; // Ensure it's an array
+          // Parse the incoming data, which could be a StockItem[], a single StockItem, or an InfoMessage
+          const parsedData: unknown = JSON.parse(event.data);
 
+          // Type guard for InfoMessage
+          const isInfoMessage = (data: unknown): data is InfoMessage => {
+            return typeof data === 'object' && data !== null && 'type' in data && (data as InfoMessage).type === 'info';
+          };
+
+          // Type guard for StockItem
+          const isStockItem = (data: unknown): data is StockItem => {
+            return typeof data === 'object' && data !== null && 'ticker' in data && typeof (data as StockItem).ticker === 'string' && (data as StockItem).ticker.trim() !== '';
+          };
+
+          let stockUpdates: StockItem[] = [];
+
+          if (isInfoMessage(parsedData)) {
+            console.log("StockTable: Received info message:", parsedData.message);
+            return; // Skip processing info messages as stock data
+          } else if (Array.isArray(parsedData)) {
+            // Filter array to ensure all elements are StockItem
+            stockUpdates = parsedData.filter(isStockItem);
+            if (stockUpdates.length !== parsedData.length) {
+                console.warn("StockTable: Some items in the received array were not valid StockItems.");
+            }
+          } else if (isStockItem(parsedData)) {
+            stockUpdates = [parsedData];
+          } else {
+            console.warn("StockTable: Received unknown or invalid message format, skipping:", parsedData);
+            return;
+          }
+
+          // Update the main table data (currentData)
           setCurrentData(prevData => {
             const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
-            updateArray.forEach(update => {
-              // IMPORTANT FIX: Only process updates if 'ticker' is a non-empty string
-              if (update.ticker && typeof update.ticker === 'string' && update.ticker.trim() !== '') {
-                newDataMap.set(update.ticker, { ...newDataMap.get(update.ticker), ...update });
-              } else {
-                console.warn("StockTable: Received stock update with invalid ticker, skipping:", update);
-              }
+            stockUpdates.forEach(update => {
+              newDataMap.set(update.ticker, { ...newDataMap.get(update.ticker), ...update });
             });
-            // Filter out any existing invalid tickers from the map before converting to array
-            const filteredMapEntries = Array.from(newDataMap.entries()).filter(([ticker]) =>
-              ticker && typeof ticker === 'string' && ticker.trim() !== ''
-            );
-            return filteredMapEntries.map(([, value]) => value);
+            return Array.from(newDataMap.values()); // Convert map values back to array
           });
 
           // Update stockChartHistory with new live data points
           setStockChartHistory(prevHistory => {
             const newHistory = new Map(prevHistory);
-            updateArray.forEach(update => {
-              if (update.ticker && typeof update.ticker === 'string' && update.ticker.trim() !== '' && update.price != null && update.timestamp) {
+            stockUpdates.forEach(update => {
+              if (update.price != null && update.timestamp) {
                 const currentTickerHistory = newHistory.get(update.ticker) || [];
                 // Ensure timestamp is in milliseconds for consistency with JS Date.getTime()
                 const newPoint: ChartDataPoint = {
@@ -241,7 +300,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 const updatedTickerHistory = [...currentTickerHistory, newPoint].slice(-MAX_CHART_HISTORY_POINTS);
                 newHistory.set(update.ticker, updatedTickerHistory);
               } else {
-                console.warn("StockTable: Skipping chart history update for invalid stock:", update);
+                console.warn("StockTable: Skipping chart history update for stock with missing price or timestamp:", update);
               }
             });
             return newHistory;
@@ -275,7 +334,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         wsRef.current = null;
       }
     };
-  }, [wsUrl]); // DEPENDENCY: Re-run this effect when wsUrl changes (i.e., when it's fetched)
+  }, [wsUrl, tickersToSubscribe]); // DEPENDENCY: Re-run this effect when wsUrl or tickersToSubscribe changes
 
 
   const toggleAlert = async () => {
@@ -828,7 +887,8 @@ function formatDateTime(isoString?: string) {
       hour: 'numeric',
       minute: '2-digit'
     }) + ' ET';
-  } catch (e) {
+  }
+  catch (e) {
     return "Invalid date";
   }
 }
