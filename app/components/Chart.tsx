@@ -137,7 +137,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 {
                     text: watermarkText,
                     color: 'rgba(8, 242, 246, 0.5)',
-                    fontSize: 32,
+                    fontSize: 42,
                     fontStyle: 'bold',
                 },
             ],
