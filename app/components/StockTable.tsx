@@ -22,7 +22,7 @@ export interface StockItem {
   ticker: string;
   prev_price: number | null;
   price: number | null;
-  delta: number | null;
+  delta: number | null; // This will now be recalculated on the client
   float: number | null;
   mav10: number | null;
   volume: number | null;
@@ -268,7 +268,20 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           setCurrentData(prevData => {
             const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
             stockUpdates.forEach(update => {
-              newDataMap.set(update.ticker, { ...newDataMap.get(update.ticker), ...update });
+              // Recalculate delta on the client-side
+              let calculatedDelta: number | null = null;
+              if (update.price != null && update.prev_price != null && update.prev_price !== 0) {
+                calculatedDelta = (update.price - update.prev_price) / update.prev_price;
+              } else if (update.price != null && update.prev_price === 0) {
+                // Handle case where prev_price is 0, delta might be infinite or undefined, set to 0 or null
+                calculatedDelta = 0;
+              }
+
+              newDataMap.set(update.ticker, {
+                ...newDataMap.get(update.ticker),
+                ...update,
+                delta: calculatedDelta // Override delta with client-side calculation
+              });
             });
             return Array.from(newDataMap.values()); // Convert map values back to array
           });
@@ -318,7 +331,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     // Cleanup function: close WebSocket when component unmounts
     return () => {
       if (wsRef.current) {
-        // Remove event listeners from the current WebSocket instance
+        // Remove event listeners explicitly
         wsRef.current.removeEventListener('open', wsRef.current.onopen as EventListener);
         wsRef.current.removeEventListener('message', wsRef.current.onmessage as EventListener);
         wsRef.current.removeEventListener('close', wsRef.current.onclose as EventListener);
@@ -379,7 +392,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   // React.useEffect(() => {
   //   const fetchData = async () => { /* ... */ };
   //   fetchData();
-  //   const intervalId = setInterval(fetchData, 10000);
+  //   const intervalId = setInterval(setInterval(fetchData, 10000);
   //   return () => clearInterval(intervalId);
   // }, [isAlertActive, alertSnapshotTickers, globalFilter, numStocksToShow, multiplierFilter]);
 
@@ -408,6 +421,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         stock.ticker.toLowerCase().includes(lowerCaseFilter) ||
         (stock.prev_price != null && stock.prev_price.toString().includes(lowerCaseFilter)) ||
         (stock.price != null && stock.price.toString().includes(lowerCaseFilter)) ||
+        // Check delta using its calculated value
         (stock.delta != null && (stock.delta * 100).toFixed(1).includes(lowerCaseFilter)) ||
         (stock.float != null && formatLargeNumber(stock.float).toLowerCase().includes(lowerCaseFilter)) ||
         (stock.mav10 != null && formatLargeNumber(stock.mav10).toLowerCase().includes(lowerCaseFilter)) ||
@@ -443,11 +457,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       ),
       cell: (info) => (
         <div className="flex items-center gap-2">
-          {/* Updated onClick to use toggleRowExpansion */}
-          <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
-            e.stopPropagation();
-            toggleRowExpansion(info.row.id); // Use the new toggle function
-          }}>
+          {/* Removed onClick from button to make whole row clickable */}
+          <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
             {/* Check if the current row is in the expandedRows set */}
             {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
@@ -803,6 +814,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <tr
                     title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                     className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
+                    onClick={() => toggleRowExpansion(row.id)} {/* Moved onClick here */}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <td
@@ -811,10 +823,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       >
                         {cell.column.id === 'ticker' ? (
                           <div className="flex items-center gap-2">
-                            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200" onClick={(e) => {
-                              e.stopPropagation();
-                              toggleRowExpansion(row.id);
-                            }}>
+                            {/* Removed onClick from button as row is now clickable */}
+                            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
                               {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                             </button>
                             <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
