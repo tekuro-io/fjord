@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { login } from '../api/login/route'; // Adjust path as needed
+
 
 export default function LoginGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState('');
