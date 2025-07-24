@@ -48,7 +48,7 @@ interface InfoMessage {
 const columnHelper = createColumnHelper<StockItem>();
 
 const DELTA_THRESHOLD = 0.08;
-const MULTIPLIER_THRESHOLD = 2.5; // This constant is used for cell styling
+const MULTIPLIER_THRESHOLD = 4.5; // This constant is used for cell styling
 const DELTA_FLASH_THRESHOLD = 0.005; // Only flash if delta changes by more than this (0.5%)
 const PRICE_FLASH_THRESHOLD = 0.005; // Only flash price if it changes by more than 0.5%
 
