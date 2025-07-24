@@ -1,15 +1,21 @@
-
+// app/api/login/route.ts
 import { NextResponse } from 'next/server';
 
-const PASSWORD = 'stonks';
-
-export async function POST(req: Request) {
-  const formData = await req.formData();
+export async function POST(request: Request) {
+  const formData = await request.formData();
   const password = formData.get('password');
 
-  if (password === PASSWORD) {
+  if (password === 'stonks') {
     const response = NextResponse.json({ success: true });
-    response.headers.append('Set-Cookie', `auth=true; Path=/; HttpOnly; SameSite=Strict; Max-Age=21600; Secure`);
+    response.cookies.set({
+      name: 'auth',
+      value: 'true',
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: true,
+      maxAge: 60 * 60 * 6, // 6 hours
+      path: '/',
+    });
     return response;
   }
 

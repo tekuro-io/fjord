@@ -9,29 +9,27 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Optional: check cookie client-side (not secure, only for UX)
     if (document.cookie.includes('auth=true')) {
       setAuthenticated(true);
     }
   }, []);
 
-    const handleLogin = async () => {
+  const handleLogin = async () => {
     const formData = new FormData();
     formData.append('password', password);
 
     const res = await fetch('/api/login', {
-        method: 'POST',
-        body: formData,
+      method: 'POST',
+      body: formData,
     });
 
-    const result = await res.json();
+    const result: { success: boolean } = await res.json();
     if (result.success) {
-        setAuthenticated(true);
+      setAuthenticated(true);
     } else {
-        setError('Never seen a password as wrong as that one!');
+      setError('Wrong password, try again.');
     }
-    };
-
+  };
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       handleLogin();
