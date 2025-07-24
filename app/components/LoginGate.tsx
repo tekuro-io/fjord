@@ -16,20 +16,13 @@ const handleLogin = async () => {
     body: formData,
   });
 
-  if (res.redirected) {
-    window.location.href = res.url;
-    return;
-  }
+  const result = await res.json();
 
-  try {
-    const result = await res.json();
-    if (result.success) {
-      setAuthenticated(true);
-    } else {
-      setError('Never seen a password as wrong as that one.');
-    }
-  } catch {
-    setError('Unexpected error during login.');
+  if (result.success) {
+
+    window.location.href = '/';
+  } else {
+    setError('Never seen a password as wrong as that one.');
   }
 };
 
