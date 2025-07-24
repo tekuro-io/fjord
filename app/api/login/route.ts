@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   const password = formData.get('password');
 
   if (password === 'stonks') {
-    const response = NextResponse.redirect(new URL('/', request.url));
+    const response = NextResponse.json({ success: true });
     response.cookies.set('auth', 'true', {
       httpOnly: true,
       sameSite: 'lax',
