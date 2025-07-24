@@ -17,3 +17,7 @@ export function middleware(req: NextRequest) {
 
   return NextResponse.next(); // allow access to /login
 }
+
+export const config = {
+  matcher: ['/',  '/login'], // Add other paths as needed
+};
