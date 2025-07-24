@@ -1045,7 +1045,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between">
             <label htmlFor="multiplier-filter-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-              Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(4.5)}</span>
+              Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
             </label>
             <input
               id="multiplier-filter-slider"
