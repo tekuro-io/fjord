@@ -1,19 +1,15 @@
-// app/api/login/route.ts
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const formData = await request.formData();
   const password = formData.get('password');
 
   if (password === 'stonks') {
-    const response = NextResponse.json({ success: true });
-    response.cookies.set({
-      name: 'auth',
-      value: 'true',
+    const response = NextResponse.redirect(new URL('/', request.url));
+    response.cookies.set('auth', 'true', {
       httpOnly: true,
-      sameSite: 'strict',
-      secure: true,
-      maxAge: 60 * 60 * 6, // 6 hours
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 6,
       path: '/',
     });
     return response;
