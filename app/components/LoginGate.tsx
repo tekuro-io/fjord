@@ -32,7 +32,7 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
   if (authenticated) return <>{children}</>;
 
   return (
-    <div className="min-h-screen flex items-start justify-center bg-gray-900 px-4 text-white pt-32">
+    <div className="min-h-screen flex items-start justify-center px-4 text-white pt-32">
       <div className="bg-gray-800 p-8 rounded-md w-full max-w-sm shadow-lg">
         <h1 className="text-2xl font-bold mb-4 text-accent-blue-500 text-center">
           Login
