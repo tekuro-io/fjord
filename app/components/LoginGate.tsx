@@ -34,7 +34,7 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex items-start justify-center px-4 text-white pt-32">
       <div className="bg-gray-800 p-8 rounded-md w-full max-w-sm shadow-lg">
-        <h1 className="text-2xl font-bold mb-4 text-accent-blue-500 text-center">
+        <h1 className="text-2xl font-bold mb-4 text-blue-400 text-center">
           Login
         </h1>
         <input
@@ -47,7 +47,7 @@ export default function LoginGate({ children }: { children: React.ReactNode }) {
         />
         <button
           onClick={handleLogin}
-          className="w-full bg-accent-blue-500 hover:bg-blue-600 transition font-semibold py-2 rounded"
+          className="w-full bg-blue-400 hover:bg-blue-600 transition font-semibold py-2 rounded"
         >
           Enter
         </button>
