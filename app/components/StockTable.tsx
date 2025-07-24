@@ -47,8 +47,6 @@ interface InfoMessage {
 
 const columnHelper = createColumnHelper<StockItem>();
 
-const DELTA_THRESHOLD = 0.08;
-const MULTIPLIER_THRESHOLD = 4.5; // This constant is used for cell styling
 const DELTA_FLASH_THRESHOLD = 0.005; // Only flash if delta changes by more than this (0.5%)
 const PRICE_FLASH_THRESHOLD = 0.005; // Only flash price if it changes by more than 0.5%
 
@@ -1047,12 +1045,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </div>
           <div className="flex flex-col sm:flex-row items-center justify-between">
             <label htmlFor="multiplier-filter-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-              Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
+              Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(4.5)}</span>
             </label>
             <input
               id="multiplier-filter-slider"
               type="range"
-              min="0"
+              min="4.5"
               max="20"
               step="0.1"
               value={multiplierFilter}
