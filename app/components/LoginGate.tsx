@@ -7,28 +7,32 @@ export default function LoginGate({ children }: { children?: React.ReactNode }) 
   const [authenticated, setAuthenticated] = useState(false);
   const [error, setError] = useState('');
 
-  const handleLogin = async () => {
-    const formData = new FormData();
-    formData.append('password', password);
+const handleLogin = async () => {
+  const formData = new FormData();
+  formData.append('password', password);
 
-    const res = await fetch('/api/login', {
-      method: 'POST',
-      body: formData,
-    });
+  const res = await fetch('/api/login', {
+    method: 'POST',
+    body: formData,
+  });
 
-    if (res.redirected) {
-      // cookie is set server-side; just reload to let middleware kick in
-      window.location.href = res.url;
-      return;
-    }
+  if (res.redirected) {
+    window.location.href = res.url;
+    return;
+  }
 
+  try {
     const result = await res.json();
     if (result.success) {
-      setAuthenticated(true); // fallback if redirect fails
+      setAuthenticated(true);
     } else {
-      setError('Wrong password, try again.');
+      setError('Never seen a password as wrong as that one.');
     }
-  };
+  } catch {
+    setError('Unexpected error during login.');
+  }
+};
+
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
