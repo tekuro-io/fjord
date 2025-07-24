@@ -4,6 +4,8 @@ import Image from 'next/image'
 import Spinner from './components/Spinner';
 import { CommitLink } from './components/CommitLink';
 import TradingViewWrapper from './components/TradingViewWrapper';
+import LoginGate from "./components/LoginGate";
+
 
 export default async function HomePage() {
     return (
@@ -17,13 +19,15 @@ export default async function HomePage() {
                     className='inline-block mr-3 my-2'
                 />
             </h1>
-            <TradingViewWrapper />
-            <Suspense fallback={<Spinner />}>
-                <StockTableLoader />
-            </Suspense>
-            <footer className="w-full pt-8 py-3 text-center text-sm text-gray-400 font-sans tracking-wide mt-8">
-                <CommitLink />
-            </footer>
+            <LoginGate>
+                <TradingViewWrapper />
+                <Suspense fallback={<Spinner />}>
+                    <StockTableLoader />
+                </Suspense>
+                <footer className="w-full pt-8 py-3 text-center text-sm text-gray-400 font-sans tracking-wide mt-8">
+                    <CommitLink />
+                </footer>
+            </LoginGate>
         </main>
     );
 }
