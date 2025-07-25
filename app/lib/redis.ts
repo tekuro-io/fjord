@@ -58,6 +58,7 @@ function getRedisClient(): Promise<Redis> {
 
 
 export async function getStockDataFromRedis(): Promise<StockItem[]> {
+    return []
     const end = redisScannerReadDuration.startTimer();
     try {
         const redis = await getRedisClient()

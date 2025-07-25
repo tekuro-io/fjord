@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Spinner from './components/Spinner';
 import { CommitLink } from './components/CommitLink';
 import TradingViewWrapper from './components/TradingViewWrapper';
+import ScreenShareSender from './components/GptAimBot';
 
 export default async function HomePage() {
     return (
@@ -18,6 +19,7 @@ export default async function HomePage() {
                 />
             </h1>
             <TradingViewWrapper />
+            <ScreenShareSender />
             <Suspense fallback={<Spinner />}>
                 <StockTableLoader />
             </Suspense>
