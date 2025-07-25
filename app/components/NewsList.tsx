@@ -9,7 +9,7 @@ export type NewsItem = {
   description: string
   id: string
   image_url: string
-  insights: any
+  insights?: unknown
   keywords: string[]
   published_utc?: string
   publisher: {
