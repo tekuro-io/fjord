@@ -87,19 +87,19 @@ export default function Sentiment({ ticker }: SentimentProps) {
     if (loading) return <SpinnerWithMessage status={loadingMessage} />
 
     return (
-        <div className="relative">
-            {/* TimeAgo in top-right */}
-            {isDone && (
-              <div className="absolute top-0 right-0 text-gray-400 text-xs">
-                <TimeAgo timestamp={Number(ranAtBuffer)} />
-              </div>
-            )}
+      <div className="flex flex-col space-y-4">
+        {/* Header row with TimeAgo aligned right */}
+        {isDone && (
+          <div className="flex justify-end">
+            <TimeAgo timestamp={Number(ranAtBuffer)} />
+          </div>
+        )}
 
-            {/* Centered content */}
-            <div className="flex flex-col items-center text-center">
-              <ReactMarkdown>{markdownBuffer}</ReactMarkdown>
-              {newsDone && <NewsList news={newsItems} />}
-            </div>
+        {/* Centered content */}
+        <div className="flex flex-col items-center text-center">
+          <ReactMarkdown>{markdownBuffer}</ReactMarkdown>
+          {newsDone && <NewsList news={newsItems} />}
         </div>
+      </div>
     );
 }
