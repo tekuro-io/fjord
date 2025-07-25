@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import SpinnerWithMessage from './SpinnerWithMessage';
 import ReactMarkdown from 'react-markdown';
 import NewsList, { NewsItem } from './NewsList';
+import TimeAgo from './TimeAgo';
 
 interface SentimentProps {
     ticker: string;
@@ -19,6 +20,7 @@ export default function Sentiment({ ticker }: SentimentProps) {
     const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
     const [ranAtBuffer, setRanAtBuffer] = useState<string>('');
     const [newsDone, setNewsDone] = useState<boolean>(false);
+    const [isDone, setIsDone] = useState<boolean>(false);
 
     useEffect(() => {
         const upperTicker = ticker.toUpperCase();
@@ -35,6 +37,7 @@ export default function Sentiment({ ticker }: SentimentProps) {
             } else if (data === '[MODEL]') {
                 setLoadingMessage("Determining sentiment...")
             } else if (data === '[DONE]') {
+                setIsDone(true)
                 eventSource.close();
             } else if (data.startsWith('[ERROR]')) {
             setErrorMessage(data)
@@ -85,7 +88,7 @@ export default function Sentiment({ ticker }: SentimentProps) {
 
     return (
         <div>
-            {ranAtBuffer}
+            {isDone && <TimeAgo timestamp={Number(ranAtBuffer)} />}
             <ReactMarkdown>
                 {markdownBuffer}
             </ReactMarkdown>
