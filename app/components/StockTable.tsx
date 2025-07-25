@@ -1144,7 +1144,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         </div>
                       </td>
                     </tr>
-                  
+                  )}
                 </React.Fragment>
               ))
             )}
