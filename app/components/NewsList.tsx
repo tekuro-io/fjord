@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import ExpandableDescription from './ExpandableDescription'
+import SafeImage from './SafeImage'
 
 export type NewsItem = {
   amp_url: string
@@ -40,7 +41,7 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
           {/* Thumbnail */}
           <div className="flex-shrink-0 mb-4 sm:mb-0 sm:mr-4">
             {item.image_url && (
-              <img
+              <SafeImage
                 src={item.image_url}
                 alt={item.title}
                 width={160}
@@ -56,7 +57,7 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
             {item.publisher?.name && (
               <div className="flex items-center mb-1">
                 {item.publisher.favicon_url && (
-                  <img
+                  <SafeImage
                     src={item.publisher.favicon_url}
                     alt={item.publisher.name}
                     width={16}
