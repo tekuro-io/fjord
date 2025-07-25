@@ -16,6 +16,7 @@ import {
 
 import * as Tone from 'tone';
 import LiveChart from "./LiveChart"; // Changed import from ChartComponent to LiveChart
+import Sentiment from "./Sentiment";
 
 // Define the interface for your stock data structure
 export interface StockItem {
@@ -1139,10 +1140,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                             stockData={row.original}
                             initialChartData={stockChartHistory.get(row.original.ticker) || []}
                           />
+                          <Sentiment ticker={row.original.ticker} />
                         </div>
                       </td>
                     </tr>
-                  )}
+                  
                 </React.Fragment>
               ))
             )}

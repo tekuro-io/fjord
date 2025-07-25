@@ -10,10 +10,15 @@ interface SentimentProps {
 
 export default function Sentiment({ ticker }: SentimentProps) {
     const [loading, setLoading] = useState<boolean>(true);
+    const [modelStreaming, setModelStreaming] = useState<boolean>(false);
+    const [newsStreaming, setNewsStreaming] = useState<boolean>(false);
+    const [ranAtStreaming, setRanAtStreaming] = useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = useState<string>("Connecting...");
     const [error, setError] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string>("");
     const [markdownBuffer, setMarkdownBuffer] = useState<string>('');
+    const [newsBuffer, setNewsBuffer] = useState<string>('');
+    const [ranAtBuffer, setRanAtBuffer] = useState<string>('');
 
     useEffect(() => {
         const upperTicker = ticker.toUpperCase();
@@ -38,7 +43,27 @@ export default function Sentiment({ ticker }: SentimentProps) {
                 eventSource.close();
             } else {
                 setLoading(false)
-                setMarkdownBuffer((prev) => prev + data);
+                if (data === '[MODELBEGIN]') {
+                    setModelStreaming(true)
+                    setNewsStreaming(false)
+                    setRanAtStreaming(false)
+                } else if (data === '[TICKNEWS]') {
+                    setModelStreaming(false)
+                    setNewsStreaming(true)
+                    setRanAtStreaming(false)
+                } else if (data === '[RANAT]') {
+                    setModelStreaming(false)
+                    setNewsStreaming(false)
+                    setRanAtStreaming(true)
+                }
+
+                if (modelStreaming) {
+                    setMarkdownBuffer((prev) => prev + data);
+                } else if (newsStreaming) {
+                    setNewsBuffer((prev) => prev + data);
+                } else if (ranAtStreaming) {
+                    setRanAtBuffer((prev) => prev + data);
+                }
             }
         };
 
@@ -58,8 +83,12 @@ export default function Sentiment({ ticker }: SentimentProps) {
     if (loading) return <SpinnerWithMessage status={loadingMessage} />
 
     return (
-        <ReactMarkdown>
-            {markdownBuffer}
-        </ReactMarkdown>
+        <div>
+            <ReactMarkdown>
+                {markdownBuffer}
+            </ReactMarkdown>
+            {newsBuffer}
+            {ranAtBuffer}
+        </div>
     );
 }
