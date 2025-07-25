@@ -73,8 +73,10 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
                 >
                   {item.publisher.name}
                 </a>
-                {item.published_utc && (
-                    <p className="text-gray-400 text-sm">{item.published_utc}</p>
+                {typeof item.published_utc === 'string' && (
+                  <p className="text-gray-400 text-sm">
+                    {item.published_utc.slice(0, 10)}
+                  </p>
                 )}
               </div>
             )}
