@@ -93,7 +93,7 @@ export default function Sentiment({ ticker }: SentimentProps) {
         )}
 
         <div className="flex flex-col items-center text-center">
-          <ReactMarkdown>{markdownBuffer}</ReactMarkdown>
+          <ReactMarkdown>{markdownBuffer.replace(/\n/g, '  \n')}</ReactMarkdown>
           <NewsList news={newsItems} />
         </div>
       </div>
