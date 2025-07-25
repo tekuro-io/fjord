@@ -73,6 +73,9 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
                 >
                   {item.publisher.name}
                 </a>
+                {item.published_utc && (
+                    <p className="text-gray-400 text-sm">{item.published_utc}</p>
+                )}
               </div>
             )}
 
@@ -85,11 +88,6 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
             >
               {item.title}
             </a>
-
-            {/* Description */}
-            {item.description && (
-                <ExpandableDescription text={item.description} />
-            )}
 
             {/* Tags */}
             <div className="mt-2 flex flex-wrap gap-2">
