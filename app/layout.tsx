@@ -15,6 +15,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Fjord",
   description: "Taste the Glacier",
+  openGraph: {
+    title: "Fjord",
+    description: "Taste the Glacier",
+    url: "https://github.com/user-attachments/assets/e79fd9fc-57ea-47ad-89e0-79c7c25b814f", // must be full URL
+    siteName: "Fjord",
+    type: "website",
+    locale: "en_US",
+  },
+
 };
 
 export default function RootLayout({
