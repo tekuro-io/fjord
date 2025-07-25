@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import SpinnerWithMessage from './SpinnerWithMessage';
 import ReactMarkdown from 'react-markdown';
+import NewsList, { NewsItem } from './NewsList';
 
 interface SentimentProps {
     ticker: string;
@@ -15,8 +16,9 @@ export default function Sentiment({ ticker }: SentimentProps) {
     const [error, setError] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string>("");
     const [markdownBuffer, setMarkdownBuffer] = useState<string>('');
-    const [newsBuffer, setNewsBuffer] = useState<string>('');
+    const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
     const [ranAtBuffer, setRanAtBuffer] = useState<string>('');
+    const [newsDone, setNewsDone] = useState<boolean>(false);
 
     useEffect(() => {
         const upperTicker = ticker.toUpperCase();
@@ -42,6 +44,7 @@ export default function Sentiment({ ticker }: SentimentProps) {
             } else {
                 setLoading(false)
                 if (data === '[MODELBEGIN]') {
+                    setNewsDone(true)
                     streamingRef.current = "model";
                 } else if (data === '[TICKNEWS]') {
                     streamingRef.current = "news";
@@ -52,7 +55,12 @@ export default function Sentiment({ ticker }: SentimentProps) {
                     if (mode === "model") {
                         setMarkdownBuffer((prev) => prev + data);
                     } else if (mode === "news") {
-                        setNewsBuffer((prev) => prev + data);
+                        try {
+                          const item: NewsItem = JSON.parse(event.data);
+                          setNewsItems(prev => [...prev, item]);
+                        } catch (err) {
+                          console.error('Failed to parse SSE news item:', err);
+                        }
                     } else if (mode === "ranat") {
                         setRanAtBuffer((prev) => prev + data);
                     }
@@ -77,10 +85,10 @@ export default function Sentiment({ ticker }: SentimentProps) {
 
     return (
         <div>
+            {newsDone && <NewsList news={newsItems} />}
             <ReactMarkdown>
                 {markdownBuffer}
             </ReactMarkdown>
-            {newsBuffer}
             {ranAtBuffer}
         </div>
     );
