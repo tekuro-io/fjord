@@ -19,7 +19,6 @@ export default function Sentiment({ ticker }: SentimentProps) {
     const [markdownBuffer, setMarkdownBuffer] = useState<string>('');
     const [newsItems, setNewsItems] = useState<NewsItem[]>([]);
     const [ranAtBuffer, setRanAtBuffer] = useState<string>('');
-    const [newsDone, setNewsDone] = useState<boolean>(false);
     const [isDone, setIsDone] = useState<boolean>(false);
 
     useEffect(() => {
@@ -47,7 +46,6 @@ export default function Sentiment({ ticker }: SentimentProps) {
             } else {
                 setLoading(false)
                 if (data === '[MODELBEGIN]') {
-                    setNewsDone(true)
                     streamingRef.current = "model";
                 } else if (data === '[TICKNEWS]') {
                     streamingRef.current = "news";
@@ -88,17 +86,15 @@ export default function Sentiment({ ticker }: SentimentProps) {
 
     return (
       <div className="flex flex-col space-y-4">
-        {/* Header row with TimeAgo aligned right */}
         {isDone && (
           <div className="flex justify-end">
             <TimeAgo timestamp={Number(ranAtBuffer)} />
           </div>
         )}
 
-        {/* Centered content */}
         <div className="flex flex-col items-center text-center">
           <ReactMarkdown>{markdownBuffer}</ReactMarkdown>
-          {newsDone && <NewsList news={newsItems} />}
+          <NewsList news={newsItems} />
         </div>
       </div>
     );

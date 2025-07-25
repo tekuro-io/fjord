@@ -1,20 +1,34 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 type TimeAgoProps = {
-  timestamp: number;
+  timestamp: number; // unix millis
 };
 
 export default function TimeAgo({ timestamp }: TimeAgoProps) {
-  const now = Date.now();
-  const diff = Math.floor((now - timestamp) / 1000); // in seconds
+  const [relative, setRelative] = useState('');
 
-  let display: string;
-  if (diff < 5) display = 'just now';
-  else if (diff < 60) display = `${diff} seconds ago`;
-  else if (diff < 3600) display = `${Math.floor(diff / 60)} minutes ago`;
-  else if (diff < 86400) display = `${Math.floor(diff / 3600)} hours ago`;
-  else if (diff < 604800) display = `${Math.floor(diff / 86400)} days ago`;
-  else display = new Date(timestamp).toLocaleDateString();
+  useEffect(() => {
+    const update = () => {
+      const now = Date.now();
+      const diff = Math.floor((now - timestamp) / 1000); // seconds
 
-  return <span>Last fetched: {display}</span>;
+      if (diff < 5) return setRelative('just now');
+      if (diff < 60) return setRelative(`${diff} seconds ago`);
+      if (diff < 3600) return setRelative(`${Math.floor(diff / 60)} minutes ago`);
+      if (diff < 86400) return setRelative(`${Math.floor(diff / 3600)} hours ago`);
+      if (diff < 604800) return setRelative(`${Math.floor(diff / 86400)} days ago`);
+
+      const date = new Date(timestamp);
+      return setRelative(date.toLocaleDateString());
+    };
+
+    update();
+
+    const interval = setInterval(update, 10000); // update every 10s
+    return () => clearInterval(interval);
+  }, [timestamp]);
+
+  return <span>{relative}</span>;
 }
