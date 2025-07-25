@@ -14,7 +14,7 @@ export default function ExpandableDescription({ text, maxLength = 150 }: Expanda
 
   return (
     <p
-      className="mt-1 text-sm text-gray-300 cursor-pointer hover:underline"
+      className="mt-1 text-sm text-gray-300 cursor-pointer"
       onClick={() => setExpanded((prev) => !prev)}
     >
       {displayText}
