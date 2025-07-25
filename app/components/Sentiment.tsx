@@ -68,7 +68,7 @@ export default function Sentiment({ ticker }: SentimentProps) {
         };
 
         eventSource.onerror = (err) => {
-            setErrorMessage(`SSE error: ${err}`)
+            setErrorMessage(`SSE error: ${JSON.stringify(err)}`)
             setLoading(false)
             setError(true)
             eventSource.close();
