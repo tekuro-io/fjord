@@ -14,12 +14,16 @@ export default function ExpandableDescription({ text, maxLength = 150 }: Expanda
 
   return (
     <p
-      className="mt-1 text-sm text-gray-300 cursor-pointer"
+      className={`mt-1 text-sm cursor-pointer transition-all duration-200 ease-in-out text-left ${
+        expanded
+          ? 'text-gray-100 leading-relaxed'
+          : 'text-gray-300 line-clamp-3'
+      }`}
       onClick={() => setExpanded((prev) => !prev)}
     >
       {displayText}
       {isTruncated && (
-        <span className="ml-1 text-blue-400">
+        <span className="ml-1 text-blue-400 underline">
           {expanded ? '(less)' : '(more)'}
         </span>
       )}
