@@ -2,6 +2,7 @@
 
 import Image from 'next/image'
 import { useState } from 'react'
+import ExpandableDescription from './ExpandableDescription'
 
 export type NewsItem = {
   amp_url: string
@@ -86,9 +87,7 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
 
             {/* Description */}
             {item.description && (
-              <p className="mt-1 text-sm text-gray-300">
-                {item.description}
-              </p>
+                <ExpandableDescription text={item.description} />
             )}
 
             {/* Tags */}
