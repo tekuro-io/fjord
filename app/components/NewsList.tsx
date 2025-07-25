@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { useState } from 'react'
 
 export type NewsItem = {
   amp_url: string
@@ -24,9 +25,13 @@ export type NewsItem = {
 
 export default function NewsList({ news }: { news: NewsItem[] }) {
   if (!Array.isArray(news)) return null
+  const sortedNews = [...news].sort((a, b) =>
+    new Date(b.published_utc ?? 0).getTime() - new Date(a.published_utc ?? 0).getTime()
+  )
+  const topThree = sortedNews.slice(0, 3)
   return (
     <div className="mt-4 space-y-4">
-      {news.map((item) => (
+      {topThree.map((item) => (
         <div
           key={item.id}
           className="flex flex-col sm:flex-row bg-[#111827] rounded-xl p-4 shadow-md border border-[#1f2937] hover:border-[#374151] transition"
@@ -34,7 +39,7 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
           {/* Thumbnail */}
           <div className="flex-shrink-0 mb-4 sm:mb-0 sm:mr-4">
             {item.image_url && (
-              <Image
+              <img
                 src={item.image_url}
                 alt={item.title}
                 width={160}
@@ -50,7 +55,7 @@ export default function NewsList({ news }: { news: NewsItem[] }) {
             {item.publisher?.name && (
               <div className="flex items-center mb-1">
                 {item.publisher.favicon_url && (
-                  <Image
+                  <img
                     src={item.publisher.favicon_url}
                     alt={item.publisher.name}
                     width={16}

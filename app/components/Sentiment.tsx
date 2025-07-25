@@ -85,11 +85,11 @@ export default function Sentiment({ ticker }: SentimentProps) {
 
     return (
         <div>
-            {newsDone && <NewsList news={newsItems} />}
+            {ranAtBuffer}
             <ReactMarkdown>
                 {markdownBuffer}
             </ReactMarkdown>
-            {ranAtBuffer}
+            {newsDone && <NewsList news={newsItems} />}
         </div>
     );
 }
