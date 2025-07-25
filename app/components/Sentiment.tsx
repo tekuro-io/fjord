@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import SpinnerWithMessage from './SpinnerWithMessage';
 import ReactMarkdown from 'react-markdown';
 
@@ -10,9 +10,7 @@ interface SentimentProps {
 
 export default function Sentiment({ ticker }: SentimentProps) {
     const [loading, setLoading] = useState<boolean>(true);
-    const [modelStreaming, setModelStreaming] = useState<boolean>(false);
-    const [newsStreaming, setNewsStreaming] = useState<boolean>(false);
-    const [ranAtStreaming, setRanAtStreaming] = useState<boolean>(false);
+    const streamingRef = useRef<"model" | "news" | "ranat" | null>(null);
     const [loadingMessage, setLoadingMessage] = useState<string>("Connecting...");
     const [error, setError] = useState<boolean>(false);
     const [errorMessage, setErrorMessage] = useState<string>("");
@@ -44,25 +42,20 @@ export default function Sentiment({ ticker }: SentimentProps) {
             } else {
                 setLoading(false)
                 if (data === '[MODELBEGIN]') {
-                    setModelStreaming(true)
-                    setNewsStreaming(false)
-                    setRanAtStreaming(false)
+                    streamingRef.current = "model";
                 } else if (data === '[TICKNEWS]') {
-                    setModelStreaming(false)
-                    setNewsStreaming(true)
-                    setRanAtStreaming(false)
+                    streamingRef.current = "news";
                 } else if (data === '[RANAT]') {
-                    setModelStreaming(false)
-                    setNewsStreaming(false)
-                    setRanAtStreaming(true)
-                }
-
-                if (modelStreaming) {
-                    setMarkdownBuffer((prev) => prev + data);
-                } else if (newsStreaming) {
-                    setNewsBuffer((prev) => prev + data);
-                } else if (ranAtStreaming) {
-                    setRanAtBuffer((prev) => prev + data);
+                    streamingRef.current = "ranat";
+                } else {
+                    const mode = streamingRef.current;
+                    if (mode === "model") {
+                        setMarkdownBuffer((prev) => prev + data);
+                    } else if (mode === "news") {
+                        setNewsBuffer((prev) => prev + data);
+                    } else if (mode === "ranat") {
+                        setRanAtBuffer((prev) => prev + data);
+                    }
                 }
             }
         };
