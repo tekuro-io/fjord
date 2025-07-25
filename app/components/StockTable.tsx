@@ -75,7 +75,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     { id: "multiplier", desc: true }, // Secondary sort: multiplier descending
   ]);
   const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
-  const [multiplierFilter, setMultiplierFilter] = React.useState(4.5); // Re-added multiplier filter state, default 1.0
+  const [multiplierFilter, setMultiplierFilter] = React.useState(2.0); // Re-added multiplier filter state, default 1.0
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
 
   const [isAlertActive, setIsAlertActive] = React.useState(false);
@@ -1051,7 +1051,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             <input
               id="multiplier-filter-slider"
               type="range"
-              min="2.5"
+              min="1.0"
               max="20"
               step="0.1"
               value={multiplierFilter}
