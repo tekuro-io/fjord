@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ChartComponent, ChartHandle } from './Chart';
-import { StockItem, ChartDataPoint } from './StockTable';
+import { StockItem, ChartDataPoint } from './stock-table';
 
 interface LiveChartProps {
   stockData: StockItem;

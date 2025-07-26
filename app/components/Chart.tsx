@@ -4,7 +4,7 @@ import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, Busine
 import React, { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
 
 // Import ChartDataPoint from StockTable to ensure consistency across components
-import { ChartDataPoint } from './StockTable';
+import { ChartDataPoint } from './stock-table';
 
 interface ChartColors {
     backgroundColor?: string;

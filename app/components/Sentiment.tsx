@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import SpinnerWithMessage from './SpinnerWithMessage';
+import SpinnerWithMessage from './ui/SpinnerWithMessage';
 import ReactMarkdown from 'react-markdown';
 import NewsList, { NewsItem } from './NewsList';
 import TimeAgo from './TimeAgo';

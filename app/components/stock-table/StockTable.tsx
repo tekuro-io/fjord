@@ -1,4 +1,4 @@
-'use client'; // This must be the very first line for client components
+'use client';
 
 import React from "react";
 import {
@@ -9,118 +9,66 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import {
-  SlidersHorizontal, Bell, BellRing, ArrowUp, ArrowDown, X,
-  Tag, DollarSign, Percent, BarChart2, Activity, WifiOff, Search, Clock,
-  ChevronRight, ChevronDown, Frown, Lock, Unlock // Imported Lock and Unlock icons
+  ArrowUp, ArrowDown, X, Tag, DollarSign, Percent, BarChart2, Activity,
+  ChevronRight, ChevronDown, Frown
 } from 'lucide-react';
 
 import * as Tone from 'tone';
-import LiveChart from "./LiveChart"; // Changed import from ChartComponent to LiveChart
-import Sentiment from "./Sentiment";
-
-// Define the interface for your stock data structure
-export interface StockItem {
-  ticker: string;
-  prev_price: number | null;
-  price: number | null;
-  delta: number | null; // This will now be recalculated on the client
-  float: number | null;
-  mav10: number | null;
-  volume: number | null;
-  multiplier: number | null;
-  timestamp?: string;
-  first_seen?: string;
-  priceFlashDirection?: 'up' | 'down'; // New: To indicate price flash direction
-}
-
-// Define a type for historical chart data points (Exported for LiveChart to use)
-export interface ChartDataPoint {
-  time: number; // Unix timestamp (milliseconds)
-  value: number; // Price value
-}
-
-// Define an interface for the informational message type
-interface InfoMessage {
-  type: string; // Can be 'info', 'ack_subscribe', or other control types
-  message: string;
-  topic?: string; // Optional, for ack_subscribe
-}
+import LiveChart from "../LiveChart";
+import Sentiment from "../Sentiment";
+import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
+import { useMarketStatus } from "./hooks";
+import { StockItem, ChartDataPoint, InfoMessage } from "./types";
+import { 
+  DELTA_FLASH_THRESHOLD, 
+  PRICE_FLASH_THRESHOLD, 
+  MAX_CHART_HISTORY_POINTS,
+  calculateDelta,
+  formatCurrency,
+  formatDateTime,
+  formatLargeNumber
+} from "./utils";
 
 const columnHelper = createColumnHelper<StockItem>();
-
-const DELTA_FLASH_THRESHOLD = 0.005; // Only flash if delta changes by more than this (0.5%)
-const PRICE_FLASH_THRESHOLD = 0.005; // Only flash price if it changes by more than 0.5%
-
-// Max data points to keep in the sliding window for each stock's chart history
-const MAX_CHART_HISTORY_POINTS = 100; // Keep last 100 data points for live charts
-
-// Helper function to calculate delta consistently
-const calculateDelta = (currentPrice: number | null, prevPrice: number | null): number | null => {
-  if (currentPrice == null || prevPrice == null) {
-    return null; // Cannot calculate if either price is missing
-  }
-  if (prevPrice === 0) {
-    // If previous price was 0, and current price is not null, delta is effectively infinite.
-    // Return 0 for display, as a percentage change from 0 is not well-defined for display.
-    return 0;
-  }
-  return (currentPrice - prevPrice) / prevPrice;
-};
 
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
   const [sorting, setSorting] = React.useState([
-    { id: "delta", desc: true }, // Primary sort: delta descending
-    { id: "multiplier", desc: true }, // Secondary sort: multiplier descending
+    { id: "delta", desc: true },
+    { id: "multiplier", desc: true },
   ]);
-  const [numStocksToShow, setNumStocksToShow] = React.useState(20); // Renamed and initialized for "Top N"
-  const [multiplierFilter, setMultiplierFilter] = React.useState(2.0); // Re-added multiplier filter state, default 1.0
+  const [numStocksToShow, setNumStocksToShow] = React.useState(20);
+  const [multiplierFilter, setMultiplierFilter] = React.useState(2.0);
   const [showOptionsDrawer, setShowOptionsDrawer] = React.useState(false);
 
   const [isAlertActive, setIsAlertActive] = React.useState(false);
   const [alertSnapshotTickers, setAlertSnapshotTickers] = React.useState<string[]>([]);
   const [newStocksAlert, setNewStocksAlert] = React.useState<StockItem[]>([]);
-
   const [globalFilter, setGlobalFilter] = React.useState('');
-
-  const [currentTimeET, setCurrentTimeET, ] = React.useState('');
-  const [marketStatus, setMarketStatus] = React.useState('');
-
-  const [connectionStatus, setConnectionStatus] = React.useState('connected');
-
+  const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'disconnected'>('connected');
   const [expandedRows, setExpandedRows] = React.useState<Set<string>>(new Set());
-
-  // New state for lock functionality
   const [isLocked, setIsLocked] = React.useState(false);
-  const [lockedTickers, setLockedTickers] = React.useState<Set<string>>(new Set()); // Stores tickers to display when locked
-
-  // New state for position tracking and movement indicators
+  const [lockedTickers, setLockedTickers] = React.useState<Set<string>>(new Set());
   const [previousPositions, setPreviousPositions] = React.useState<Map<string, number>>(new Map());
   const [positionMovements, setPositionMovements] = React.useState<Map<string, 'up' | 'down'>>(new Map());
-  const movementTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
   const [recentlyUpdatedStocks, setRecentlyUpdatedStocks] = React.useState<Set<string>>(new Set());
-  const recentUpdateTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
-
-  // New state for managing flash effect independently
   const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
-  const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store timers
-   // New state for managing price flash effect independently
   const [priceFlashingStates, setPriceFlashingStates] = React.useState<Map<string, 'up' | 'down'>>(new Map());
-  const priceFlashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store price flash timers
-
-  // New state: Map to store sliding window of chart data for each ticker
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
-
-  const synthRef = React.useRef<Tone.Synth | null>(null);
-  const wsRef = React.useRef<WebSocket | null>(null); // New: WebSocket reference
-  const [wsUrl, setWsUrl] = React.useState<string | null>(null); // State for WebSocket URL
-
-  // State to hold the list of tickers to subscribe to
-  // Initialize directly from initialData prop
+  const [wsUrl, setWsUrl] = React.useState<string | null>(null);
   const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>(
     initialData.map(item => item.ticker).filter(Boolean) as string[]
   );
+  
+  const { currentTimeET, marketStatus } = useMarketStatus();
+  
+  const synthRef = React.useRef<Tone.Synth | null>(null);
+  const wsRef = React.useRef<WebSocket | null>(null);
+  const movementTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const recentUpdateTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const priceFlashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Helper function to toggle row expansion
   const toggleRowExpansion = React.useCallback((rowId: string) => {
@@ -135,58 +83,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     });
   }, []);
 
-  const getMarketStatus = () => {
-    const now = new Date();
-    try {
-      const etFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });
-      const [etHours, etMinutes] = etFormatter.format(now).split(':').map(Number);
-
-      const dayOfWeek = now.getDay();
-
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return 'Market Closed';
-      }
-
-      const currentMinutesET = etHours * 60 + etMinutes;
-
-      const preMarketOpen = 4 * 60;
-      const marketOpen = 9 * 60 + 30;
-      const marketClose = 16 * 60;
-      const extendedMarketClose = 20 * 60;
-
-      if (currentMinutesET >= marketOpen && currentMinutesET < marketClose) {
-        return 'Market Open';
-      } else if (currentMinutesET >= preMarketOpen && currentMinutesET < marketOpen) {
-        return 'Pre-market';
-      } else if (currentMinutesET >= marketClose && currentMinutesET < extendedMarketClose) {
-        return 'Extended Hours';
-      } else {
-        return 'Market Closed';
-      }
-    } catch (e) {
-      console.error("Error determining market status:", e);
-      return 'Unknown';
-    }
-  };
-
-  React.useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      const options: Intl.DateTimeFormatOptions = {
-        timeZone: 'America/New_York',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      };
-      setCurrentTimeET(new Intl.DateTimeFormat('en-US', options).format(now));
-      setMarketStatus(getMarketStatus());
-    };
-
-    updateClock();
-    const intervalId = setInterval(updateClock, 1000);
-    return () => clearInterval(intervalId);
-  }, []);
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && Tone && typeof Tone.Synth !== 'undefined') {
@@ -213,7 +109,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         }
         const data = await response.json();
         setWsUrl(data.websocketUrl);
-        console.log('StockTable: Fetched WebSocket URL:', data.websocketUrl);
       } catch (e) {
         console.error('StockTable: Failed to fetch WebSocket URL from API:', e);
         setWsUrl(null);
@@ -226,7 +121,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   // Centralized WebSocket connection management
   React.useEffect(() => {
     if (!wsUrl || tickersToSubscribe.length === 0) {
-      console.log("StockTable: WebSocket URL or tickers to subscribe not yet available, skipping connection.");
       return; // Wait for wsUrl and tickers to be fetched
     }
 
@@ -237,13 +131,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         wsRef.current = null;
       }
 
-      console.log(`StockTable: Attempting to connect to WebSocket at: ${wsUrl}`);
       const ws = new WebSocket(wsUrl); // Use the dynamically fetched URL
 
       wsRef.current = ws; // Store the new WebSocket instance in the ref
 
       ws.onopen = () => {
-        console.log("StockTable: WebSocket connected.");
         setConnectionStatus('connected');
         // Send individual subscription messages for each ticker
         tickersToSubscribe.forEach(ticker => {
@@ -252,7 +144,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             topic: `stock:${ticker.toUpperCase()}` // Subscribe to individual stock topics
           };
           ws.send(JSON.stringify(subscribeMessage));
-          console.log(`StockTable: Sent subscribe message for topic: stock:${ticker.toUpperCase()}`);
         });
       };
 
@@ -277,9 +168,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             // This handles 'info' messages, 'ack_subscribe' messages, and any other control messages
             const controlMsg = parsedData as InfoMessage; // Cast for easier access to properties
             if (controlMsg.type === 'ack_subscribe') {
-                console.log(`StockTable: Received acknowledgment for subscription to topic: ${controlMsg.topic} - ${controlMsg.message}`);
+                // Subscription acknowledged
             } else {
-                console.log(`StockTable: Received control message of type '${controlMsg.type}': ${controlMsg.message}`);
+                // Other control message received
             }
             return; // Skip further processing for control messages
           } else if (Array.isArray(parsedData)) {
@@ -422,7 +313,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       };
 
       ws.onclose = () => {
-        console.log("StockTable: WebSocket disconnected. Attempting to reconnect...");
         setConnectionStatus('disconnected');
         // Implement a reconnect strategy with a delay
         setTimeout(connectWebSocket, 5000); // Try to reconnect after 5 seconds
@@ -512,7 +402,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 actuallyChangedTickers.push(newStockFromRedis.ticker);
               }
 
-              console.log(`StockTable Debug (Redis Update Existing): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Current Live Price (retained): ${currentLivePrice}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
 
               updatedDataMap.set(newStockFromRedis.ticker, {
                 ...newStockFromRedis, // Spread new data from Redis to update all non-derived fields
@@ -566,7 +455,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               // New stocks are always considered changed
               actuallyChangedTickers.push(newStockFromRedis.ticker);
 
-              console.log(`StockTable Debug (Redis New Stock): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Price (from Redis): ${newStockFromRedis.price}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
 
               updatedDataMap.set(newStockFromRedis.ticker, {
                 ...newStockFromRedis, // Add all properties of the new stock
@@ -625,8 +513,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 synthRef.current.triggerAttackRelease("C5", "8n");
               }
             }
-            console.log(`StockTable Debug (Alert Check): newFilteredDataForAlert (tickers): [${newFilteredDataForAlert.map(s => s.ticker).join(', ')}]`);
-            console.log(`StockTable Debug (Alert Check): newlyAppearingStocks (tickers): [${newlyAppearingStocks.map(s => s.ticker).join(', ')}]`);
           }
 
           // Only track stocks that actually had meaningful changes for position indicators
@@ -678,33 +564,26 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       // This ensures the snapshot respects the current multiplier and global filters.
       const currentFilteredTickers = filteredData.map(stock => stock.ticker);
       setAlertSnapshotTickers(currentFilteredTickers);
-      console.log(`StockTable Debug (Alert Activation): alertSnapshotTickers set to: [${currentFilteredTickers.join(', ')}]`);
       setNewStocksAlert([]);
 
       if (typeof window !== 'undefined' && Tone && Tone.context && Tone.context.state !== 'running') {
         await Tone.start();
-        console.log('Tone.js audio context started');
       }
     } else {
       setAlertSnapshotTickers([]);
       setNewStocksAlert([]);
-      console.log("StockTable Debug (Alert Deactivation): alertSnapshotTickers cleared.");
     }
     setIsAlertActive(prev => !prev);
   };
 
-  // New function to toggle lock state - UNCHANGED from previous working version
   const toggleLock = () => {
     setIsLocked(prev => {
       if (!prev) { // If currently unlocked, about to lock
-        // Capture the tickers of the currently displayed rows (after filters and top N)
         const currentVisibleTickers = new Set(
           table.getRowModel().rows.slice(0, numStocksToShow).map(row => row.original.ticker)
         );
         setLockedTickers(currentVisibleTickers);
-        console.log(`StockTable Debug (Lock View): lockedTickers set to: [${Array.from(currentVisibleTickers).join(', ')}]`);
 
-        // Filter expandedRows to only include those present in the new lockedViewData
         const newExpandedRows = new Set<string>();
         currentVisibleTickers.forEach(ticker => {
           if (expandedRows.has(ticker)) {
@@ -713,10 +592,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         });
         setExpandedRows(newExpandedRows);
 
-      } else { // If currently locked, about to unlock
-        setLockedTickers(new Set()); // Clear locked tickers
-        console.log("StockTable Debug (Unlock View): lockedTickers cleared.");
-        // Expanded rows are intentionally kept, as per previous request
+      } else {
+        setLockedTickers(new Set());
       }
       return !prev;
     });
@@ -1037,178 +914,29 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
   }, []);
 
-  const stockTableStyles = React.useMemo(() => `
-    @keyframes delta-fade-highlight {
-      0% { color: inherit; }
-      50% { color: #86efac; }
-      100% { color: inherit; }
-    }
-
-    .delta-highlight-effect {
-      animation: delta-fade-highlight 1s ease-out;
-    }
-
-    @keyframes price-flash-up {
-      0% { color: inherit; }
-      50% { color: #4ade80; }
-      100% { color: inherit; }
-    }
-
-    @keyframes price-flash-down {
-      0% { color: inherit; }
-      50% { color: #ef4444; }
-      100% { color: inherit; }
-    }
-
-    .price-flash-up-effect {
-      animation: price-flash-up 1s ease-out;
-    }
-
-    .price-flash-down-effect {
-      animation: price-flash-down 1s ease-out;
-    }
-
-    @keyframes movement-bounce {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.3); }
-      100% { transform: scale(1); }
-    }
-
-    .movement-indicator {
-      animation: movement-bounce 0.6s ease-out;
-    }
-  `, []);
-
   return (
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
-      <style>{stockTableStyles}</style>
-      <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
-        <div className="flex items-center gap-3">
-
-          <BarChart2 className="w-6 h-6 text-blue-400" />
-          <h2 className="text-xl font-bold text-white">Momentum Scanner</h2>
-        </div>
-
-        <div className="flex items-center text-gray-400 text-sm">
-          {connectionStatus === 'connected' ? (
-            <span className="relative flex h-3 w-3 mr-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-            </span>
-          ) : (
-            <span className="relative flex h-3 w-3 mr-2">
-              <WifiOff className="w-4 h-4 text-red-500" />
-            </span>
-          )}
-          <span>
-            {connectionStatus === 'connected' ? 'Live Data Connected' : 'Connection Lost'}
-          </span>
-        </div>
-      </div>
-
-      {/* Controls Section (Search, Filters, Alerts, Clock and Market Status) */}
-      <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4">
-        <div className="relative flex items-center w-full sm:w-48 mb-4 sm:mb-0">
-          <Search className="absolute left-2 w-4 h-4 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={globalFilter || ''}
-            onChange={e => setGlobalFilter(e.target.value)}
-            className="w-full pl-8 pr-2 py-1 bg-gray-900 text-white rounded-md border border-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
-          />
-        </div>
-
-        <div className="flex space-x-2 sm:space-x-4 mb-4 sm:mb-0 w-full sm:w-auto justify-center">
-          <button
-            onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
-            className="px-2 py-1 bg-gray-600 hover:bg-gray-700 text-white font-semibold rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm"
-          >
-            <span className="hidden md:inline-block">{showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}</span>
-            <span className="md:hidden">Filters</span>
-            <SlidersHorizontal className={`w-4 h-4 transition-transform duration-300 ${showOptionsDrawer ? 'rotate-90' : ''}`} />
-          </button>
-
-          <button
-            onClick={toggleAlert}
-            className={`px-2 py-1 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
-              isAlertActive
-                ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-                : 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-            } text-white font-semibold focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm`}
-          >
-            <span className="hidden md:inline-block">{isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}</span>
-            <span className="md:hidden">Alert</span>
-            {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-          </button>
-
-          {/* New Lock/Unlock Button - UNCHANGED */}
-          <button
-            onClick={toggleLock}
-            className={`px-2 py-1 rounded-lg shadow-md transition-colors duration-200 focus:outline-none focus:ring-2 ${
-              isLocked
-                ? 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500'
-                : 'bg-gray-600 hover:bg-gray-700 focus:ring-gray-500'
-            } text-white font-semibold focus:ring-opacity-75 flex items-center justify-center gap-1 text-sm`}
-          >
-            <span className="hidden md:inline-block">{isLocked ? 'Unlock View' : 'Lock View'}</span>
-            <span className="md:hidden">{isLocked ? 'Unlock' : 'Lock'}</span>
-            {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-          </button>
-        </div>
-
-        {/* Clock and Market Status remain here */}
-        <div className="flex flex-col items-center sm:items-end text-center sm:text-right w-full sm:w-auto mt-4 sm:mt-0 space-y-1">
-          {/* Clock */}
-          <div className="flex items-center">
-            <Clock className="w-4 h-4 text-gray-400 mr-2" />
-            <span className="text-gray-300 text-sm font-medium">{currentTimeET} ET</span>
-          </div>
-          {/* Market Status */}
-          <span className={`text-xs font-semibold ${
-              marketStatus === 'Market Open' ? 'text-green-400' :
-              marketStatus === 'Pre-market' || marketStatus === 'Extended Hours' ? 'text-yellow-400' :
-              'text-red-400'
-            }`}>
-            {marketStatus}
-          </span>
-        </div>
-      </div>
-
-      {showOptionsDrawer && (
-        <div className="mx-6 mb-6 p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-4 transition-all duration-300 ease-in-out">
-          <div className="flex flex-col sm:flex-row items-center justify-between mb-4">
-            <label htmlFor="num-stocks-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-              Show Count: <span className="text-blue-400">{numStocksToShow}</span>
-            </label>
-            <input
-              id="num-stocks-slider"
-              type="range"
-              min="10" // Minimum number of stocks to show
-              max="200" // Maximum number of stocks to show
-              step="1" // Changed step to 1
-              value={numStocksToShow}
-              onChange={(e) => setNumStocksToShow(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
-            />
-          </div>
-          <div className="flex flex-col sm:flex-row items-center justify-between">
-            <label htmlFor="multiplier-filter-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-              Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
-            </label>
-            <input
-              id="multiplier-filter-slider"
-              type="range"
-              min="1.0"
-              max="20"
-              step="0.1"
-              value={multiplierFilter}
-              onChange={(e) => setMultiplierFilter(parseFloat(e.target.value))}
-              className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
-            />
-          </div>
-        </div>
-      )}
+      <StockTableStyles />
+      <TableHeader connectionStatus={connectionStatus} />
+      <TableControls
+        globalFilter={globalFilter}
+        setGlobalFilter={setGlobalFilter}
+        showOptionsDrawer={showOptionsDrawer}
+        setShowOptionsDrawer={setShowOptionsDrawer}
+        isAlertActive={isAlertActive}
+        toggleAlert={toggleAlert}
+        isLocked={isLocked}
+        toggleLock={toggleLock}
+        currentTimeET={currentTimeET}
+        marketStatus={marketStatus}
+      />
+      <OptionsDrawer
+        showOptionsDrawer={showOptionsDrawer}
+        numStocksToShow={numStocksToShow}
+        setNumStocksToShow={setNumStocksToShow}
+        multiplierFilter={multiplierFilter}
+        setMultiplierFilter={setMultiplierFilter}
+      />
 
       {/* Table Container with horizontal overflow */}
       <div className="overflow-x-auto px-0 sm:px-6 pb-6">
@@ -1304,32 +1032,3 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   );
 }
 
-// Utilities
-function formatCurrency(val: number | null) {
-  return val != null ? `$${val.toFixed(2)}` : "-";
-}
-
-function formatDateTime(isoString?: string) {
-  if (!isoString) return "Unknown";
-  try {
-    const date = new Date(isoString);
-    return date.toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      hour12: true,
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit'
-    }) + ' ET';
-  }
-  catch (e) {
-    return "Invalid date";
-  }
-}
-
-function formatLargeNumber(val: number | null) {
-  if (val == null) return "-";
-  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)} Mil`;
-  if (val >= 1_000) return `${(val / 1_000).toFixed(1)} K`;
-  return val.toString();
-}
