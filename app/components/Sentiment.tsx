@@ -10,6 +10,26 @@ interface SentimentProps {
     ticker: string;
 }
 
+// Function to properly process markdown text with line breaks
+const processMarkdownText = (text: string): string => {
+    return text
+        // Normalize line endings
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        // Ensure proper bullet point formatting
+        .replace(/^[\-\*]\s+/gm, '- ')
+        // Add extra newlines before headers to ensure they're treated as separate blocks
+        .replace(/^(#{1,6})\s*(.+)$/gm, '\n$1 $2\n')
+        // Ensure bullet points have proper spacing
+        .replace(/^(-\s.+)$/gm, '\n$1\n')
+        // Convert sentences that end with period followed by newline to paragraph breaks
+        .replace(/\.\s*\n/g, '.\n\n')
+        // Convert multiple newlines to double newlines (paragraph breaks)
+        .replace(/\n{3,}/g, '\n\n')
+        // Clean up any leading/trailing whitespace
+        .trim();
+};
+
 export default function Sentiment({ ticker }: SentimentProps) {
     const [loading, setLoading] = useState<boolean>(true);
     const streamingRef = useRef<"model" | "news" | "ranat" | null>(null);
@@ -87,20 +107,23 @@ export default function Sentiment({ ticker }: SentimentProps) {
     return (
       <div className="flex flex-col space-y-3 text-sm">
         {/* AI Analysis Content */}
-        <div className="text-gray-200 leading-relaxed prose prose-sm prose-invert max-w-none">
+        <div className="text-gray-200 leading-relaxed">
           <ReactMarkdown 
             components={{
-              h1: ({children}) => <h1 className="text-lg font-bold text-gray-100 mb-2">{children}</h1>,
-              h2: ({children}) => <h2 className="text-base font-semibold text-gray-200 mb-2">{children}</h2>,
-              h3: ({children}) => <h3 className="text-sm font-medium text-gray-300 mb-1">{children}</h3>,
-              p: ({children}) => <p className="text-gray-300 mb-2 leading-relaxed">{children}</p>,
-              ul: ({children}) => <ul className="list-disc list-inside text-gray-300 space-y-1 mb-2">{children}</ul>,
-              li: ({children}) => <li className="text-gray-300">{children}</li>,
+              h1: ({children}) => <h1 className="text-lg font-bold text-gray-100 mb-3 mt-4 first:mt-0">{children}</h1>,
+              h2: ({children}) => <h2 className="text-base font-semibold text-gray-200 mb-2 mt-3 first:mt-0">{children}</h2>,
+              h3: ({children}) => <h3 className="text-sm font-medium text-gray-300 mb-2 mt-2 first:mt-0">{children}</h3>,
+              p: ({children}) => <p className="text-gray-300 mb-3 leading-relaxed">{children}</p>,
+              ul: ({children}) => <ul className="list-disc list-inside text-gray-300 space-y-1 mb-3 ml-2">{children}</ul>,
+              ol: ({children}) => <ol className="list-decimal list-inside text-gray-300 space-y-1 mb-3 ml-2">{children}</ol>,
+              li: ({children}) => <li className="text-gray-300 mb-1">{children}</li>,
               strong: ({children}) => <strong className="text-gray-100 font-semibold">{children}</strong>,
               em: ({children}) => <em className="text-gray-200 italic">{children}</em>,
+              br: () => <br className="my-1" />,
+              blockquote: ({children}) => <blockquote className="border-l-4 border-gray-500 pl-3 italic text-gray-400 mb-3">{children}</blockquote>,
             }}
           >
-            {markdownBuffer.replace(/\n/g, '  \n')}
+            {processMarkdownText(markdownBuffer)}
           </ReactMarkdown>
         </div>
 
