@@ -99,6 +99,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [previousPositions, setPreviousPositions] = React.useState<Map<string, number>>(new Map());
   const [positionMovements, setPositionMovements] = React.useState<Map<string, 'up' | 'down'>>(new Map());
   const movementTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const [recentlyUpdatedStocks, setRecentlyUpdatedStocks] = React.useState<Set<string>>(new Set());
+  const recentUpdateTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // New state for managing flash effect independently
   const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
@@ -293,6 +295,32 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return;
           }
 
+          // Track recently updated stocks for position indicators
+          const updatedTickers = stockUpdates.map(update => update.ticker);
+          setRecentlyUpdatedStocks(prev => {
+            const newSet = new Set([...prev, ...updatedTickers]);
+            
+            // Clear timers for these stocks and set new ones
+            updatedTickers.forEach(ticker => {
+              if (recentUpdateTimers.current.has(ticker)) {
+                clearTimeout(recentUpdateTimers.current.get(ticker));
+              }
+              
+              const timer = setTimeout(() => {
+                setRecentlyUpdatedStocks(currentSet => {
+                  const updated = new Set(currentSet);
+                  updated.delete(ticker);
+                  return updated;
+                });
+                recentUpdateTimers.current.delete(ticker);
+              }, 5000); // Track as recently updated for 5 seconds
+              
+              recentUpdateTimers.current.set(ticker, timer);
+            });
+            
+            return newSet;
+          });
+
           // Update the main table data (currentData)
           setCurrentData(prevData => {
             const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
@@ -431,6 +459,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       // Cleanup movement timers
       movementTimers.current.forEach(timerId => clearTimeout(timerId));
       movementTimers.current.clear();
+      // Cleanup recent update timers
+      recentUpdateTimers.current.forEach(timerId => clearTimeout(timerId));
+      recentUpdateTimers.current.clear();
     };
   }, [wsUrl, tickersToSubscribe]); // DEPENDENCY: Re-run this effect when wsUrl or tickersToSubscribe changes
 
@@ -446,6 +477,32 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         const newData: StockItem[] = await response.json();
 
         setConnectionStatus('connected');
+
+        // Track recently updated stocks from Redis for position indicators
+        const redisUpdatedTickers = newData.map(stock => stock.ticker);
+        setRecentlyUpdatedStocks(prev => {
+          const newSet = new Set([...prev, ...redisUpdatedTickers]);
+          
+          // Clear timers for these stocks and set new ones
+          redisUpdatedTickers.forEach(ticker => {
+            if (recentUpdateTimers.current.has(ticker)) {
+              clearTimeout(recentUpdateTimers.current.get(ticker));
+            }
+            
+            const timer = setTimeout(() => {
+              setRecentlyUpdatedStocks(currentSet => {
+                const updated = new Set(currentSet);
+                updated.delete(ticker);
+                return updated;
+              });
+              recentUpdateTimers.current.delete(ticker);
+            }, 5000); // Track as recently updated for 5 seconds
+            
+            recentUpdateTimers.current.set(ticker, timer);
+          });
+          
+          return newSet;
+        });
 
         setCurrentData(prevData => {
           const updatedDataMap = new Map(prevData.map(item => [item.ticker, item]));
@@ -906,7 +963,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       const movements = new Map<string, 'up' | 'down'>();
       currentPositions.forEach((currentPos, ticker) => {
         const prevPos = previousPositions.get(ticker);
-        if (prevPos !== undefined && prevPos !== currentPos) {
+        // Only show movement indicator if:
+        // 1. Position actually changed AND
+        // 2. This stock recently received data updates (not just moved by others)
+        if (prevPos !== undefined && prevPos !== currentPos && recentlyUpdatedStocks.has(ticker)) {
           const movement = currentPos < prevPos ? 'up' : 'down';
           movements.set(ticker, movement);
           
@@ -934,7 +994,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       
       setPreviousPositions(currentPositions);
     }
-  }, [tableDisplayData, sorting, numStocksToShow, isLocked]);
+  }, [tableDisplayData, sorting, numStocksToShow, isLocked, recentlyUpdatedStocks]);
 
   const getHeaderClasses = React.useCallback((headerId: string) => {
     switch (headerId) {
