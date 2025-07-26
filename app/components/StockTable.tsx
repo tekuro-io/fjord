@@ -121,7 +121,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   );
 
   // Helper function to toggle row expansion
-  const toggleRowExpansion = (rowId: string) => {
+  const toggleRowExpansion = React.useCallback((rowId: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
       if (newSet.has(rowId)) {
@@ -131,7 +131,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       }
       return newSet;
     });
-  };
+  }, []);
 
   const getMarketStatus = () => {
     const now = new Date();
@@ -727,7 +727,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       
       setPreviousPositions(currentPositions);
     }
-  }, [filteredData, numStocksToShow, isLocked, previousPositions]);
+  }, [filteredData, numStocksToShow, isLocked]);
 
   const tableDisplayData = React.useMemo(() => {
     if (!isLocked) {
@@ -761,9 +761,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         
         return (
           <div className="flex items-center gap-2">
-            {/* Removed onClick from button to make whole row clickable */}
             <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
-              {/* Check if the current row is in the expandedRows set */}
               {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             <div className="flex items-center gap-1">
@@ -920,7 +918,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       sortingFn: "basic",
       enableSorting: !isLocked, // Disable sorting when locked
     }),
-  ], [expandedRows, toggleRowExpansion, isLocked, flashingStates, priceFlashingStates, positionMovements]);
+  ], [expandedRows, isLocked, flashingStates, priceFlashingStates, positionMovements, toggleRowExpansion]);
 
   const table = useReactTable<StockItem>({
     data: tableDisplayData, // Use the new tableDisplayData memo
@@ -937,7 +935,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     getRowId: (stock) => stock.ticker, // Crucial: Use ticker as stable row ID
   });
 
-  const getHeaderClasses = (headerId: string) => {
+  const getHeaderClasses = React.useCallback((headerId: string) => {
     switch (headerId) {
       case 'prev_price':
       case 'float':
@@ -948,9 +946,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       default:
         return '';
     }
-  };
+  }, []);
 
-  const getCellClasses = (columnId: string) => {
+  const getCellClasses = React.useCallback((columnId: string) => {
     switch (columnId) {
       case 'prev_price':
       case 'float':
@@ -961,52 +959,53 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       default:
         return '';
     }
-  };
+  }, []);
+
+  const stockTableStyles = React.useMemo(() => `
+    @keyframes delta-fade-highlight {
+      0% { color: inherit; }
+      50% { color: #86efac; }
+      100% { color: inherit; }
+    }
+
+    .delta-highlight-effect {
+      animation: delta-fade-highlight 1s ease-out;
+    }
+
+    @keyframes price-flash-up {
+      0% { color: inherit; }
+      50% { color: #4ade80; }
+      100% { color: inherit; }
+    }
+
+    @keyframes price-flash-down {
+      0% { color: inherit; }
+      50% { color: #ef4444; }
+      100% { color: inherit; }
+    }
+
+    .price-flash-up-effect {
+      animation: price-flash-up 1s ease-out;
+    }
+
+    .price-flash-down-effect {
+      animation: price-flash-down 1s ease-out;
+    }
+
+    @keyframes movement-bounce {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); }
+    }
+
+    .movement-indicator {
+      animation: movement-bounce 0.6s ease-out;
+    }
+  `, []);
 
   return (
-    
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
-      <style>{`
-          @keyframes delta-fade-highlight {
-            0% { color: inherit; } /* Start with the inherited text color */
-            50% { color: #86efac; } /* Fade to a subtle light green (Tailwind's emerald-300/400 range) */
-            100% { color: inherit; } /* Fade back to the inherited text color */
-          }
-
-          .delta-highlight-effect {
-            animation: delta-fade-highlight 1s ease-out; /* 0.8 seconds duration for a smooth fade */
-          }
-
-          @keyframes price-flash-up {
-            0% { color: inherit; }
-            50% { color: #4ade80; } /* Tailwind green-400 */
-            100% { color: inherit; }
-          }
-
-          @keyframes price-flash-down {
-            0% { color: inherit; }
-            50% { color: #ef4444; } /* Tailwind red-500 */
-            100% { color: inherit; }
-          }
-
-          .price-flash-up-effect {
-            animation: price-flash-up 1s ease-out;
-          }
-
-          .price-flash-down-effect {
-            animation: price-flash-down 1s ease-out;
-          }
-
-          @keyframes movement-bounce {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-          }
-
-          .movement-indicator {
-            animation: movement-bounce 0.6s ease-out;
-          }
-      `}</style>
+      <style>{stockTableStyles}</style>
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
         <div className="flex items-center gap-3">
 
@@ -1175,38 +1174,40 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.slice(0, numStocksToShow).map((row) => (
-                <React.Fragment key={row.id}>
-                  <tr
-                    title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                    className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
-                    onClick={() => toggleRowExpansion(row.id)}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`}
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                  {expandedRows.has(row.id) && (
-                    <tr>
-                      <td colSpan={columns.length} className="p-4 bg-gray-900">
-                        <div className="p-2 sm:p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                          {/* Pass the entire stock object AND its chart history */}
-                          <LiveChart
-                            stockData={row.original}
-                            initialChartData={stockChartHistory.get(row.original.ticker) || []}
-                          />
-                          <Sentiment ticker={row.original.ticker} />
-                        </div>
-                      </td>
+              table.getRowModel().rows.slice(0, numStocksToShow).map((row) => {
+                const isExpanded = expandedRows.has(row.id);
+                return (
+                  <React.Fragment key={row.id}>
+                    <tr
+                      title={`First seen: ${formatDateTime(row.original.first_seen)}`}
+                      className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
+                      onClick={() => toggleRowExpansion(row.id)}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <td
+                          key={cell.id}
+                          className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </td>
+                      ))}
                     </tr>
-                  )}
-                </React.Fragment>
-              ))
+                    {isExpanded && (
+                      <tr>
+                        <td colSpan={columns.length} className="p-4 bg-gray-900">
+                          <div className="p-2 sm:p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
+                            <LiveChart
+                              stockData={row.original}
+                              initialChartData={stockChartHistory.get(row.original.ticker) || []}
+                            />
+                            <Sentiment ticker={row.original.ticker} />
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>
