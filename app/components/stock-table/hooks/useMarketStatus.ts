@@ -7,7 +7,7 @@ export const useMarketStatus = () => {
   const getMarketStatus = React.useCallback(() => {
     const now = new Date();
     try {
-      const etFormatter = new Intl.DateTimeFormatter('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });
+      const etFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });
       const [etHours, etMinutes] = etFormatter.format(now).split(':').map(Number);
 
       const dayOfWeek = now.getDay();
