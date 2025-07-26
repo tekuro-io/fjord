@@ -687,47 +687,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     return data;
   }, [currentData, globalFilter, multiplierFilter]); // Dependencies for filteredData memo
 
-  // Effect to track position changes in the sorted table
-  React.useEffect(() => {
-    if (!isLocked && filteredData.length > 0) {
-      const currentPositions = new Map<string, number>();
-      filteredData.slice(0, numStocksToShow).forEach((stock, index) => {
-        currentPositions.set(stock.ticker, index);
-      });
-
-      // Compare with previous positions to detect movements
-      const movements = new Map<string, 'up' | 'down'>();
-      currentPositions.forEach((currentPos, ticker) => {
-        const prevPos = previousPositions.get(ticker);
-        if (prevPos !== undefined && prevPos !== currentPos) {
-          const movement = currentPos < prevPos ? 'up' : 'down';
-          movements.set(ticker, movement);
-          
-          // Clear existing timer if any
-          if (movementTimers.current.has(ticker)) {
-            clearTimeout(movementTimers.current.get(ticker));
-          }
-          
-          // Set timer to clear movement indicator after 3 seconds
-          const timer = setTimeout(() => {
-            setPositionMovements(prev => {
-              const newMovements = new Map(prev);
-              newMovements.delete(ticker);
-              return newMovements;
-            });
-            movementTimers.current.delete(ticker);
-          }, 3000);
-          movementTimers.current.set(ticker, timer);
-        }
-      });
-
-      if (movements.size > 0) {
-        setPositionMovements(prev => new Map([...prev, ...movements]));
-      }
-      
-      setPreviousPositions(currentPositions);
-    }
-  }, [filteredData, numStocksToShow, isLocked]);
 
   const tableDisplayData = React.useMemo(() => {
     if (!isLocked) {
@@ -934,6 +893,48 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     debugTable: false,
     getRowId: (stock) => stock.ticker, // Crucial: Use ticker as stable row ID
   });
+
+  // Effect to track position changes in the sorted table
+  React.useEffect(() => {
+    if (!isLocked && table.getRowModel().rows.length > 0) {
+      const currentPositions = new Map<string, number>();
+      table.getRowModel().rows.slice(0, numStocksToShow).forEach((row, index) => {
+        currentPositions.set(row.original.ticker, index);
+      });
+
+      // Compare with previous positions to detect movements
+      const movements = new Map<string, 'up' | 'down'>();
+      currentPositions.forEach((currentPos, ticker) => {
+        const prevPos = previousPositions.get(ticker);
+        if (prevPos !== undefined && prevPos !== currentPos) {
+          const movement = currentPos < prevPos ? 'up' : 'down';
+          movements.set(ticker, movement);
+          
+          // Clear existing timer if any
+          if (movementTimers.current.has(ticker)) {
+            clearTimeout(movementTimers.current.get(ticker));
+          }
+          
+          // Set timer to clear movement indicator after 3 seconds
+          const timer = setTimeout(() => {
+            setPositionMovements(prev => {
+              const newMovements = new Map(prev);
+              newMovements.delete(ticker);
+              return newMovements;
+            });
+            movementTimers.current.delete(ticker);
+          }, 3000);
+          movementTimers.current.set(ticker, timer);
+        }
+      });
+
+      if (movements.size > 0) {
+        setPositionMovements(prev => new Map([...prev, ...movements]));
+      }
+      
+      setPreviousPositions(currentPositions);
+    }
+  }, [tableDisplayData, sorting, numStocksToShow, isLocked]);
 
   const getHeaderClasses = React.useCallback((headerId: string) => {
     switch (headerId) {
