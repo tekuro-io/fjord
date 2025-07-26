@@ -478,34 +478,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
         setConnectionStatus('connected');
 
-        // Track recently updated stocks from Redis for position indicators
-        const redisUpdatedTickers = newData.map(stock => stock.ticker);
-        setRecentlyUpdatedStocks(prev => {
-          const newSet = new Set([...prev, ...redisUpdatedTickers]);
-          
-          // Clear timers for these stocks and set new ones
-          redisUpdatedTickers.forEach(ticker => {
-            if (recentUpdateTimers.current.has(ticker)) {
-              clearTimeout(recentUpdateTimers.current.get(ticker));
-            }
-            
-            const timer = setTimeout(() => {
-              setRecentlyUpdatedStocks(currentSet => {
-                const updated = new Set(currentSet);
-                updated.delete(ticker);
-                return updated;
-              });
-              recentUpdateTimers.current.delete(ticker);
-            }, 5000); // Track as recently updated for 5 seconds
-            
-            recentUpdateTimers.current.set(ticker, timer);
-          });
-          
-          return newSet;
-        });
-
         setCurrentData(prevData => {
           const updatedDataMap = new Map(prevData.map(item => [item.ticker, item]));
+          const actuallyChangedTickers: string[] = [];
 
           newData.forEach(newStockFromRedis => {
             const existingStockInState = updatedDataMap.get(newStockFromRedis.ticker);
@@ -526,6 +501,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               const priceChanged = existingStockInState.price !== newStockFromRedis.price &&
                      (existingStockInState.price == null || newStockFromRedis.price == null ||
                       (existingStockInState.price !== 0 && Math.abs(existingStockInState.price - newStockFromRedis.price) / existingStockInState.price > PRICE_FLASH_THRESHOLD));
+
+              // Check if any meaningful fields changed
+              const meaningfulChange = deltaChanged || priceChanged || 
+                     existingStockInState.multiplier !== newStockFromRedis.multiplier ||
+                     existingStockInState.volume !== newStockFromRedis.volume ||
+                     existingStockInState.prev_price !== newStockFromRedis.prev_price;
+
+              if (meaningfulChange) {
+                actuallyChangedTickers.push(newStockFromRedis.ticker);
+              }
 
               console.log(`StockTable Debug (Redis Update Existing): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Current Live Price (retained): ${currentLivePrice}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
 
@@ -577,6 +562,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             } else {
               // New stock from Redis: Populate all fields, calculate initial delta
               const calculatedDelta = calculateDelta(newStockFromRedis.price, newStockFromRedis.prev_price);
+
+              // New stocks are always considered changed
+              actuallyChangedTickers.push(newStockFromRedis.ticker);
 
               console.log(`StockTable Debug (Redis New Stock): Ticker: ${newStockFromRedis.ticker}, Prev Price (from Redis): ${newStockFromRedis.prev_price}, Price (from Redis): ${newStockFromRedis.price}, Multiplier (from Redis): ${newStockFromRedis.multiplier}, Calculated Delta: ${calculatedDelta != null ? (calculatedDelta * 100).toFixed(2) + '%' : '-'}`);
 
@@ -639,6 +627,33 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             }
             console.log(`StockTable Debug (Alert Check): newFilteredDataForAlert (tickers): [${newFilteredDataForAlert.map(s => s.ticker).join(', ')}]`);
             console.log(`StockTable Debug (Alert Check): newlyAppearingStocks (tickers): [${newlyAppearingStocks.map(s => s.ticker).join(', ')}]`);
+          }
+
+          // Only track stocks that actually had meaningful changes for position indicators
+          if (actuallyChangedTickers.length > 0) {
+            setRecentlyUpdatedStocks(prev => {
+              const newSet = new Set([...prev, ...actuallyChangedTickers]);
+              
+              // Clear timers for these stocks and set new ones
+              actuallyChangedTickers.forEach(ticker => {
+                if (recentUpdateTimers.current.has(ticker)) {
+                  clearTimeout(recentUpdateTimers.current.get(ticker));
+                }
+                
+                const timer = setTimeout(() => {
+                  setRecentlyUpdatedStocks(currentSet => {
+                    const updated = new Set(currentSet);
+                    updated.delete(ticker);
+                    return updated;
+                  });
+                  recentUpdateTimers.current.delete(ticker);
+                }, 5000); // Track as recently updated for 5 seconds
+                
+                recentUpdateTimers.current.set(ticker, timer);
+              });
+              
+              return newSet;
+            });
           }
 
           return Array.from(updatedDataMap.values());
