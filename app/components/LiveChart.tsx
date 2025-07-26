@@ -56,8 +56,8 @@ export default function LiveChart({
   
   console.log(`LiveChart (${stockData.ticker}): Always rendering ChartComponent with ${chartType} chart.`);
   return (
-    <div className="p-4 rounded-lg shadow-inner relative">
-      <div className="bg-black p-4 rounded-lg shadow-inner border border-gray-700">
+    <div className="relative">
+      <div className="bg-black rounded-lg border border-gray-600 overflow-hidden">
         <ChartComponent
           ref={chartRef}
           initialData={dataToUse} // Pass the current historical data

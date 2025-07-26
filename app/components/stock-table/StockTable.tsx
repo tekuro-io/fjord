@@ -1040,15 +1040,38 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     </tr>
                     {isExpanded && (
                       <tr>
-                        <td colSpan={columns.length} className="p-4 bg-gray-900">
-                          <div className="p-2 sm:p-4 bg-gray-700 rounded-lg text-gray-200 text-center">
-                            <LiveChart
-                              stockData={row.original}
-                              initialChartData={stockChartHistory.get(row.original.ticker) || []}
-                              initialCandleData={stockCandleHistory.get(row.original.ticker) || []}
-                              chartType="candlestick"
-                            />
-                            <Sentiment ticker={row.original.ticker} />
+                        <td colSpan={columns.length} className="p-0 bg-gray-900">
+                          <div className="bg-gray-800 rounded-lg m-2">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
+                              {/* Chart Panel - Takes up 2/3 on large screens */}
+                              <div className="xl:col-span-2">
+                                <div className="bg-gray-700 rounded-lg p-3">
+                                  <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                                    <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                                    Price Chart - 1 Minute Candles
+                                  </h3>
+                                  <LiveChart
+                                    stockData={row.original}
+                                    initialChartData={stockChartHistory.get(row.original.ticker) || []}
+                                    initialCandleData={stockCandleHistory.get(row.original.ticker) || []}
+                                    chartType="candlestick"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Sentiment Panel - Takes up 1/3 on large screens */}
+                              <div className="xl:col-span-1">
+                                <div className="bg-gray-700 rounded-lg p-3 h-full">
+                                  <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                                    AI Analysis
+                                  </h3>
+                                  <div className="overflow-y-auto max-h-96">
+                                    <Sentiment ticker={row.original.ticker} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </td>
                       </tr>

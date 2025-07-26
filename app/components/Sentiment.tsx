@@ -85,17 +85,39 @@ export default function Sentiment({ ticker }: SentimentProps) {
     if (loading) return <SpinnerWithMessage status={loadingMessage} />
 
     return (
-      <div className="flex flex-col space-y-4">
-        {isDone && (
-          <div className="flex justify-end">
-            <TimeAgo timestamp={Number(ranAtBuffer)} />
+      <div className="flex flex-col space-y-3 text-sm">
+        {/* AI Analysis Content */}
+        <div className="text-gray-200 leading-relaxed prose prose-sm prose-invert max-w-none">
+          <ReactMarkdown 
+            components={{
+              h1: ({children}) => <h1 className="text-lg font-bold text-gray-100 mb-2">{children}</h1>,
+              h2: ({children}) => <h2 className="text-base font-semibold text-gray-200 mb-2">{children}</h2>,
+              h3: ({children}) => <h3 className="text-sm font-medium text-gray-300 mb-1">{children}</h3>,
+              p: ({children}) => <p className="text-gray-300 mb-2 leading-relaxed">{children}</p>,
+              ul: ({children}) => <ul className="list-disc list-inside text-gray-300 space-y-1 mb-2">{children}</ul>,
+              li: ({children}) => <li className="text-gray-300">{children}</li>,
+              strong: ({children}) => <strong className="text-gray-100 font-semibold">{children}</strong>,
+              em: ({children}) => <em className="text-gray-200 italic">{children}</em>,
+            }}
+          >
+            {markdownBuffer.replace(/\n/g, '  \n')}
+          </ReactMarkdown>
+        </div>
+
+        {/* Related News Section */}
+        {newsItems.length > 0 && (
+          <div className="border-t border-gray-600 pt-3">
+            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Related News</h4>
+            <NewsList news={newsItems} compact={true} />
           </div>
         )}
 
-        <div className="flex flex-col items-center text-center">
-          <ReactMarkdown>{markdownBuffer.replace(/\n/g, '  \n')}</ReactMarkdown>
-          <NewsList news={newsItems} />
-        </div>
+        {/* Timestamp */}
+        {isDone && (
+          <div className="border-t border-gray-600 pt-2 flex justify-end">
+            <TimeAgo timestamp={Number(ranAtBuffer)} />
+          </div>
+        )}
       </div>
     );
 }

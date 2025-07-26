@@ -1,3 +1,6 @@
+// Import types at the top level
+import type { ChartDataPoint, CandleDataPoint } from '../types';
+
 export const DELTA_FLASH_THRESHOLD = 0.005;
 export const PRICE_FLASH_THRESHOLD = 0.005;
 export const MAX_CHART_HISTORY_POINTS = 100;
@@ -29,7 +32,7 @@ export const formatDateTime = (isoString?: string): string => {
       minute: '2-digit'
     }) + ' ET';
   }
-  catch (e) {
+  catch {
     return "Invalid date";
   }
 };
@@ -40,9 +43,6 @@ export const formatLargeNumber = (val: number | null): string => {
   if (val >= 1_000) return `${(val / 1_000).toFixed(1)} K`;
   return val.toString();
 };
-
-// Import types at the top level
-import type { ChartDataPoint, CandleDataPoint } from '../types';
 
 export const aggregateTicksToCandles = (ticks: ChartDataPoint[]): CandleDataPoint[] => {
   if (ticks.length === 0) return [];
