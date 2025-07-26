@@ -1,10 +1,10 @@
 'use client';
 
-import { AreaSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, BusinessDay, createTextWatermark } from 'lightweight-charts';
-import React, { useEffect, useRef, useImperativeHandle, forwardRef, useState } from 'react';
+import { AreaSeries, CandlestickSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, createTextWatermark } from 'lightweight-charts';
+import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
-// Import ChartDataPoint from StockTable to ensure consistency across components
-import { ChartDataPoint } from './stock-table';
+// Import ChartDataPoint and CandleDataPoint from StockTable to ensure consistency across components
+import { ChartDataPoint, CandleDataPoint } from './stock-table';
 
 interface ChartColors {
     backgroundColor?: string;
@@ -14,10 +14,17 @@ interface ChartColors {
     areaBottomColor?: string;
     vertLinesColor?: string;
     horzLinesColor?: string;
+    upColor?: string;
+    downColor?: string;
+    wickUpColor?: string;
+    wickDownColor?: string;
 }
 
+type ChartType = 'area' | 'candlestick';
+
 interface ChartComponentProps {
-    initialData: ChartDataPoint[]; // This is for the very first chart load
+    initialData: ChartDataPoint[] | CandleDataPoint[]; // This is for the very first chart load
+    chartType?: ChartType;
     colors?: ChartColors;
     showWatermark?: boolean;
     watermarkText?: string;
@@ -27,14 +34,15 @@ interface ChartComponentProps {
 
 // Define the shape of the ref handle that this component will expose to its parent
 export interface ChartHandle {
-    updateData: (point: ChartDataPoint) => void; // Method to add a single new data point
-    setData: (data: ChartDataPoint[]) => void;   // Method to set/reset all data (e.g., initial load)
+    updateData: (point: ChartDataPoint | CandleDataPoint) => void; // Method to add a single new data point
+    setData: (data: ChartDataPoint[] | CandleDataPoint[]) => void;   // Method to set/reset all data (e.g., initial load)
 }
 
 // Wrap the component with forwardRef to allow parent components to get a ref to it
 export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((props, ref) => {
     const {
         initialData, // Use initialData for the very first chart load
+        chartType = 'area',
         colors: {
             backgroundColor = '000000',
             lineColor = '#5da7f7',
@@ -43,6 +51,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             areaBottomColor = 'rgba(135, 206, 235, 0.01)',
             vertLinesColor = '#374151',
             horzLinesColor = '#374151',
+            upColor = '#26a69a',
+            downColor = '#ef5350',
+            wickUpColor = '#26a69a',
+            wickDownColor = '#ef5350',
         } = {},
         showWatermark = true,
         watermarkText = 'BOOP',
@@ -52,28 +64,61 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
-    const seriesRef = useRef<ISeriesApi<'Area'> | null>(null);
+    const seriesRef = useRef<ISeriesApi<'Area'> | ISeriesApi<'Candlestick'> | null>(null);
 
     // useImperativeHandle: Expose updateData and setData methods to the parent via ref
     useImperativeHandle(ref, () => {
         console.log('ChartComponent: useImperativeHandle callback executed.');
         // This object is what chartRef.current in the parent will point to
         const handle = {
-            updateData: (point: ChartDataPoint) => {
+            updateData: (point: ChartDataPoint | CandleDataPoint) => {
                 if (seriesRef.current) {
                     console.log('ChartComponent: updateData called with point:', point);
                     // Ensure time is in seconds for lightweight-charts
-                    seriesRef.current.update({ time: (point.time / 1000) as Time, value: point.value });
+                    const timeInSeconds = (point.time / 1000) as Time;
+                    
+                    if (chartType === 'candlestick' && 'open' in point) {
+                        // Handle candlestick data
+                        seriesRef.current.update({
+                            time: timeInSeconds,
+                            open: point.open,
+                            high: point.high,
+                            low: point.low,
+                            close: point.close
+                        });
+                    } else if (chartType === 'area' && 'value' in point) {
+                        // Handle area chart data
+                        seriesRef.current.update({ time: timeInSeconds, value: point.value });
+                    }
+                    
                     chartRef.current?.timeScale().scrollToRealTime(); // Keep chart scrolled to the latest point
                 } else {
                     console.warn('ChartComponent: seriesRef.current not available for updateData (inside handle).');
                 }
             },
-            setData: (data: ChartDataPoint[]) => {
+            setData: (data: ChartDataPoint[] | CandleDataPoint[]) => {
                 if (seriesRef.current) {
                     console.log('ChartComponent: setData called with data length:', data.length);
                     // Ensure all times are in seconds for lightweight-charts
-                    seriesRef.current.setData(data.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+                    if (chartType === 'candlestick' && data.length > 0 && 'open' in data[0]) {
+                        // Handle candlestick data
+                        const candleData = (data as CandleDataPoint[]).map(p => ({
+                            time: (p.time / 1000) as Time,
+                            open: p.open,
+                            high: p.high,
+                            low: p.low,
+                            close: p.close
+                        }));
+                        seriesRef.current.setData(candleData);
+                    } else if (chartType === 'area' && data.length > 0 && 'value' in data[0]) {
+                        // Handle area chart data
+                        const areaData = (data as ChartDataPoint[]).map(p => ({
+                            time: (p.time / 1000) as Time,
+                            value: p.value
+                        }));
+                        seriesRef.current.setData(areaData);
+                    }
+                    
                     if (data.length > 0) {
                         chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
                     }
@@ -146,15 +191,29 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
         chartRef.current = chart;
 
-        // Correctly use chart.addSeries with AreaSeries constant
-        const newSeries: ISeriesApi<'Area'> = chart.addSeries(AreaSeries, {
-            lineColor,
-            topColor: areaTopColor,
-            bottomColor: areaBottomColor,
-            lineWidth: 1,
-        });
+        // Create the appropriate series based on chartType
+        let newSeries: ISeriesApi<'Area'> | ISeriesApi<'Candlestick'>;
+        
+        if (chartType === 'candlestick') {
+            newSeries = chart.addSeries(CandlestickSeries, {
+                upColor,
+                downColor,
+                wickUpColor,
+                wickDownColor,
+                borderVisible: false,
+            });
+            console.log('ChartComponent: Chart and CandlestickSeries initialized and refs assigned.');
+        } else {
+            newSeries = chart.addSeries(AreaSeries, {
+                lineColor,
+                topColor: areaTopColor,
+                bottomColor: areaBottomColor,
+                lineWidth: 1,
+            });
+            console.log('ChartComponent: Chart and AreaSeries initialized and refs assigned.');
+        }
+        
         seriesRef.current = newSeries;
-        console.log('ChartComponent: Chart and AreaSeries initialized and refs assigned.');
         console.log('ChartComponent: chartRef.current after assignment:', chartRef.current);
         console.log('ChartComponent: seriesRef.current after assignment:', seriesRef.current);
 
@@ -163,7 +222,26 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         // This runs only once with the initialData prop when the chart is created
         if (initialData.length > 0) {
             console.log('ChartComponent: Setting initial data during initialization (from initialData prop). Data length:', initialData.length);
-            newSeries.setData(initialData.map(p => ({ time: (p.time / 1000) as Time, value: p.value })));
+            
+            if (chartType === 'candlestick' && 'open' in initialData[0]) {
+                // Handle candlestick data
+                const candleData = (initialData as CandleDataPoint[]).map(p => ({
+                    time: (p.time / 1000) as Time,
+                    open: p.open,
+                    high: p.high,
+                    low: p.low,
+                    close: p.close
+                }));
+                newSeries.setData(candleData);
+            } else if (chartType === 'area' && 'value' in initialData[0]) {
+                // Handle area chart data
+                const areaData = (initialData as ChartDataPoint[]).map(p => ({
+                    time: (p.time / 1000) as Time,
+                    value: p.value
+                }));
+                newSeries.setData(areaData);
+            }
+            
             chart.timeScale().fitContent(); // Fit content after setting initial data
         } else {
             // If no initial data, explicitly set empty data to ensure the series is initialized
@@ -201,12 +279,15 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             }
         };
     }, [
+        chartType,
         backgroundColor, textColor,
         vertLinesColor, horzLinesColor,
         showWatermark,
         watermarkText,
         watermarkTextColor,
         lineColor, areaTopColor, areaBottomColor,
+        upColor, downColor, wickUpColor, wickDownColor,
+        initialData,
         onChartReady // Add onChartReady to dependencies for stability
     ]); // Dependencies for chart initialization
 

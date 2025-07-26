@@ -17,6 +17,14 @@ export interface ChartDataPoint {
   value: number;
 }
 
+export interface CandleDataPoint {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
 export interface InfoMessage {
   type: string;
   message: string;

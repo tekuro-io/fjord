@@ -2,7 +2,7 @@ export { default as StockTable } from './StockTable';
 export { default as StockTableLoader } from './StockTableLoader';
 
 // Re-export types for convenience
-export type { StockItem, ChartDataPoint, InfoMessage } from './types';
+export type { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from './types';
 
 // Re-export hooks for convenience
 export { useMarketStatus } from './hooks';
@@ -15,5 +15,7 @@ export {
   calculateDelta,
   formatCurrency,
   formatDateTime,
-  formatLargeNumber
+  formatLargeNumber,
+  aggregateTicksToCandles,
+  addTickToCandles
 } from './utils';

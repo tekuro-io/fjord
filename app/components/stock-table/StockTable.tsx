@@ -18,7 +18,7 @@ import LiveChart from "../LiveChart";
 import Sentiment from "../Sentiment";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
-import { StockItem, ChartDataPoint, InfoMessage } from "./types";
+import { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from "./types";
 import { 
   DELTA_FLASH_THRESHOLD, 
   PRICE_FLASH_THRESHOLD, 
@@ -26,7 +26,9 @@ import {
   calculateDelta,
   formatCurrency,
   formatDateTime,
-  formatLargeNumber
+  formatLargeNumber,
+  aggregateTicksToCandles,
+  addTickToCandles
 } from "./utils";
 
 const columnHelper = createColumnHelper<StockItem>();
@@ -56,6 +58,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
   const [priceFlashingStates, setPriceFlashingStates] = React.useState<Map<string, 'up' | 'down'>>(new Map());
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
+  const [stockCandleHistory, setStockCandleHistory] = React.useState<Map<string, CandleDataPoint[]>>(new Map());
   const [wsUrl, setWsUrl] = React.useState<string | null>(null);
   const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>(
     initialData.map(item => item.ticker).filter(Boolean) as string[]
@@ -305,6 +308,28 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               }
             });
             return newHistory;
+          });
+
+          // Update stockCandleHistory with new live data points
+          setStockCandleHistory(prevCandleHistory => {
+            const newCandleHistory = new Map(prevCandleHistory);
+            stockUpdates.forEach(update => {
+              if (update.price != null && update.timestamp) {
+                const currentCandleHistory = newCandleHistory.get(update.ticker) || [];
+                // Ensure timestamp is in milliseconds for consistency with JS Date.getTime()
+                const newTick: ChartDataPoint = {
+                  time: new Date(update.timestamp).getTime(), // Convert ISO string to Unix timestamp in ms
+                  value: update.price,
+                };
+                
+                // Add tick to candles and maintain sliding window size
+                const updatedCandleHistory = addTickToCandles(currentCandleHistory, newTick).slice(-MAX_CHART_HISTORY_POINTS);
+                newCandleHistory.set(update.ticker, updatedCandleHistory);
+              } else {
+                console.warn("StockTable: Skipping candle history update for stock with missing price or timestamp:", update);
+              }
+            });
+            return newCandleHistory;
           });
 
         } catch (error) {
@@ -914,6 +939,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
   }, []);
 
+  // Initialize candle history from existing tick data
+  React.useEffect(() => {
+    setStockCandleHistory(prevCandleHistory => {
+      const newCandleHistory = new Map(prevCandleHistory);
+      
+      stockChartHistory.forEach((tickData, ticker) => {
+        // Only convert if we don't already have candle data for this ticker
+        if (!newCandleHistory.has(ticker) && tickData.length > 0) {
+          const candles = aggregateTicksToCandles(tickData);
+          newCandleHistory.set(ticker, candles);
+        }
+      });
+      
+      return newCandleHistory;
+    });
+  }, [stockChartHistory]);
+
   return (
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
       <StockTableStyles />
@@ -1003,6 +1045,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                             <LiveChart
                               stockData={row.original}
                               initialChartData={stockChartHistory.get(row.original.ticker) || []}
+                              initialCandleData={stockCandleHistory.get(row.original.ticker) || []}
+                              chartType="candlestick"
                             />
                             <Sentiment ticker={row.original.ticker} />
                           </div>

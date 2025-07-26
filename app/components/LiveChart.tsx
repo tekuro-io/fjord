@@ -3,14 +3,21 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { ChartComponent, ChartHandle } from './Chart';
-import { StockItem, ChartDataPoint } from './stock-table';
+import { StockItem, ChartDataPoint, CandleDataPoint } from './stock-table';
 
 interface LiveChartProps {
   stockData: StockItem;
-  initialChartData: ChartDataPoint[];
+  initialChartData?: ChartDataPoint[];
+  initialCandleData?: CandleDataPoint[];
+  chartType?: 'area' | 'candlestick';
 }
 
-export default function LiveChart({ stockData, initialChartData }: LiveChartProps) {
+export default function LiveChart({ 
+  stockData, 
+  initialChartData = [], 
+  initialCandleData = [], 
+  chartType = 'candlestick' 
+}: LiveChartProps) {
   const chartRef = useRef<ChartHandle | null>(null);
   const [isChartReady, setIsChartReady] = useState(false); // State to track ChartComponent readiness
 
@@ -20,37 +27,41 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
     setIsChartReady(true);
   }, [stockData.ticker]);
 
-  // Effect to set chart data whenever initialChartData prop changes
+  // Effect to set chart data whenever chart data props change
   // This will now handle both initial load and subsequent live updates from StockTable
   useEffect(() => {
-    console.log(`LiveChart (${stockData.ticker}): useEffect triggered for initialChartData. Current initialChartData length:`, initialChartData.length);
+    const dataToUse = chartType === 'candlestick' ? initialCandleData : initialChartData;
+    console.log(`LiveChart (${stockData.ticker}): useEffect triggered for ${chartType} data. Current data length:`, dataToUse.length);
 
     // Only attempt to set data if the ChartComponent is ready and chartRef.current is available
     console.log(`isChartReady (${isChartReady}): chartRef.current ${chartRef.current}`);
     if (isChartReady && chartRef.current) {
       console.log(`LiveChart (${stockData.ticker}): chartRef.current is available and chart is ready. Attempting to set data.`);
-      if (initialChartData && initialChartData.length > 0) {
-        console.log(`LiveChart (${stockData.ticker}): Calling chartRef.current.setData with data length:`, initialChartData.length);
-        chartRef.current.setData(initialChartData); // Set the entire dataset
+      if (dataToUse && dataToUse.length > 0) {
+        console.log(`LiveChart (${stockData.ticker}): Calling chartRef.current.setData with data length:`, dataToUse.length);
+        chartRef.current.setData(dataToUse); // Set the entire dataset
       } else {
-        console.log(`LiveChart (${stockData.ticker}): initialChartData is empty or null. Calling chartRef.current.setData([])`);
+        console.log(`LiveChart (${stockData.ticker}): data is empty or null. Calling chartRef.current.setData([])`);
         chartRef.current.setData([]); // Set empty if no data
       }
     } else {
       console.log(`LiveChart (${stockData.ticker}): chartRef.current is NOT available yet OR chart is not ready. Waiting...`);
     }
-  }, [initialChartData, stockData.ticker, isChartReady]);
+  }, [initialChartData, initialCandleData, stockData.ticker, isChartReady, chartType]);
 
   // We no longer need the `loading`, `error`, `hasData` states or their conditional rendering
   // in LiveChart, as ChartComponent will always be mounted and handle its own internal state.
 
-  console.log(`LiveChart (${stockData.ticker}): Always rendering ChartComponent.`);
+  const dataToUse = chartType === 'candlestick' ? initialCandleData : initialChartData;
+  
+  console.log(`LiveChart (${stockData.ticker}): Always rendering ChartComponent with ${chartType} chart.`);
   return (
     <div className="p-4 rounded-lg shadow-inner relative">
       <div className="bg-black p-4 rounded-lg shadow-inner border border-gray-700">
         <ChartComponent
           ref={chartRef}
-          initialData={initialChartData} // Pass the current historical data
+          initialData={dataToUse} // Pass the current historical data
+          chartType={chartType}
           colors={{
             backgroundColor: '#000000',
             lineColor: '#87CEEB',
@@ -59,6 +70,10 @@ export default function LiveChart({ stockData, initialChartData }: LiveChartProp
             areaBottomColor: 'rgba(135, 206, 235, 0.01)',
             vertLinesColor: '#1E293B',
             horzLinesColor: '#4A5568',
+            upColor: '#26a69a',
+            downColor: '#ef5350',
+            wickUpColor: '#26a69a',
+            wickDownColor: '#ef5350',
           }}
           watermarkText={stockData.ticker} // Use the ticker as watermark text
           onChartReady={handleChartReady} // Pass the callback to ChartComponent
