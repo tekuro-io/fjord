@@ -95,6 +95,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [isLocked, setIsLocked] = React.useState(false);
   const [lockedTickers, setLockedTickers] = React.useState<Set<string>>(new Set()); // Stores tickers to display when locked
 
+  // New state for position tracking and movement indicators
+  const [previousPositions, setPreviousPositions] = React.useState<Map<string, number>>(new Map());
+  const [positionMovements, setPositionMovements] = React.useState<Map<string, 'up' | 'down'>>(new Map());
+  const movementTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
+
   // New state for managing flash effect independently
   const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
   const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map()); // Ref to store timers
@@ -194,6 +199,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       }
     };
   }, []);
+
 
   // Effect to fetch WebSocket URL from /api/ws
   React.useEffect(() => {
@@ -422,6 +428,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       flashTimers.current.clear();
       priceFlashTimers.current.forEach(timerId => clearTimeout(timerId));
       priceFlashTimers.current.clear();
+      // Cleanup movement timers
+      movementTimers.current.forEach(timerId => clearTimeout(timerId));
+      movementTimers.current.clear();
     };
   }, [wsUrl, tickersToSubscribe]); // DEPENDENCY: Re-run this effect when wsUrl or tickersToSubscribe changes
 
@@ -678,6 +687,48 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     return data;
   }, [currentData, globalFilter, multiplierFilter]); // Dependencies for filteredData memo
 
+  // Effect to track position changes in the sorted table
+  React.useEffect(() => {
+    if (!isLocked && filteredData.length > 0) {
+      const currentPositions = new Map<string, number>();
+      filteredData.slice(0, numStocksToShow).forEach((stock, index) => {
+        currentPositions.set(stock.ticker, index);
+      });
+
+      // Compare with previous positions to detect movements
+      const movements = new Map<string, 'up' | 'down'>();
+      currentPositions.forEach((currentPos, ticker) => {
+        const prevPos = previousPositions.get(ticker);
+        if (prevPos !== undefined && prevPos !== currentPos) {
+          const movement = currentPos < prevPos ? 'up' : 'down';
+          movements.set(ticker, movement);
+          
+          // Clear existing timer if any
+          if (movementTimers.current.has(ticker)) {
+            clearTimeout(movementTimers.current.get(ticker));
+          }
+          
+          // Set timer to clear movement indicator after 3 seconds
+          const timer = setTimeout(() => {
+            setPositionMovements(prev => {
+              const newMovements = new Map(prev);
+              newMovements.delete(ticker);
+              return newMovements;
+            });
+            movementTimers.current.delete(ticker);
+          }, 3000);
+          movementTimers.current.set(ticker, timer);
+        }
+      });
+
+      if (movements.size > 0) {
+        setPositionMovements(prev => new Map([...prev, ...movements]));
+      }
+      
+      setPreviousPositions(currentPositions);
+    }
+  }, [filteredData, numStocksToShow, isLocked, previousPositions]);
+
   const tableDisplayData = React.useMemo(() => {
     if (!isLocked) {
       return filteredData; // If unlocked, use the regular filtered data
@@ -704,19 +755,31 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           <span>Symbol</span>
         </div>
       ),
-      cell: (info) => (
-        <div className="flex items-center gap-2">
-          {/* Removed onClick from button to make whole row clickable */}
-          <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
-            {/* Check if the current row is in the expandedRows set */}
-            {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
-          <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center">
-            {info.getValue() as string}
-          </span>
-        </div>
-      ),
+      cell: (info) => {
+        const ticker = info.getValue() as string;
+        const movement = positionMovements.get(ticker);
+        
+        return (
+          <div className="flex items-center gap-2">
+            {/* Removed onClick from button to make whole row clickable */}
+            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
+              {/* Check if the current row is in the expandedRows set */}
+              {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+            <div className="flex items-center gap-1">
+              <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
+                                     bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center">
+                {ticker}
+              </span>
+              {movement && (
+                <span className={`text-xs ${movement === 'up' ? 'text-green-400' : 'text-red-400'} movement-indicator`}>
+                  {movement === 'up' ? '↑' : '↓'}
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("prev_price", {
       header: () => (
@@ -857,7 +920,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       sortingFn: "basic",
       enableSorting: !isLocked, // Disable sorting when locked
     }),
-  ], [expandedRows, toggleRowExpansion, isLocked, flashingStates, priceFlashingStates]);
+  ], [expandedRows, toggleRowExpansion, isLocked, flashingStates, priceFlashingStates, positionMovements]);
 
   const table = useReactTable<StockItem>({
     data: tableDisplayData, // Use the new tableDisplayData memo
@@ -932,6 +995,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
           .price-flash-down-effect {
             animation: price-flash-down 1s ease-out;
+          }
+
+          @keyframes movement-bounce {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.3); }
+            100% { transform: scale(1); }
+          }
+
+          .movement-indicator {
+            animation: movement-bounce 0.6s ease-out;
           }
       `}</style>
       <div className="bg-gray-700 py-3 px-6 rounded-t-lg flex items-center justify-between">
@@ -1114,20 +1187,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         key={cell.id}
                         className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`}
                       >
-                        {cell.column.id === 'ticker' ? (
-                          <div className="flex items-center gap-2">
-                            {/* Removed onClick from button as row is now clickable */}
-                            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
-                              {expandedRows.has(row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                            </button>
-                            <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                                 bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center">
-                              {cell.getValue() as string}
-                            </span>
-                          </div>
-                        ) : (
-                          flexRender(cell.column.columnDef.cell, cell.getContext())
-                        )}
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>
                     ))}
                   </tr>
