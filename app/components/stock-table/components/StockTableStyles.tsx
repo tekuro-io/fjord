@@ -42,6 +42,7 @@ const StockTableStyles: React.FC = () => {
       animation: movement-bounce 0.6s ease-out;
     }
 
+
     /* Remove spacing for expanded rows */
     .expanded-table .expanded-parent {
       margin-bottom: 0 !important;
@@ -61,7 +62,6 @@ const StockTableStyles: React.FC = () => {
     .expanded-table tbody .expanded-parent + .expanded-child {
       --border-spacing-y: 0px;
     }
-
     /* Ensure blue borders align perfectly between parent and child rows */
     .expanded-table .expanded-parent .blue-border {
       position: absolute;
