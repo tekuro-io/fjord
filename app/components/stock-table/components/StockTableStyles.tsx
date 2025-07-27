@@ -73,7 +73,7 @@ const StockTableStyles: React.FC = () => {
 
     .expanded-table .expanded-child .blue-border {
       position: absolute;
-      left: 1px; /* Match parent border position */
+      left: 0px; /* Match parent border position */
       top: 0px; /* Connect seamlessly with parent border */
       width: 4px;
       height: 100%;
