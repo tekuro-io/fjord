@@ -69,6 +69,7 @@ export class ChartManager {
     });
 
     if (chartType === 'candlestick') {
+      console.log(`ChartManager: Creating candlestick series for ${ticker}`);
       const candleSeries = chart.addSeries(CandlestickSeries, {
         upColor: '#22c55e',
         downColor: '#ef4444',
@@ -78,19 +79,24 @@ export class ChartManager {
         wickDownColor: '#ef4444',
       });
       this.candlestickSeries.set(ticker, candleSeries);
+      console.log(`ChartManager: Candlestick series created for ${ticker}, stored in map:`, this.candlestickSeries.has(ticker));
       
       if (initialData) {
+        console.log(`ChartManager: Setting initial candlestick data for ${ticker}:`, initialData);
         candleSeries.setData(initialData as CandlestickData[]);
       }
     } else {
+      console.log(`ChartManager: Creating area series for ${ticker}`);
       const areaSeries = chart.addSeries(AreaSeries, {
         lineColor: '#08f2f6',
         topColor: 'rgba(8, 242, 246, 0.4)',
         bottomColor: 'rgba(8, 242, 246, 0.0)',
       });
       this.areaSeries.set(ticker, areaSeries);
+      console.log(`ChartManager: Area series created for ${ticker}, stored in map:`, this.areaSeries.has(ticker));
       
       if (initialData) {
+        console.log(`ChartManager: Setting initial area data for ${ticker}:`, initialData);
         const areaData = (initialData as ChartDataPoint[]).map(point => ({
           time: point.time,
           value: point.value
@@ -153,6 +159,7 @@ export class ChartManager {
     }
 
     const chartType = this.chartTypes.get(ticker);
+    console.log(`ChartManager: Updating ${chartType} chart for ${ticker} with price ${price} at ${timestamp}`);
     
     try {
       if (chartType === 'candlestick') {
@@ -166,7 +173,10 @@ export class ChartManager {
             low: price,
             close: price,
           } as CandlestickData;
+          console.log(`ChartManager: Adding candlestick data for ${ticker}:`, candleData);
           series.update(candleData);
+        } else {
+          console.warn(`ChartManager: No candlestick series found for ${ticker}`);
         }
       } else {
         const series = this.areaSeries.get(ticker);
@@ -175,11 +185,14 @@ export class ChartManager {
             time: timestamp,
             value: price,
           } as LineData;
+          console.log(`ChartManager: Adding line data for ${ticker}:`, lineData);
           series.update(lineData);
+        } else {
+          console.warn(`ChartManager: No area series found for ${ticker}`);
         }
       }
     } catch (error) {
-      console.warn(`ChartManager: Price update failed for ${ticker}, chart may be destroyed:`, error);
+      console.error(`ChartManager: Price update failed for ${ticker}:`, error);
       this.destroyed.add(ticker);
     }
   }
