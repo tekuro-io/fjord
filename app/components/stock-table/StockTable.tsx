@@ -1139,7 +1139,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                       className={`h-14 transition-colors duration-200 cursor-pointer ${
                         isExpanded 
-                          ? 'bg-gray-700 hover:bg-gray-600 expanded-parent' 
+                          ? 'bg-gray-600 hover:bg-gray-500 expanded-parent' 
                           : 'bg-gray-900 hover:bg-gray-700 rounded-lg shadow-md'
                       }`}
                       onClick={() => toggleRowExpansion(row.id)}
@@ -1149,9 +1149,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                           key={cell.id}
                           className={`px-0.5 py-2 align-middle relative ${getCellClasses(cell.column.id)}`}
                         >
-                          {/* Blue connector line for first cell when expanded - brighter to show it's clickable */}
+                          {/* Blue connector line for first cell when expanded */}
                           {index === 0 && isExpanded && (
-                            <div className="absolute left-0 top-0 w-1 h-full bg-blue-300 hover:bg-blue-200 transition-colors"></div>
+                            <div className="absolute left-0 top-0 w-1 h-full bg-blue-400"></div>
                           )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
