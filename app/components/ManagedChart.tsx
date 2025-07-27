@@ -34,20 +34,52 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
     updateWithPrice: (timestamp: number, price: number) => {
       if (!chartRef.current) return;
       
-      console.log(`ManagedChart: Updating ${chartType} chart for ${stockData.ticker} with price ${price} at ${timestamp}ms`);
+      // Convert timestamp to seconds for lightweight-charts (ensure it's a number)
+      const timeInSeconds = Math.floor(timestamp / 1000);
+      
+      console.log(`ManagedChart: Updating ${chartType} chart for ${stockData.ticker} with price ${price} at ${timestamp}ms (${timeInSeconds}s)`);
+      console.log(`ManagedChart: timestamp type:`, typeof timestamp, `timeInSeconds type:`, typeof timeInSeconds);
       
       if (chartType === 'candlestick') {
-        // Use exact timestamp - no rounding or bucketing
-        const candleData = {
-          time: timestamp, // Chart.tsx expects milliseconds and will convert to seconds
-          open: price,
-          high: price,
-          low: price,
-          close: price,
-        };
+        // 1-minute candlestick aggregation using official pattern
+        const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
         
-        console.log(`ManagedChart: Sending individual tick candle for ${stockData.ticker} at ${new Date(timestamp).toISOString()}`);
-        chartRef.current.updateData(candleData);
+        if (currentCandleStartTime.current !== bucketTime) {
+          // Starting a new minute - start new candle
+          console.log(`ManagedChart: Starting NEW 1-minute candle for ${stockData.ticker} at bucket ${bucketTime} (${new Date(bucketTime * 1000).toISOString()})`);
+          
+          currentCandle.current = {
+            time: bucketTime * 1000, // Chart.tsx expects milliseconds and will convert to seconds
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+          };
+          currentCandleStartTime.current = bucketTime;
+          
+          // Send new candle to chart
+          chartRef.current.updateData(currentCandle.current);
+        } else {
+          // Update current candle using official lightweight-charts pattern
+          if (currentCandle.current) {
+            // Official pattern: preserve time/open, update close/high/low
+            const updatedCandle = {
+              time: currentCandle.current.time,                           // Keep SAME timestamp
+              open: currentCandle.current.open,                           // Keep original open
+              close: price,                                               // Update close to latest price
+              low: Math.min(currentCandle.current.low, price),            // Extend low if needed
+              high: Math.max(currentCandle.current.high, price),          // Extend high if needed
+            };
+            
+            // Update our stored candle
+            currentCandle.current = updatedCandle;
+            
+            console.log(`ManagedChart: Updating current 1-min candle for ${stockData.ticker} - close: ${price}, high: ${updatedCandle.high}, low: ${updatedCandle.low}, time: ${updatedCandle.time} (type: ${typeof updatedCandle.time})`);
+            
+            // Send updated candle to chart with SAME timestamp (officially supported)
+            chartRef.current.updateData(updatedCandle);
+          }
+        }
       } else {
         // Area chart - simple point update
         const areaPoint: ChartDataPoint = {
