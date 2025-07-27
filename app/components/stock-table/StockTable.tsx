@@ -47,6 +47,7 @@ const ExpandedRowContent = React.memo(({
   chartRef: React.RefObject<ManagedChartHandle | null>;
   historicalCandles: CandleDataPoint[];
 }) => {
+  const { colors } = useTheme();
   const isBullish = patternAlert?.data.direction === 'bullish';
   const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
   
@@ -56,11 +57,11 @@ const ExpandedRowContent = React.memo(({
       {patternAlert && (
         <div className={`mb-4 p-3 rounded-lg border-2 pattern-alert-flash ${
           isBullish 
-            ? 'bg-green-900/30 border-green-500 text-green-100' 
-            : 'bg-red-900/30 border-red-500 text-red-100'
+            ? `${colors.successBg} border-green-500 ${colors.success}` 
+            : `${colors.dangerBg} border-red-500 ${colors.danger}`
         }`}>
           <div className="flex items-center gap-2">
-            {PatternIcon && <PatternIcon className={`w-5 h-5 ${isBullish ? 'text-green-400' : 'text-red-400'}`} />}
+            {PatternIcon && <PatternIcon className={`w-5 h-5 ${isBullish ? colors.success : colors.danger}`} />}
             <span className="font-semibold">{patternAlert.data.pattern_display_name}</span>
             <span className="text-sm opacity-75">
               ${patternAlert.data.price.toFixed(2)} ({Math.round(patternAlert.data.confidence * 100)}%)
@@ -978,28 +979,37 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
         let bg = "bg-transparent";
 
-        // Determine background color based on value
+        // Determine background color based on value using theme colors
         // Positive Delta (Green shades - ordered from highest to lowest threshold)
-        if (val > 0.15) bg = "bg-emerald-900"; // Very strong positive
-        else if (val > 0.10) bg = "bg-emerald-800";
-        else if (val > 0.07) bg = "bg-emerald-700";
-        else if (val > 0.04) bg = "bg-emerald-600";
-        else if (val > 0.02) bg = "bg-emerald-500";
-        else if (val > 0.005) bg = "bg-emerald-400"; // Slight positive
+        if (val > 0.15) bg = colors.deltaPositiveBg1; // Very strong positive
+        else if (val > 0.10) bg = colors.deltaPositiveBg2;
+        else if (val > 0.07) bg = colors.deltaPositiveBg3;
+        else if (val > 0.04) bg = colors.deltaPositiveBg4;
+        else if (val > 0.02) bg = colors.deltaPositiveBg5;
+        else if (val > 0.005) bg = colors.deltaPositiveBg6; // Slight positive
 
         // Negative Delta (Red shades - ordered from lowest (most negative) to highest threshold)
-        else if (val < -0.15) bg = "bg-red-900"; // Very strong negative
-        else if (val < -0.10) bg = "bg-red-800";
-        else if (val < -0.07) bg = "bg-red-700";
-        else if (val < -0.04) bg = "bg-red-600";
-        else if (val < -0.02) bg = "bg-red-500";
-        else if (val < -0.005) bg = "bg-red-400"; // Slight negative
+        else if (val < -0.15) bg = colors.deltaNegativeBg1; // Very strong negative
+        else if (val < -0.10) bg = colors.deltaNegativeBg2;
+        else if (val < -0.07) bg = colors.deltaNegativeBg3;
+        else if (val < -0.04) bg = colors.deltaNegativeBg4;
+        else if (val < -0.02) bg = colors.deltaNegativeBg5;
+        else if (val < -0.005) bg = colors.deltaNegativeBg6; // Slight negative
 
-        // Determine text color based on the chosen background color
-        // Default to white, then override for lighter backgrounds
+        // Determine text color based on theme and background intensity
         let textColor = "text-white";
-        if ((val > 0.005) || (val < -0.005)) { // Your existing color logic
-          textColor = "text-gray-900"; // Darker text for lighter 400 shades
+        if (theme === 'light') {
+          // In light mode, use white text for darker backgrounds (600), dark text for lighter (100-300)
+          if ((val > 0.005 && val <= 0.04) || (val < -0.005 && val >= -0.04)) {
+            textColor = "text-gray-900"; // Dark text for lighter backgrounds
+          } else {
+            textColor = "text-white"; // White text for darker backgrounds
+          }
+        } else {
+          // In dark mode, use existing logic: white for most, dark for lightest (400 shades)
+          if ((val > 0.005 && val <= 0.02) || (val < -0.005 && val >= -0.02)) {
+            textColor = "text-gray-900"; // Dark text for 400 shades
+          }
         }
 
         const stockTicker = info.row.original.ticker; // Get ticker for lookup

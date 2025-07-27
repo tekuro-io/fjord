@@ -76,6 +76,20 @@ interface ThemeContextType {
     multiplierBg5: string;
     multiplierBg6: string;
     multiplierText: string;
+    
+    // Delta backgrounds
+    deltaPositiveBg1: string;
+    deltaPositiveBg2: string;
+    deltaPositiveBg3: string;
+    deltaPositiveBg4: string;
+    deltaPositiveBg5: string;
+    deltaPositiveBg6: string;
+    deltaNegativeBg1: string;
+    deltaNegativeBg2: string;
+    deltaNegativeBg3: string;
+    deltaNegativeBg4: string;
+    deltaNegativeBg5: string;
+    deltaNegativeBg6: string;
   };
 }
 
@@ -157,6 +171,20 @@ const darkColors = {
   multiplierBg5: 'bg-teal-500', // >7
   multiplierBg6: 'bg-teal-400', // >4
   multiplierText: 'text-white', // White text for dark backgrounds
+  
+  // Delta backgrounds for dark mode
+  deltaPositiveBg1: 'bg-emerald-900', // >0.15
+  deltaPositiveBg2: 'bg-emerald-800', // >0.10
+  deltaPositiveBg3: 'bg-emerald-700', // >0.07
+  deltaPositiveBg4: 'bg-emerald-600', // >0.04
+  deltaPositiveBg5: 'bg-emerald-500', // >0.02
+  deltaPositiveBg6: 'bg-emerald-400', // >0.005
+  deltaNegativeBg1: 'bg-red-900', // <-0.15
+  deltaNegativeBg2: 'bg-red-800', // <-0.10
+  deltaNegativeBg3: 'bg-red-700', // <-0.07
+  deltaNegativeBg4: 'bg-red-600', // <-0.04
+  deltaNegativeBg5: 'bg-red-500', // <-0.02
+  deltaNegativeBg6: 'bg-red-400', // <-0.005
 };
 
 const lightColors = {
@@ -164,13 +192,13 @@ const lightColors = {
   primary: 'bg-white',
   secondary: 'bg-slate-100',
   tertiary: 'bg-gray-50',
-  gradient: 'bg-gradient-to-br from-blue-100 via-slate-50 to-blue-50',
+  gradient: 'bg-gradient-to-br from-slate-200 via-blue-100 to-slate-100',
   containerGradient: 'bg-gradient-to-b from-white via-blue-50/30 to-slate-100',
   
   // Text colors
   textPrimary: 'text-slate-900',
   textSecondary: 'text-slate-700',
-  textMuted: 'text-slate-500',
+  textMuted: 'text-slate-600',
   
   // Accent colors
   accent: 'text-blue-600',
@@ -235,6 +263,20 @@ const lightColors = {
   multiplierBg5: 'bg-teal-200', // >7
   multiplierBg6: 'bg-teal-100', // >4
   multiplierText: 'text-teal-900', // Dark text for light backgrounds
+  
+  // Delta backgrounds for light mode (lighter colors suitable for light theme)
+  deltaPositiveBg1: 'bg-emerald-600', // >0.15
+  deltaPositiveBg2: 'bg-emerald-500', // >0.10
+  deltaPositiveBg3: 'bg-emerald-400', // >0.07
+  deltaPositiveBg4: 'bg-emerald-300', // >0.04
+  deltaPositiveBg5: 'bg-emerald-200', // >0.02
+  deltaPositiveBg6: 'bg-emerald-100', // >0.005
+  deltaNegativeBg1: 'bg-red-600', // <-0.15
+  deltaNegativeBg2: 'bg-red-500', // <-0.10
+  deltaNegativeBg3: 'bg-red-400', // <-0.07
+  deltaNegativeBg4: 'bg-red-300', // <-0.04
+  deltaNegativeBg5: 'bg-red-200', // <-0.02
+  deltaNegativeBg6: 'bg-red-100', // <-0.005
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
