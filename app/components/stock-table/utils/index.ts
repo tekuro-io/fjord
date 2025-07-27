@@ -38,7 +38,10 @@ export const formatDateTime = (isoString?: string): string => {
 };
 
 export const formatLargeNumber = (val: number | null): string => {
-  if (val == null) return "-";
+  if (val == null) {
+    console.log(`📊 formatLargeNumber received null/undefined:`, val);
+    return "-";
+  }
   if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(2)} Mil`;
   if (val >= 1_000) return `${(val / 1_000).toFixed(1)} K`;
   return val.toString();
