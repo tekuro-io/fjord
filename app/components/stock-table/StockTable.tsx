@@ -90,7 +90,37 @@ ExpandedRowContent.displayName = 'ExpandedRowContent';
 
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
+  // LOG ALL DATA ENTERING THE TABLE
+  console.log(`🎯 StockTable: Received ${initialData.length} items as props`);
+  initialData.forEach((item, index) => {
+    if (index < 5) { // Log first 5 items
+      console.log(`🎯 StockTable prop ${index + 1}: ${item.ticker} - price: ${item.price}, prev_price: ${item.prev_price}, volume: ${item.volume}`);
+    }
+  });
+
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
+
+  // LOG ALL STATE CHANGES TO TRACK DATA SOURCES
+  const loggedSetCurrentData = React.useCallback((newData: StockItem[] | ((prevData: StockItem[]) => StockItem[])) => {
+    if (typeof newData === 'function') {
+      setCurrentData(prevData => {
+        const result = newData(prevData);
+        console.log(`🔄 StockTable setState: Function update - prev: ${prevData.length} items, new: ${result.length} items`);
+        
+        // Check for new tickers
+        const prevTickers = new Set(prevData.map(item => item.ticker));
+        const newTickers = result.filter(item => !prevTickers.has(item.ticker));
+        if (newTickers.length > 0) {
+          console.log(`🆕 StockTable setState: NEW TICKERS DETECTED:`, newTickers.map(t => `${t.ticker} (price: ${t.price}, other fields: ${Object.keys(t).filter(k => k !== 'ticker' && t[k as keyof StockItem] !== null).join(', ')})`));
+        }
+        
+        return result;
+      });
+    } else {
+      console.log(`🔄 StockTable setState: Direct update - ${newData.length} items`);
+      setCurrentData(newData);
+    }
+  }, []);
   const [sorting, setSorting] = React.useState([
     { id: "delta", desc: true },
     { id: "multiplier", desc: true },
@@ -215,8 +245,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       ws.onmessage = (event) => {
         try {
+          // LOG ALL WEBSOCKET MESSAGES
+          console.log(`🌐 WebSocket: Received message of length ${event.data.length}`);
+          console.log(`🌐 WebSocket raw data:`, event.data.substring(0, 500) + (event.data.length > 500 ? '...' : ''));
+          
           // Parse the incoming data
           const parsedData: unknown = JSON.parse(event.data);
+          console.log(`🌐 WebSocket: Parsed data type:`, typeof parsedData, Array.isArray(parsedData) ? `array of ${parsedData.length} items` : 'object');
 
           // Type guard for StockItem
           const isStockItem = (data: unknown): data is StockItem => {
@@ -242,11 +277,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           } else if (Array.isArray(parsedData)) {
             // Filter array to ensure all elements are StockItem
             stockUpdates = parsedData.filter(isStockItem);
+            console.log(`🌐 WebSocket: Processing ${stockUpdates.length} stock updates from array:`, stockUpdates.map(s => `${s.ticker}(${s.price})`).join(', '));
             if (stockUpdates.length !== parsedData.length) {
                 console.warn("StockTable: Some items in the received array were not valid StockItems.");
             }
           } else if (isStockItem(parsedData)) {
             stockUpdates = [parsedData];
+            console.log(`🌐 WebSocket: Processing single stock update: ${parsedData.ticker}(${parsedData.price})`);
           } else {
             console.warn("StockTable: Received unknown or invalid message format, skipping:", parsedData);
             return;
@@ -279,8 +316,18 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           });
 
           // Update the main table data (currentData)
-          setCurrentData(prevData => {
+          loggedSetCurrentData(prevData => {
             const newDataMap = new Map(prevData.map(item => [item.ticker, item]));
+            
+            // CHECK FOR NEW TICKERS BEFORE PROCESSING
+            const existingTickers = new Set(prevData.map(item => item.ticker));
+            const newTickers = stockUpdates.filter(update => !existingTickers.has(update.ticker));
+            if (newTickers.length > 0) {
+              console.log(`🚨 WebSocket: NEW TICKERS DETECTED in WebSocket updates:`, newTickers.map(t => 
+                `${t.ticker} (price: ${t.price}, prev_price: ${t.prev_price}, volume: ${t.volume}, other fields: ${Object.keys(t).filter(k => k !== 'ticker' && t[k as keyof StockItem] !== null).join(', ')})`
+              ));
+            }
+            
             stockUpdates.forEach(update => {
               const existingStock = newDataMap.get(update.ticker);
 
