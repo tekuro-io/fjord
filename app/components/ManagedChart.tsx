@@ -59,10 +59,9 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           };
           currentCandleStartTime.current = bucketTime;
           
-          // Update chart with all completed candles + new current candle
-          const allCandles = [...completedCandles.current, currentCandle.current];
-          console.log(`📊 NEW CANDLE: ${stockData.ticker} sending ${allCandles.length} candles, NEW: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
-          chartRef.current.setData(allCandles);
+          // Send only the new candle to chart
+          console.log(`📊 NEW CANDLE: ${stockData.ticker} starting new minute: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
+          chartRef.current.updateData(currentCandle.current);
         } else {
           // Update current candle - keep same timestamp, update OHLC
           if (currentCandle.current) {
@@ -75,10 +74,9 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
               high: Math.max(currentCandle.current.high, price),          // Extend high if needed
             };
             
-            // Update chart with all completed candles + updated current candle
-            const allCandles = [...completedCandles.current, currentCandle.current];
-            console.log(`📊 UPDATE CANDLE: ${stockData.ticker} sending ${allCandles.length} candles, CURRENT: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
-            chartRef.current.setData(allCandles);
+            // Update only the current candle with same timestamp
+            console.log(`📊 UPDATE CANDLE: ${stockData.ticker} updating current: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
+            chartRef.current.updateData(currentCandle.current);
           }
         }
       } else {
