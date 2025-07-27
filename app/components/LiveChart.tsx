@@ -21,6 +21,18 @@ export default function LiveChart({
   const chartRef = useRef<ChartHandle | null>(null);
   const [isChartReady, setIsChartReady] = useState(false); // State to track ChartComponent readiness
 
+  // DEBUG: Track component renders
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  console.log(`🔄 LiveChart (${stockData.ticker}) render #${renderCountRef.current}`);
+  console.log(`📊 LiveChart (${stockData.ticker}) props:`, {
+    stockDataHash: JSON.stringify(stockData).substring(0, 50) + '...',
+    chartDataLength: initialChartData.length,
+    candleDataLength: initialCandleData.length,
+    chartType,
+    isChartReady
+  });
+
   // Callback function to be passed to ChartComponent
   const handleChartReady = useCallback(() => {
     console.log(`LiveChart (${stockData.ticker}): ChartComponent reported ready.`);
@@ -31,21 +43,28 @@ export default function LiveChart({
   // This will now handle both initial load and subsequent live updates from StockTable
   useEffect(() => {
     const dataToUse = chartType === 'candlestick' ? initialCandleData : initialChartData;
-    console.log(`LiveChart (${stockData.ticker}): useEffect triggered for ${chartType} data. Current data length:`, dataToUse.length);
+    console.log(`🔄 LiveChart (${stockData.ticker}): useEffect triggered for ${chartType} data. Current data length:`, dataToUse.length);
+    console.log(`📦 LiveChart (${stockData.ticker}): useEffect dependencies changed:`, {
+      chartDataArrayRef: initialChartData === dataToUse ? 'same' : 'different',
+      candleDataArrayRef: initialCandleData === dataToUse ? 'same' : 'different',
+      ticker: stockData.ticker,
+      isChartReady,
+      chartType
+    });
 
     // Only attempt to set data if the ChartComponent is ready and chartRef.current is available
-    console.log(`isChartReady (${isChartReady}): chartRef.current ${chartRef.current}`);
+    console.log(`⚡ isChartReady (${isChartReady}): chartRef.current ${chartRef.current}`);
     if (isChartReady && chartRef.current) {
-      console.log(`LiveChart (${stockData.ticker}): chartRef.current is available and chart is ready. Attempting to set data.`);
+      console.log(`✅ LiveChart (${stockData.ticker}): chartRef.current is available and chart is ready. Attempting to set data.`);
       if (dataToUse && dataToUse.length > 0) {
-        console.log(`LiveChart (${stockData.ticker}): Calling chartRef.current.setData with data length:`, dataToUse.length);
+        console.log(`📈 LiveChart (${stockData.ticker}): Calling chartRef.current.setData with data length:`, dataToUse.length);
         chartRef.current.setData(dataToUse); // Set the entire dataset
       } else {
-        console.log(`LiveChart (${stockData.ticker}): data is empty or null. Calling chartRef.current.setData([])`);
+        console.log(`📊 LiveChart (${stockData.ticker}): data is empty or null. Calling chartRef.current.setData([])`);
         chartRef.current.setData([]); // Set empty if no data
       }
     } else {
-      console.log(`LiveChart (${stockData.ticker}): chartRef.current is NOT available yet OR chart is not ready. Waiting...`);
+      console.log(`⏳ LiveChart (${stockData.ticker}): chartRef.current is NOT available yet OR chart is not ready. Waiting...`);
     }
   }, [initialChartData, initialCandleData, stockData.ticker, isChartReady, chartType]);
 

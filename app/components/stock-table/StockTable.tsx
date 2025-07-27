@@ -1054,12 +1054,30 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                                     <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
                                     Price Chart - 1 Minute Candles
                                   </h3>
-                                  <LiveChart
-                                    stockData={row.original}
-                                    initialChartData={stockChartHistory.get(row.original.ticker) || emptyChartData}
-                                    initialCandleData={stockCandleHistory.get(row.original.ticker) || emptyCandleData}
-                                    chartType="candlestick"
-                                  />
+                                  {(() => {
+                                    const ticker = row.original.ticker;
+                                    const chartData = stockChartHistory.get(ticker) || emptyChartData;
+                                    const candleData = stockCandleHistory.get(ticker) || emptyCandleData;
+                                    
+                                    console.log(`🏪 StockTable: Rendering LiveChart for ${ticker}`, {
+                                      stockDataRef: `${row.original}`.substring(0, 30) + '...',
+                                      chartDataRef: chartData === emptyChartData ? 'empty-default' : 'has-data',
+                                      candleDataRef: candleData === emptyCandleData ? 'empty-default' : 'has-data',
+                                      chartDataLength: chartData.length,
+                                      candleDataLength: candleData.length,
+                                      chartDataArrayRef: chartData.toString().substring(0, 20) + '...',
+                                      candleDataArrayRef: candleData.toString().substring(0, 20) + '...'
+                                    });
+                                    
+                                    return (
+                                      <LiveChart
+                                        stockData={row.original}
+                                        initialChartData={chartData}
+                                        initialCandleData={candleData}
+                                        chartType="candlestick"
+                                      />
+                                    );
+                                  })()}
                                 </div>
                               </div>
                               

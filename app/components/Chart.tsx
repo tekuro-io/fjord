@@ -62,6 +62,17 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         onChartReady,
     } = props;
 
+    // DEBUG: Track component renders and props
+    const renderCountRef = useRef(0);
+    renderCountRef.current += 1;
+    console.log(`🎨 ChartComponent (${watermarkText}) render #${renderCountRef.current}`);
+    console.log(`📋 ChartComponent (${watermarkText}) props:`, {
+        dataLength: initialData.length,
+        chartType,
+        dataArrayRef: `${initialData}`.substring(0, 20) + '...',
+        watermarkText
+    });
+
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | ISeriesApi<'Candlestick'> | null>(null);
@@ -133,7 +144,26 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
     // Effect for chart initialization and cleanup (runs once on mount)
     useEffect(() => {
-        console.log('ChartComponent: Chart initialization useEffect triggered.');
+        console.log(`🏗️ ChartComponent (${watermarkText}): Chart initialization useEffect triggered.`);
+        console.log(`🔄 ChartComponent (${watermarkText}): useEffect dependencies:`, {
+            chartType,
+            backgroundColor, 
+            textColor,
+            vertLinesColor, 
+            horzLinesColor,
+            showWatermark,
+            watermarkText,
+            watermarkTextColor,
+            lineColor, 
+            areaTopColor, 
+            areaBottomColor,
+            upColor, 
+            downColor, 
+            wickUpColor, 
+            wickDownColor,
+            initialDataRef: `${initialData}`.substring(0, 20) + '...',
+            onChartReady: !!onChartReady
+        });
         if (!chartContainerRef.current) {
             console.log('ChartComponent: Chart container ref not available.');
             return;
