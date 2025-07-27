@@ -40,9 +40,9 @@ export default function AlertManager({ wsUrl, onPatternAlert }: AlertManagerProp
 
   // Expose test function globally for development
   React.useEffect(() => {
-    (window as any).triggerPatternAlert = triggerTestAlert;
+    (window as Window & { triggerPatternAlert?: () => void }).triggerPatternAlert = triggerTestAlert;
     return () => {
-      delete (window as any).triggerPatternAlert;
+      delete (window as Window & { triggerPatternAlert?: () => void }).triggerPatternAlert;
     };
   }, [triggerTestAlert]);
 
