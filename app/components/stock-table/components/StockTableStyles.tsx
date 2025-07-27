@@ -49,7 +49,7 @@ const StockTableStyles: React.FC = () => {
     
     .expanded-table .expanded-child {
       margin-top: -4px !important;
-      transform: translateY(-9px);
+      transform: translateY(-5px);
     }
     
     .expanded-table .expanded-child td {
@@ -74,9 +74,9 @@ const StockTableStyles: React.FC = () => {
     .expanded-table .expanded-child .blue-border {
       position: absolute;
       left: 0px;
-      top: 9px; /* Offset to compensate for translateY(-9px) */
+      top: 5px; /* Offset to compensate for translateY(-5px) */
       width: 4px;
-      height: calc(100% - 9px);
+      height: calc(100% - 5px);
     }
 
     /* Pattern alert animations */
