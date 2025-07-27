@@ -17,14 +17,14 @@ export default function AlertManager({ wsUrl, onPatternAlert }: AlertManagerProp
     const testAlert: PatternAlertData = {
       topic: "pattern_detection",
       data: {
-        ticker: "LOOP",
+        ticker: "NVDA",
         pattern: "bullish_reversal",
         pattern_display_name: "Bullish Reversal",
-        price: 1.64,
+        price: 132.50,
         timestamp: new Date().toISOString(),
         confidence: 0.75,
         alert_level: "medium",
-        message: "Bullish Reversal detected for LOOP at $1.64 (75% confidence)",
+        message: "Bullish Reversal detected for NVDA at $132.50 (75% confidence)",
         is_bullish: true,
         is_bearish: false,
         direction: "bullish",
