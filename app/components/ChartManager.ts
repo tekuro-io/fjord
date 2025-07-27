@@ -27,6 +27,8 @@ export class ChartManager {
   // 1-minute candlestick aggregation data
   private currentCandles: Map<string, Map<number, CandleDataPoint>> = new Map();
   private candleTimers: Map<string, Map<number, NodeJS.Timeout>> = new Map();
+  // Buffer for out-of-order ticks
+  private tickBuffer: Map<string, Array<{time: number, price: number}>> = new Map();
 
   createChart(
     ticker: string, 
@@ -39,6 +41,7 @@ export class ChartManager {
     
     // Clear any existing candle aggregation data for this ticker
     this.currentCandles.delete(ticker);
+    this.tickBuffer.delete(ticker);
     const tickerTimers = this.candleTimers.get(ticker);
     if (tickerTimers) {
       tickerTimers.forEach(timer => clearTimeout(timer));
@@ -244,137 +247,88 @@ export class ChartManager {
       return;
     }
 
-    // Get the 1-minute bucket for this timestamp
-    const bucketTime = this.get1MinuteBucket(timestamp);
-    console.log(`ChartManager: Tick for ${ticker} - original timestamp: ${timestamp}s, bucket: ${bucketTime}s, bucket date: ${new Date(bucketTime * 1000).toISOString()}`);
+    // Add tick to buffer and process in order
+    if (!this.tickBuffer.has(ticker)) {
+      this.tickBuffer.set(ticker, []);
+    }
+    
+    const buffer = this.tickBuffer.get(ticker)!;
+    buffer.push({time: timestamp, price});
+    
+    // Sort buffer by time to handle out-of-order ticks
+    buffer.sort((a, b) => a.time - b.time);
+    
+    // Process all buffered ticks that are ready
+    this.processBufferedTicks(ticker, series);
+  }
+
+  private processBufferedTicks(ticker: string, series: ISeriesApi<'Candlestick'>): void {
+    const buffer = this.tickBuffer.get(ticker);
+    if (!buffer || buffer.length === 0) return;
+
+    // Get current chart time to know what we can safely process
+    const existingData = series.data();
+    const lastChartTime = existingData.length > 0 ? Number(existingData[existingData.length - 1].time) : 0;
     
     // Initialize ticker candle tracking if needed
     if (!this.currentCandles.has(ticker)) {
       this.currentCandles.set(ticker, new Map());
     }
-    if (!this.candleTimers.has(ticker)) {
-      this.candleTimers.set(ticker, new Map());
-    }
     
     const tickerCandles = this.currentCandles.get(ticker)!;
-    const tickerTimers = this.candleTimers.get(ticker)!;
     
-    // Get or create current candle for this minute bucket
-    let currentCandle = tickerCandles.get(bucketTime);
-    if (!currentCandle) {
-      // Start new candle
-      currentCandle = {
-        time: bucketTime,
-        open: price,
-        high: price,
-        low: price,
-        close: price,
-      };
-      tickerCandles.set(bucketTime, currentCandle);
-      console.log(`ChartManager: Starting new 1-min candle for ${ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
-    } else {
-      // Update existing candle
-      const oldHigh = currentCandle.high;
-      const oldLow = currentCandle.low;
-      currentCandle.high = Math.max(currentCandle.high, price);
-      currentCandle.low = Math.min(currentCandle.low, price);
-      currentCandle.close = price; // Close is always the latest price
-      console.log(`ChartManager: Updated existing 1-min candle for ${ticker} - price: ${price}, high: ${oldHigh}->${currentCandle.high}, low: ${oldLow}->${currentCandle.low}`);
-    }
+    // Process ticks in chronological order
+    let processedCount = 0;
     
-    // Update the chart with current candle
-    console.log(`ChartManager: Updating 1-min candle for ${ticker}:`, currentCandle);
-    console.log(`ChartManager: Candle time type for ${ticker}:`, typeof currentCandle.time, currentCandle.time);
-    
-    // Ensure the candle time is a proper number
-    const candleForChart = {
-      time: Number(currentCandle.time), // Force conversion to number
-      open: Number(currentCandle.open),
-      high: Number(currentCandle.high),
-      low: Number(currentCandle.low),
-      close: Number(currentCandle.close)
-    };
-    
-    console.log(`ChartManager: Final candle data for chart:`, candleForChart);
-    console.log(`ChartManager: Final candle time type and value:`, typeof candleForChart.time, candleForChart.time);
-    
-    // Validate that all values are proper numbers
-    const invalidFields = Object.entries(candleForChart).filter(([, value]) => typeof value !== 'number' || isNaN(value));
-    if (invalidFields.length > 0) {
-      console.error(`ChartManager: Invalid fields in candle data:`, invalidFields);
-      return;
-    }
-    
-    // Safety check: ensure we're not updating with old data
-    try {
-      const existingData = series.data();
-      if (existingData.length > 0) {
-        const lastPoint = existingData[existingData.length - 1];
-        const lastTime = Number(lastPoint.time);
-        if (candleForChart.time < lastTime) {
-          console.warn(`ChartManager: Skipping update for ${ticker} - new time ${candleForChart.time} < last time ${lastTime}`);
-          console.warn(`ChartManager: Time difference: ${lastTime - candleForChart.time} seconds`);
-          console.warn(`ChartManager: New time: ${new Date(candleForChart.time * 1000).toISOString()}`);
-          console.warn(`ChartManager: Last time: ${new Date(lastTime * 1000).toISOString()}`);
-          
-          // Don't allow backwards time - this indicates a data problem
-          console.error(`ChartManager: 🚨 BACKWARDS TIME DETECTED - This should not happen!`);
-          console.error(`ChartManager: This suggests a data ordering issue in the pipeline`);
-          return;
-        } else if (candleForChart.time === lastTime) {
-          console.log(`ChartManager: Updating existing candle for ${ticker} at time ${candleForChart.time}`);
-        }
-      }
-    } catch (dataCheckError) {
-      console.warn(`ChartManager: Could not check existing data for ${ticker}:`, dataCheckError);
-    }
-
-    try {
-      // Use the same pattern as the working Chart.tsx - pass complete OHLC data
-      series.update({
-        time: candleForChart.time as Time,
-        open: candleForChart.open,
-        high: candleForChart.high,
-        low: candleForChart.low,
-        close: candleForChart.close
-      });
-      console.log(`ChartManager: Successfully updated candlestick for ${ticker} with OHLC data`);
-    } catch (error) {
-      console.error(`ChartManager: Failed to update candlestick for ${ticker}:`, error);
-      console.error(`ChartManager: Attempted to update with data:`, candleForChart);
+    for (let i = 0; i < buffer.length; i++) {
+      const tick = buffer[i];
+      const bucketTime = this.get1MinuteBucket(tick.time);
       
-      // Try to get the last data point to see what's causing the conflict
+      // Skip ticks that would go backwards in time
+      if (bucketTime < lastChartTime) {
+        console.warn(`ChartManager: Skipping old tick for ${ticker} - bucket ${bucketTime} < chart time ${lastChartTime}`);
+        processedCount++;
+        continue;
+      }
+      
+      // Update candle data
+      let candle = tickerCandles.get(bucketTime);
+      if (!candle) {
+        candle = {
+          time: bucketTime,
+          open: tick.price,
+          high: tick.price,
+          low: tick.price,
+          close: tick.price,
+        };
+        tickerCandles.set(bucketTime, candle);
+        console.log(`ChartManager: Created new candle for ${ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
+      } else {
+        candle.high = Math.max(candle.high, tick.price);
+        candle.low = Math.min(candle.low, tick.price);
+        candle.close = tick.price;
+      }
+      
+      // Update chart with candle
       try {
-        const chartData = series.data();
-        console.error(`ChartManager: Current series has ${chartData.length} data points`);
-        if (chartData.length > 0) {
-          const lastPoint = chartData[chartData.length - 1];
-          const lastTime = Number(lastPoint.time);
-          console.error(`ChartManager: Last data point:`, lastPoint);
-          console.error(`ChartManager: Time comparison - last: ${lastTime} (${typeof lastTime}), new: ${candleForChart.time} (${typeof candleForChart.time})`);
-        }
-      } catch (dataError) {
-        console.error(`ChartManager: Could not retrieve series data:`, dataError);
+        series.update({
+          time: bucketTime as Time,
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close
+        });
+        console.log(`ChartManager: Updated chart for ${ticker} with candle at ${bucketTime}`);
+      } catch (error) {
+        console.error(`ChartManager: Failed to update chart for ${ticker}:`, error);
+        break; // Stop processing if chart update fails
       }
-    }
-    
-    // Set/reset timer to finalize this candle (1 minute from bucket start + buffer)
-    if (tickerTimers.has(bucketTime)) {
-      clearTimeout(tickerTimers.get(bucketTime));
-    }
-    
-    const timeUntilNextBucket = (bucketTime + 60) * 1000 - Date.now() + 1000; // 1 second buffer
-    if (timeUntilNextBucket > 0) {
-      const timer = setTimeout(() => {
-        console.log(`ChartManager: Finalizing 1-min candle for ${ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
-        tickerCandles.delete(bucketTime);
-        tickerTimers.delete(bucketTime);
-        // Auto-fit content periodically
-        this.fitContent(ticker);
-      }, timeUntilNextBucket);
       
-      tickerTimers.set(bucketTime, timer);
+      processedCount++;
     }
+    
+    // Remove processed ticks from buffer
+    buffer.splice(0, processedCount);
   }
 
   addBatchData(ticker: string, dataPoints: ChartDataPoint[] | CandleDataPoint[]): void {
