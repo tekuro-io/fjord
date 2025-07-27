@@ -226,8 +226,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         seriesRef.current = newSeries;
 
 
-        // ALWAYS initialize with setData() first - this is required before using update()
-        console.log(`📊 Chart.tsx: Initializing ${chartType} series with setData([])`);
+        // Initialize with setData() ONLY ONCE - this is required before using update()
+        console.log(`📊 Chart.tsx: Initializing ${chartType} series with setData([]) - ONCE ONLY`);
         newSeries.setData([]);
         chart.timeScale().fitContent();
 
@@ -264,7 +264,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         watermarkTextColor,
         lineColor, areaTopColor, areaBottomColor,
         upColor, downColor, wickUpColor, wickDownColor,
-        initialData,
+        // Removed initialData since we always initialize with empty data
         onChartReady // Add onChartReady to dependencies for stability
     ]); // Dependencies for chart initialization
 
