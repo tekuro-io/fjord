@@ -55,6 +55,7 @@ const Sentiment = React.memo(function Sentiment({ ticker }: SentimentProps) {
     useEffect(() => {
         const upperTicker = ticker.toUpperCase();
         let jsonBuffer = '';
+        let isCollectingJson = false;
         
         const eventSource = new EventSource(`/api/sentiment/sse/${upperTicker}`);
 
@@ -69,15 +70,27 @@ const Sentiment = React.memo(function Sentiment({ ticker }: SentimentProps) {
                 setLoadingMessage("Gathering google news...")
             } else if (data === '[MODEL]') {
                 setLoadingMessage("Analyzing sentiment...")
+            } else if (data === '[MODELBEGIN]') {
+                setLoadingMessage("Processing analysis...")
+                isCollectingJson = true;
+                jsonBuffer = '';
             } else if (data === '[DONE]') {
                 // Try to parse the complete JSON buffer
                 if (jsonBuffer.trim()) {
+                    console.log('Raw JSON buffer:', jsonBuffer);
                     try {
-                        const parsedData: SentimentData = JSON.parse(jsonBuffer);
+                        // Clean up the JSON string
+                        let cleanJson = jsonBuffer.trim();
+                        
+                        // Remove any trailing commas before closing braces
+                        cleanJson = cleanJson.replace(/,(\s*[}\]])/g, '$1');
+                        
+                        const parsedData: SentimentData = JSON.parse(cleanJson);
                         setSentimentData(parsedData);
                         setLoading(false);
                     } catch (err) {
                         console.error('Failed to parse sentiment JSON:', err);
+                        console.error('JSON buffer was:', jsonBuffer);
                         setErrorMessage('Failed to parse sentiment data');
                         setError(true);
                         setLoading(false);
@@ -90,12 +103,14 @@ const Sentiment = React.memo(function Sentiment({ ticker }: SentimentProps) {
                 setError(true);
                 eventSource.close();
             } else if (data === '[TICKNEWS]') {
-                // Handle news items separately
+                // Switch to news collection mode
+                isCollectingJson = false;
             } else if (data === '[RANAT]') {
-                // Handle timestamp
+                // Switch to timestamp collection mode
+                isCollectingJson = false;
             } else {
-                // Check if this is a news item
-                if (data.startsWith('{') && data.includes('title')) {
+                // Check if this is a news item (complete JSON object)
+                if (data.trim().startsWith('{') && data.trim().endsWith('}') && data.includes('title')) {
                     try {
                         const newsItem: NewsItem = JSON.parse(data);
                         setNewsItems(prev => [...prev, newsItem]);
@@ -107,8 +122,8 @@ const Sentiment = React.memo(function Sentiment({ ticker }: SentimentProps) {
                 else if (/^\d+$/.test(data.trim())) {
                     setTimestamp(parseInt(data.trim()));
                 }
-                // Otherwise, accumulate JSON data
-                else if (data.trim()) {
+                // If we're collecting JSON data, accumulate it
+                else if (isCollectingJson && data.trim()) {
                     jsonBuffer += data;
                 }
             }
