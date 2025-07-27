@@ -100,7 +100,7 @@ const darkColors = {
   primary: 'bg-gray-800',
   secondary: 'bg-gray-700',
   tertiary: 'bg-gray-900',
-  gradient: 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900',
+  gradient: 'bg-gradient-to-b from-gray-900 to-gray-800',
   containerGradient: 'bg-gradient-to-b from-gray-800 to-gray-900',
   
   // Text colors
