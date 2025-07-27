@@ -192,7 +192,7 @@ const lightColors = {
   primary: 'bg-white',
   secondary: 'bg-slate-100',
   tertiary: 'bg-gray-50',
-  gradient: 'bg-gradient-to-br from-slate-200 via-blue-100 to-slate-100',
+  gradient: 'bg-gradient-to-b from-slate-200 to-slate-100',
   containerGradient: 'bg-gradient-to-b from-white via-blue-50/30 to-slate-100',
   
   // Text colors

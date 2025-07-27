@@ -31,18 +31,24 @@ const TableControls: React.FC<TableControlsProps> = ({
   const { colors } = useTheme();
   return (
     <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4">
-      <div className="relative flex items-center w-full sm:w-48 mb-4 sm:mb-0">
-        <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
-        <input
-          type="text"
-          placeholder="Search..."
-          value={globalFilter || ''}
-          onChange={e => setGlobalFilter(e.target.value)}
-          className={`w-full pl-8 pr-2 py-1 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
-        />
-      </div>
+      {/* Far left: Market Status */}
+      <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
 
-      <div className="flex items-center gap-4">
+      {/* Right side: Search bar and buttons */}
+      <div className="flex items-center gap-4 mt-4 sm:mt-0">
+        {/* Search bar */}
+        <div className="relative flex items-center w-full sm:w-48">
+          <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={globalFilter || ''}
+            onChange={e => setGlobalFilter(e.target.value)}
+            className={`w-full pl-8 pr-2 py-1 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
+          />
+        </div>
+
+        {/* Button group */}
         <div className={`flex items-center ${colors.secondary} rounded-lg ${colors.shadowSm} p-1`}>
           <button
             onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
@@ -83,8 +89,6 @@ const TableControls: React.FC<TableControlsProps> = ({
             {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
           </button>
         </div>
-
-        <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
       </div>
     </div>
   );

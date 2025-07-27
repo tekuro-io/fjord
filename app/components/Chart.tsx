@@ -4,7 +4,7 @@ import { AreaSeries, CandlestickSeries, HistogramSeries, createChart, ColorType,
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
 // Import ChartDataPoint and CandleDataPoint from StockTable to ensure consistency across components
-import type { ChartDataPoint, CandleDataPoint } from './stock-table';
+import type { ChartDataPoint, CandleDataPoint } from './stock-table/types';
 
 interface ChartColors {
     backgroundColor?: string;
