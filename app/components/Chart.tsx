@@ -92,13 +92,17 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     
                     if (chartType === 'candlestick' && 'open' in point) {
                         // Handle candlestick data
-                        seriesRef.current.update({
+                        console.log(`📊 Chart.tsx BEFORE object creation: timeForChart=${timeForChart} (${typeof timeForChart}), point.open=${point.open} (${typeof point.open}), point.high=${point.high} (${typeof point.high}), point.low=${point.low} (${typeof point.low}), point.close=${point.close} (${typeof point.close})`);
+                        
+                        const candleData = {
                             time: timeForChart,
                             open: point.open,
                             high: point.high,
                             low: point.low,
                             close: point.close
-                        });
+                        };
+                        console.log(`📊 Chart.tsx AFTER object creation:`, candleData, 'time type:', typeof candleData.time);
+                        seriesRef.current.update(candleData);
                     } else if (chartType === 'area' && 'value' in point) {
                         // Handle area chart data
                         seriesRef.current.update({ time: timeForChart, value: point.value });

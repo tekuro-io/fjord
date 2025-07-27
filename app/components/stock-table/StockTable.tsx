@@ -442,7 +442,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               const chartRef = chartRefs.current.get(update.ticker);
               if (chartRef?.current) {
                 console.log(`📊 StockTable->Chart: ${update.ticker} timestamp=${timestamp} (type: ${typeof timestamp}) price=${update.price} (type: ${typeof update.price})`);
-                chartRef.current.updateWithPrice(timestamp, update.price);
+                try {
+                  chartRef.current.updateWithPrice(timestamp, update.price);
+                } catch (chartError) {
+                  console.error(`📊 Chart Update Error for ${update.ticker}:`, chartError);
+                }
               }
             } else {
               console.warn("StockTable: Skipping chart update for stock with missing price or timestamp:", update);
