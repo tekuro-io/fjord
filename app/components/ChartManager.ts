@@ -284,7 +284,7 @@ export class ChartManager {
     console.log(`ChartManager: Final candle time type and value:`, typeof candleForChart.time, candleForChart.time);
     
     // Validate that all values are proper numbers
-    const invalidFields = Object.entries(candleForChart).filter(([key, value]) => typeof value !== 'number' || isNaN(value));
+    const invalidFields = Object.entries(candleForChart).filter(([, value]) => typeof value !== 'number' || isNaN(value));
     if (invalidFields.length > 0) {
       console.error(`ChartManager: Invalid fields in candle data:`, invalidFields);
       return;
@@ -295,8 +295,9 @@ export class ChartManager {
       const existingData = series.data();
       if (existingData.length > 0) {
         const lastPoint = existingData[existingData.length - 1];
-        if (candleForChart.time <= lastPoint.time) {
-          console.warn(`ChartManager: Skipping update for ${ticker} - new time ${candleForChart.time} <= last time ${lastPoint.time}`);
+        const lastTime = Number(lastPoint.time);
+        if (candleForChart.time <= lastTime) {
+          console.warn(`ChartManager: Skipping update for ${ticker} - new time ${candleForChart.time} <= last time ${lastTime}`);
           return;
         }
       }
@@ -317,8 +318,9 @@ export class ChartManager {
         console.error(`ChartManager: Current series has ${chartData.length} data points`);
         if (chartData.length > 0) {
           const lastPoint = chartData[chartData.length - 1];
+          const lastTime = Number(lastPoint.time);
           console.error(`ChartManager: Last data point:`, lastPoint);
-          console.error(`ChartManager: Time comparison - last: ${lastPoint.time} (${typeof lastPoint.time}), new: ${candleForChart.time} (${typeof candleForChart.time})`);
+          console.error(`ChartManager: Time comparison - last: ${lastTime} (${typeof lastTime}), new: ${candleForChart.time} (${typeof candleForChart.time})`);
         }
       } catch (dataError) {
         console.error(`ChartManager: Could not retrieve series data:`, dataError);
