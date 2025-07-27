@@ -55,8 +55,8 @@ export default function ChartModal({
         </div>
         
         {/* Chart Content */}
-        <div className="p-6">
-          <div style={{ height: '800px' }}>
+        <div className="p-3">
+          <div style={{ height: 'calc(95vh - 140px)' }}>
             <ManagedChart
               ref={chartRef || modalChartRef}
               stockData={stockData}
