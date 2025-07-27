@@ -14,10 +14,9 @@ import {
 } from 'lucide-react';
 
 import * as Tone from 'tone';
-import ManagedChart from "../ManagedChart";
+import ManagedChart, { type ManagedChartHandle } from "../ManagedChart";
 import SentimentModal from "../SentimentModal";
 import AlertManager from "../AlertManager";
-import { chartManager } from "../ChartManager";
 import type { PatternAlertData } from "../PatternAlert";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
@@ -37,11 +36,13 @@ const columnHelper = createColumnHelper<StockItem>();
 const ExpandedRowContent = React.memo(({ 
   stockData, 
   onOpenSentiment,
-  patternAlert
+  patternAlert,
+  chartRef
 }: { 
   stockData: StockItem;
   onOpenSentiment: () => void;
   patternAlert?: PatternAlertData;
+  chartRef: React.RefObject<ManagedChartHandle | null>;
 }) => {
   const isBullish = patternAlert?.data.direction === 'bullish';
   const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
@@ -79,6 +80,7 @@ const ExpandedRowContent = React.memo(({
         </button>
       </div>
       <ManagedChart
+        ref={chartRef}
         stockData={stockData}
         chartType="candlestick"
       />
@@ -142,7 +144,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [recentlyUpdatedStocks, setRecentlyUpdatedStocks] = React.useState<Set<string>>(new Set());
   const [flashingStates, setFlashingStates] = React.useState<Map<string, boolean>>(new Map());
   const [priceFlashingStates, setPriceFlashingStates] = React.useState<Map<string, 'up' | 'down'>>(new Map());
-  // Chart data is now managed by ChartManager, not React state
+  // Chart refs management - stores refs to ManagedChart components for each expanded ticker
+  const chartRefs = React.useRef<Map<string, React.RefObject<ManagedChartHandle | null>>>(new Map());
   const [sentimentModalOpen, setSentimentModalOpen] = React.useState(false);
   const [sentimentTicker, setSentimentTicker] = React.useState<string>('');
   const [patternFlashingRows, setPatternFlashingRows] = React.useState<Map<string, 'bullish' | 'bearish'>>(new Map());
@@ -163,14 +166,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const flashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
   const priceFlashTimers = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
 
+  // Helper function to get or create a chart ref for a ticker
+  const getChartRef = React.useCallback((ticker: string): React.RefObject<ManagedChartHandle | null> => {
+    if (!chartRefs.current.has(ticker)) {
+      const newRef = React.createRef<ManagedChartHandle | null>();
+      chartRefs.current.set(ticker, newRef);
+    }
+    return chartRefs.current.get(ticker)!;
+  }, []);
+
   // Helper function to toggle row expansion
   const toggleRowExpansion = React.useCallback((rowId: string) => {
     setExpandedRows(prev => {
       const newSet = new Set(prev);
       if (newSet.has(rowId)) {
         newSet.delete(rowId);
-        // Clean up chart when collapsing
-        chartManager.destroyChart(rowId);
+        // Clean up chart ref when collapsing
+        chartRefs.current.delete(rowId);
       } else {
         newSet.add(rowId);
         // Chart will be created by ManagedChart component when rendered
@@ -420,8 +432,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 return;
               }
               
-              // Let ChartManager handle the conversion based on chart type
-              chartManager.updateChartWithPrice(update.ticker, timestamp, update.price);
+              // Update chart via ref if the ticker has an expanded chart
+              const chartRef = chartRefs.current.get(update.ticker);
+              if (chartRef?.current) {
+                chartRef.current.updateWithPrice(timestamp, update.price);
+              }
             } else {
               console.warn("StockTable: Skipping chart update for stock with missing price or timestamp:", update);
             }
@@ -1194,6 +1209,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                             stockData={row.original}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
                             patternAlert={patternAlert}
+                            chartRef={getChartRef(row.original.ticker)}
                           />
                         </td>
                       </tr>
