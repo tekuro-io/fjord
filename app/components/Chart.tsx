@@ -18,6 +18,7 @@ interface ChartColors {
     downColor?: string;
     wickUpColor?: string;
     wickDownColor?: string;
+    watermarkTextColor?: string;
 }
 
 type ChartType = 'area' | 'candlestick';
