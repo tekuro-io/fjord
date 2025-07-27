@@ -1,6 +1,11 @@
 import Redis, { RedisOptions } from "ioredis";
 import { redisScannerReadDuration } from "./metrics/redis";
 
+// Global type declaration for tracking Redis keys
+declare global {
+  var previousRedisKeys: Set<string> | undefined;
+}
+
 export interface StockItem {
   ticker: string;
   prev_price: number | null;
@@ -67,7 +72,7 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
         console.log(`🔑 Keys found:`, keys.map(k => k.toString()));
         
         // Store previous keys to detect new entries
-        const previousKeys = (globalThis as any).previousRedisKeys || new Set();
+        const previousKeys = globalThis.previousRedisKeys || new Set();
         const currentKeys = new Set(keys.map(k => k.toString()));
         const newKeys = [...currentKeys].filter(key => !previousKeys.has(key));
         const removedKeys = [...previousKeys].filter(key => !currentKeys.has(key));
@@ -80,7 +85,7 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
         }
         
         // Update global tracking
-        (globalThis as any).previousRedisKeys = currentKeys;
+        globalThis.previousRedisKeys = currentKeys;
 
         if (keys.length === 0) {
             console.warn("No 'scanner:latest:*' keys found in Redis.");
@@ -115,7 +120,7 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
                     console.log(`   All parsed keys: [${Object.keys(item).join(', ')}]`);
                     
                     // Check for null/undefined values
-                    const nullFields = Object.entries(item).filter(([key, value]) => value === null || value === undefined);
+                    const nullFields = Object.entries(item).filter(([, value]) => value === null || value === undefined);
                     if (nullFields.length > 0) {
                         console.warn(`⚠️  ${ticker} has null/undefined fields:`, nullFields.map(([k, v]) => `${k}=${v}`));
                     }
