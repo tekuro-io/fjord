@@ -62,6 +62,23 @@ const StockTableStyles: React.FC = () => {
       --border-spacing-y: 0px;
     }
 
+    /* Ensure blue borders align perfectly between parent and child rows */
+    .expanded-table .expanded-parent .blue-border {
+      position: absolute;
+      left: 1px;
+      top: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .expanded-table .expanded-child .blue-border {
+      position: absolute;
+      left: 1px;
+      top: 5px; /* Offset to compensate for translateY(-5px) */
+      width: 4px;
+      height: calc(100% - 5px);
+    }
+
     /* Pattern alert animations */
     @keyframes pattern-flash-bullish {
       0% { background-color: rgb(31 41 55); } /* gray-800 */
