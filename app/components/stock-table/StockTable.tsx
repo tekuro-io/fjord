@@ -10,12 +10,12 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowUp, ArrowDown, X, Tag, DollarSign, Percent, BarChart2, Activity,
-  ChevronRight, ChevronDown, Frown
+  ChevronRight, ChevronDown, Frown, Brain
 } from 'lucide-react';
 
 import * as Tone from 'tone';
 import LiveChart from "../LiveChart";
-import Sentiment from "../Sentiment";
+import SentimentModal from "../SentimentModal";
 import type { ChartHandle } from "../Chart";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
@@ -39,44 +39,40 @@ const ExpandedRowContent = React.memo(({
   stockData, 
   chartRef,
   initialChartData, 
-  initialCandleData 
+  initialCandleData,
+  onOpenSentiment
 }: { 
   stockData: StockItem;
   chartRef: React.RefObject<ChartHandle>;
   initialChartData: ChartDataPoint[];
   initialCandleData: CandleDataPoint[];
+  onOpenSentiment: () => void;
 }) => {
   return (
     <div className="bg-gray-800 rounded-lg m-2">
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
-        {/* Chart Panel - Takes up 2/3 on large screens */}
-        <div className="xl:col-span-2">
-          <div className="bg-gray-700 rounded-lg p-3">
-            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+      <div className="p-4">
+        {/* Chart Panel - Full width */}
+        <div className="bg-gray-700 rounded-lg p-3">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-300 flex items-center">
               <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
               Price Chart - 1 Minute Candles
             </h3>
-            <LiveChart
-              ref={chartRef}
-              stockData={stockData}
-              initialChartData={initialChartData}
-              initialCandleData={initialCandleData}
-              chartType="candlestick"
-            />
-          </div>
-        </div>
-        
-        {/* Sentiment Panel - Takes up 1/3 on large screens */}
-        <div className="xl:col-span-1">
-          <div className="bg-gray-700 rounded-lg p-3 h-full">
-            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
-              <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+            <button
+              onClick={onOpenSentiment}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors duration-200"
+            >
+              <Brain className="w-4 h-4" />
               AI Analysis
-            </h3>
-            <div className="overflow-y-auto max-h-96">
-              <Sentiment ticker={stockData.ticker} />
-            </div>
+            </button>
           </div>
+          <LiveChart
+            ref={chartRef}
+            stockData={stockData}
+            initialChartData={initialChartData}
+            initialCandleData={initialCandleData}
+            chartType="candlestick"
+          />
         </div>
       </div>
     </div>
@@ -111,6 +107,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [priceFlashingStates, setPriceFlashingStates] = React.useState<Map<string, 'up' | 'down'>>(new Map());
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
   const [stockCandleHistory, setStockCandleHistory] = React.useState<Map<string, CandleDataPoint[]>>(new Map());
+  const [sentimentModalOpen, setSentimentModalOpen] = React.useState(false);
+  const [sentimentTicker, setSentimentTicker] = React.useState<string>('');
   
   // Memoized empty arrays to prevent unnecessary re-renders
   const emptyChartData = React.useMemo(() => [], []);
@@ -1063,6 +1061,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     });
   }, [stockChartHistory]);
 
+  // Handler to open sentiment modal
+  const openSentimentModal = React.useCallback((ticker: string) => {
+    setSentimentTicker(ticker);
+    setSentimentModalOpen(true);
+  }, []);
+
+  const closeSentimentModal = React.useCallback(() => {
+    setSentimentModalOpen(false);
+    setSentimentTicker('');
+  }, []);
+
   return (
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
       <StockTableStyles />
@@ -1153,6 +1162,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                             chartRef={getChartRef(row.original.ticker)}
                             initialChartData={stableExpandedData.current.get(row.original.ticker)?.chartData || emptyChartData}
                             initialCandleData={stableExpandedData.current.get(row.original.ticker)?.candleData || emptyCandleData}
+                            onOpenSentiment={() => openSentimentModal(row.original.ticker)}
                           />
                         </td>
                       </tr>
@@ -1176,6 +1186,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           </button>
         </div>
       )}
+
+      {/* Sentiment Modal */}
+      <SentimentModal
+        isOpen={sentimentModalOpen}
+        onClose={closeSentimentModal}
+        ticker={sentimentTicker}
+      />
     </div>
   );
 }
