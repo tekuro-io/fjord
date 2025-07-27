@@ -33,15 +33,17 @@ import {
 
 const columnHelper = createColumnHelper<StockItem>();
 
-// Memoized expanded row content to prevent re-renders
+// Memoized expanded row content that never re-renders after initial mount
 const ExpandedRowContent = React.memo(({ 
   stockData, 
-  chartData, 
-  candleData 
+  chartRef,
+  initialChartData, 
+  initialCandleData 
 }: { 
   stockData: StockItem;
-  chartData: ChartDataPoint[];
-  candleData: CandleDataPoint[];
+  chartRef: React.RefObject<ChartHandle>;
+  initialChartData: ChartDataPoint[];
+  initialCandleData: CandleDataPoint[];
 }) => {
   return (
     <div className="bg-gray-800 rounded-lg m-2">
@@ -54,9 +56,10 @@ const ExpandedRowContent = React.memo(({
               Price Chart - 1 Minute Candles
             </h3>
             <LiveChart
+              ref={chartRef}
               stockData={stockData}
-              initialChartData={chartData}
-              initialCandleData={candleData}
+              initialChartData={initialChartData}
+              initialCandleData={initialCandleData}
               chartType="candlestick"
             />
           </div>
@@ -131,12 +134,22 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       const newSet = new Set(prev);
       if (newSet.has(rowId)) {
         newSet.delete(rowId);
+        // Clean up refs when collapsing
+        chartRefs.current.delete(rowId);
+        stableExpandedData.current.delete(rowId);
       } else {
         newSet.add(rowId);
+        // Initialize stable data when expanding
+        const currentChartData = stockChartHistory.get(rowId) || emptyChartData;
+        const currentCandleData = stockCandleHistory.get(rowId) || emptyCandleData;
+        stableExpandedData.current.set(rowId, {
+          chartData: [...currentChartData],
+          candleData: [...currentCandleData]
+        });
       }
       return newSet;
     });
-  }, []);
+  }, [stockChartHistory, stockCandleHistory, emptyChartData, emptyCandleData]);
 
 
   React.useEffect(() => {
@@ -991,22 +1004,46 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
   }, []);
 
-  // Stable chart data refs to prevent unnecessary re-renders
-  const stableChartDataRef = React.useRef<Map<string, ChartDataPoint[]>>(new Map());
-  const stableCandleDataRef = React.useRef<Map<string, CandleDataPoint[]>>(new Map());
+  // Create stable data objects that only update when a row is first expanded
+  const stableExpandedData = React.useRef<Map<string, {
+    chartData: ChartDataPoint[];
+    candleData: CandleDataPoint[];
+  }>>(new Map());
 
-  // Update stable refs when data changes but don't trigger re-renders
-  React.useEffect(() => {
-    stockChartHistory.forEach((data, ticker) => {
-      stableChartDataRef.current.set(ticker, data);
-    });
-  }, [stockChartHistory]);
+  // Chart refs for imperative updates - one per expanded ticker
+  const chartRefs = React.useRef<Map<string, React.RefObject<ChartHandle>>>(new Map());
 
+  // Function to get or create chart ref for a ticker
+  const getChartRef = React.useCallback((ticker: string) => {
+    if (!chartRefs.current.has(ticker)) {
+      chartRefs.current.set(ticker, React.createRef<ChartHandle>());
+    }
+    return chartRefs.current.get(ticker)!;
+  }, []);
+
+  // Update charts imperatively when data changes
   React.useEffect(() => {
-    stockCandleHistory.forEach((data, ticker) => {
-      stableCandleDataRef.current.set(ticker, data);
+    expandedRows.forEach(ticker => {
+      const chartRef = chartRefs.current.get(ticker);
+      if (chartRef?.current) {
+        const currentChartData = stockChartHistory.get(ticker);
+        const currentCandleData = stockCandleHistory.get(ticker);
+        const stableData = stableExpandedData.current.get(ticker);
+        
+        if (currentCandleData && stableData) {
+          // Check if we have new candle data points
+          if (currentCandleData.length > stableData.candleData.length) {
+            const newPoints = currentCandleData.slice(stableData.candleData.length);
+            newPoints.forEach(point => {
+              chartRef.current!.updateData(point);
+            });
+            // Update our stable reference
+            stableData.candleData = [...currentCandleData];
+          }
+        }
+      }
     });
-  }, [stockCandleHistory]);
+  }, [stockChartHistory, stockCandleHistory, expandedRows]);
 
   // Initialize candle history from existing tick data
   React.useEffect(() => {
@@ -1112,8 +1149,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         <td colSpan={columns.length} className="p-0 bg-gray-900">
                           <ExpandedRowContent 
                             stockData={row.original}
-                            chartData={stableChartDataRef.current.get(row.original.ticker) || emptyChartData}
-                            candleData={stableCandleDataRef.current.get(row.original.ticker) || emptyCandleData}
+                            chartRef={getChartRef(row.original.ticker)}
+                            initialChartData={stableExpandedData.current.get(row.original.ticker)?.chartData || emptyChartData}
+                            initialCandleData={stableExpandedData.current.get(row.original.ticker)?.candleData || emptyCandleData}
                           />
                         </td>
                       </tr>

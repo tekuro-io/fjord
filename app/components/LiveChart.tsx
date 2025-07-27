@@ -12,13 +12,16 @@ interface LiveChartProps {
   chartType?: 'area' | 'candlestick';
 }
 
-export default function LiveChart({ 
+const LiveChart = React.forwardRef<ChartHandle, LiveChartProps>(({ 
   stockData, 
   initialChartData = [], 
   initialCandleData = [], 
   chartType = 'candlestick' 
-}: LiveChartProps) {
+}, forwardedRef) => {
   const chartRef = useRef<ChartHandle | null>(null);
+  
+  // Expose the chart handle to parent via forwarded ref
+  React.useImperativeHandle(forwardedRef, () => chartRef.current!, []);
   const [isChartReady, setIsChartReady] = useState(false);
   const lastDataLengthRef = useRef({ chartData: 0, candleData: 0 });
 
@@ -104,4 +107,8 @@ export default function LiveChart({
       </div>
     </div>
   );
-}
+});
+
+LiveChart.displayName = 'LiveChart';
+
+export default LiveChart;
