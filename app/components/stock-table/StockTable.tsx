@@ -49,32 +49,27 @@ const ExpandedRowContent = React.memo(({
   onOpenSentiment: () => void;
 }) => {
   return (
-    <div className="bg-gray-800 rounded-lg m-2">
-      <div className="p-4">
-        {/* Chart Panel - Full width */}
-        <div className="bg-gray-700 rounded-lg p-3">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-300 flex items-center">
-              <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-              Price Chart - 1 Minute Candles
-            </h3>
-            <button
-              onClick={onOpenSentiment}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors duration-200"
-            >
-              <Brain className="w-4 h-4" />
-              AI Analysis
-            </button>
-          </div>
-          <LiveChart
-            ref={chartRef}
-            stockData={stockData}
-            initialChartData={initialChartData}
-            initialCandleData={initialCandleData}
-            chartType="candlestick"
-          />
-        </div>
+    <div className="bg-gray-700 rounded-lg m-2 p-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-semibold text-gray-300 flex items-center">
+          <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+          Price Chart - 1 Minute Candles
+        </h3>
+        <button
+          onClick={onOpenSentiment}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors duration-200"
+        >
+          <Brain className="w-4 h-4" />
+          AI Analysis
+        </button>
       </div>
+      <LiveChart
+        ref={chartRef}
+        stockData={stockData}
+        initialChartData={initialChartData}
+        initialCandleData={initialCandleData}
+        chartType="candlestick"
+      />
     </div>
   );
 });
