@@ -110,7 +110,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                         seriesRef.current.update({ time: timeForChart, value: point.value });
                     }
                     
-                    // Note: Removed scrollToRealTime() call - auto-scroll is now controlled by shiftVisibleRangeOnNewBar option
+                    // Force price scale to recalculate if value is outside current range
+                    if (chartRef.current) {
+                        chartRef.current.priceScale('right').applyOptions({ autoScale: true });
+                    }
                 } else {
                 }
             },

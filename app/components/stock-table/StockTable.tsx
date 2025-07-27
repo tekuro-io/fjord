@@ -55,7 +55,7 @@ const ExpandedRowContent = React.memo(({
   const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
   
   return (
-    <div className={`${useTheme().colors.expandedRow} p-4`}>
+    <div className={`${useTheme().colors.expandedRow} px-2 py-4`}>
       {/* Pattern Alert Box */}
       {patternAlert && (
         <div className={`mb-4 p-3 rounded-lg border-2 pattern-alert-flash ${
@@ -80,18 +80,18 @@ const ExpandedRowContent = React.memo(({
         </h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={onOpenChart}
-            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonSecondary} rounded-md transition-colors duration-200 shadow-sm`}
-          >
-            <Maximize2 className="w-4 h-4 flex-shrink-0" />
-            <span className="leading-tight flex items-center">Expand Chart</span>
-          </button>
-          <button
             onClick={onOpenSentiment}
             className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 shadow-sm`}
           >
             <Brain className="w-4 h-4 flex-shrink-0" />
             <span className="leading-tight flex items-center">AI Analysis</span>
+          </button>
+          <button
+            onClick={onOpenChart}
+            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonSecondary} rounded-md transition-colors duration-200 shadow-sm`}
+          >
+            <Maximize2 className="w-4 h-4 flex-shrink-0" />
+            <span className="leading-tight flex items-center">Expand Chart</span>
           </button>
         </div>
       </div>
@@ -1372,7 +1372,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     </tr>
                     {isExpanded && (
                       <tr className="expanded-child">
-                        <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border ${colors.border}`}>
+                        <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border-l border-r border-b ${colors.border}`}>
                           {/* Blue connector line */}
                           <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           <ExpandedRowContent 
