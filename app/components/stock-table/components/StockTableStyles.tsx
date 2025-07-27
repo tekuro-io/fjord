@@ -49,7 +49,7 @@ const StockTableStyles: React.FC = () => {
     
     .expanded-table .expanded-child {
       margin-top: -4px !important;
-      transform: translateY(-4px);
+      transform: translateY(-5px);
     }
     
     .expanded-table .expanded-child td {
