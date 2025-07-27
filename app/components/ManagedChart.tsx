@@ -35,6 +35,8 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
           const timestampSeconds = Math.floor(timestampMs / 1000);
           
           console.log(`ManagedChart: Creating initial data for ${stockData.ticker} with timestamp ${timestampSeconds}s (from ${timestampMs}ms)`);
+          console.log(`ManagedChart: Initial timestamp source - stockData.timestamp:`, stockData.timestamp, typeof stockData.timestamp);
+          console.log(`ManagedChart: Current time for comparison:`, Math.floor(Date.now() / 1000), new Date().toISOString());
           
           if (chartType === 'candlestick') {
             initialData = [{

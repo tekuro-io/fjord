@@ -212,6 +212,8 @@ export class ChartManager {
 
     const chartType = this.chartTypes.get(ticker);
     console.log(`ChartManager: Updating ${chartType} chart for ${ticker} with price ${price} at ${timestamp} (${timeInSeconds}s)`);
+    console.log(`ChartManager: WebSocket timestamp source - original: ${timestamp}ms, converted: ${timeInSeconds}s`);
+    console.log(`ChartManager: Current time for comparison:`, Math.floor(Date.now() / 1000), new Date().toISOString());
     
     try {
       if (chartType === 'candlestick') {
@@ -315,12 +317,10 @@ export class ChartManager {
           console.warn(`ChartManager: New time: ${new Date(candleForChart.time * 1000).toISOString()}`);
           console.warn(`ChartManager: Last time: ${new Date(lastTime * 1000).toISOString()}`);
           
-          // If the difference is small (< 2 minutes), allow the update anyway
-          if (lastTime - candleForChart.time < 120) {
-            console.warn(`ChartManager: Time difference is small (${lastTime - candleForChart.time}s), allowing update anyway`);
-          } else {
-            return;
-          }
+          // Don't allow backwards time - this indicates a data problem
+          console.error(`ChartManager: 🚨 BACKWARDS TIME DETECTED - This should not happen!`);
+          console.error(`ChartManager: This suggests a data ordering issue in the pipeline`);
+          return;
         } else if (candleForChart.time === lastTime) {
           console.log(`ChartManager: Updating existing candle for ${ticker} at time ${candleForChart.time}`);
         }
