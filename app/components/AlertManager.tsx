@@ -84,7 +84,7 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     
     // Play different sounds based on alert direction
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
       
       if (alert.data.is_bullish) {
         // Bullish: Pleasant ascending chime (C-E-G major chord)

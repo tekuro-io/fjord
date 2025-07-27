@@ -62,16 +62,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         onChartReady,
     } = props;
 
-    // DEBUG: Track component renders and props
-    const renderCountRef = useRef(0);
-    renderCountRef.current += 1;
-    console.log(`🎨 ChartComponent (${watermarkText}) render #${renderCountRef.current}`);
-    console.log(`📋 ChartComponent (${watermarkText}) props:`, {
-        dataLength: initialData.length,
-        chartType,
-        dataArrayRef: `${initialData}`.substring(0, 20) + '...',
-        watermarkText
-    });
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
@@ -79,12 +69,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
     // useImperativeHandle: Expose updateData and setData methods to the parent via ref
     useImperativeHandle(ref, () => {
-        console.log('ChartComponent: useImperativeHandle callback executed.');
         // This object is what chartRef.current in the parent will point to
         const handle = {
             updateData: (point: ChartDataPoint | CandleDataPoint) => {
                 if (seriesRef.current) {
-                    console.log('ChartComponent: updateData called with point:', point);
                     // Ensure time is in seconds for lightweight-charts
                     const timeInSeconds = (point.time / 1000) as Time;
                     
@@ -104,12 +92,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     
                     // Note: Removed scrollToRealTime() call - auto-scroll is now controlled by shiftVisibleRangeOnNewBar option
                 } else {
-                    console.warn('ChartComponent: seriesRef.current not available for updateData (inside handle).');
                 }
             },
             setData: (data: ChartDataPoint[] | CandleDataPoint[]) => {
                 if (seriesRef.current) {
-                    console.log('ChartComponent: setData called with data length:', data.length);
                     // Ensure all times are in seconds for lightweight-charts
                     if (chartType === 'candlestick' && data.length > 0 && 'open' in data[0]) {
                         // Handle candlestick data
@@ -134,38 +120,15 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                         chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
                     }
                 } else {
-                    console.warn('ChartComponent: seriesRef.current not available for setData (inside handle).');
                 }
             },
         };
-        console.log('ChartComponent: useImperativeHandle returning handle:', handle);
         return handle;
     });
 
     // Effect for chart initialization and cleanup (runs once on mount)
     useEffect(() => {
-        console.log(`🏗️ ChartComponent (${watermarkText}): Chart initialization useEffect triggered.`);
-        console.log(`🔄 ChartComponent (${watermarkText}): useEffect dependencies:`, {
-            chartType,
-            backgroundColor, 
-            textColor,
-            vertLinesColor, 
-            horzLinesColor,
-            showWatermark,
-            watermarkText,
-            watermarkTextColor,
-            lineColor, 
-            areaTopColor, 
-            areaBottomColor,
-            upColor, 
-            downColor, 
-            wickUpColor, 
-            wickDownColor,
-            initialDataRef: `${initialData}`.substring(0, 20) + '...',
-            onChartReady: !!onChartReady
-        });
         if (!chartContainerRef.current) {
-            console.log('ChartComponent: Chart container ref not available.');
             return;
         }
 
@@ -233,7 +196,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 wickDownColor,
                 borderVisible: false,
             });
-            console.log('ChartComponent: Chart and CandlestickSeries initialized and refs assigned.');
         } else {
             newSeries = chart.addSeries(AreaSeries, {
                 lineColor,
@@ -241,18 +203,14 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 bottomColor: areaBottomColor,
                 lineWidth: 1,
             });
-            console.log('ChartComponent: Chart and AreaSeries initialized and refs assigned.');
         }
         
         seriesRef.current = newSeries;
-        console.log('ChartComponent: chartRef.current after assignment:', chartRef.current);
-        console.log('ChartComponent: seriesRef.current after assignment:', seriesRef.current);
 
 
         // Set the initial historical data using setData
         // This runs only once with the initialData prop when the chart is created
         if (initialData.length > 0) {
-            console.log('ChartComponent: Setting initial data during initialization (from initialData prop). Data length:', initialData.length);
             
             if (chartType === 'candlestick' && 'open' in initialData[0]) {
                 // Handle candlestick data
@@ -276,7 +234,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             chart.timeScale().fitContent(); // Fit content after setting initial data
         } else {
             // If no initial data, explicitly set empty data to ensure the series is initialized
-            console.log('ChartComponent: Initial data is empty, setting empty series data.');
             newSeries.setData([]);
             chart.timeScale().fitContent(); // Fit content even for empty data
         }
@@ -284,9 +241,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         // Notify parent that the chart is ready
         if (onChartReady) {
             onChartReady();
-            console.log('ChartComponent: Called onChartReady callback.');
         } else {
-            console.log('ChartComponent: onChartReady callback not provided.');
         }
 
         // Handle window resizing
@@ -300,13 +255,11 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
         // Cleanup function: remove event listener and destroy chart on unmount
         return () => {
-            console.log('ChartComponent: Cleanup function triggered.');
             window.removeEventListener('resize', handleResize);
             if (chartRef.current) {
                 chartRef.current.remove();
                 chartRef.current = null;
                 seriesRef.current = null;
-                console.log('ChartComponent: Chart destroyed during cleanup.');
             }
         };
     }, [

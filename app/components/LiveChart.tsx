@@ -26,13 +26,9 @@ const LiveChart = React.forwardRef<ChartHandle, LiveChartProps>(({
   const lastDataLengthRef = useRef({ chartData: 0, candleData: 0 });
 
   // DEBUG: Track component renders
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  console.log(`🔄 LiveChart (${stockData.ticker}) render #${renderCountRef.current}`);
 
   // Callback function to be passed to ChartComponent
   const handleChartReady = useCallback(() => {
-    console.log(`LiveChart (${stockData.ticker}): ChartComponent reported ready.`);
     setIsChartReady(true);
     
     // Set initial data when chart becomes ready
@@ -60,7 +56,6 @@ const LiveChart = React.forwardRef<ChartHandle, LiveChartProps>(({
       const dataToUse = chartType === 'candlestick' ? initialCandleData : initialChartData;
       const newDataPoints = dataToUse.slice(lastDataLength);
       
-      console.log(`📈 LiveChart (${stockData.ticker}): Adding ${newDataPoints.length} new data points imperatively`);
       
       // Add each new point individually to maintain live updates
       newDataPoints.forEach(point => {
@@ -80,7 +75,6 @@ const LiveChart = React.forwardRef<ChartHandle, LiveChartProps>(({
 
   const dataToUse = chartType === 'candlestick' ? initialCandleData : initialChartData;
   
-  console.log(`LiveChart (${stockData.ticker}): Always rendering ChartComponent with ${chartType} chart.`);
   return (
     <div className="relative">
       <div className="bg-black rounded-lg border border-gray-600 overflow-hidden">
