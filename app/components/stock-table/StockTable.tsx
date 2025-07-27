@@ -1137,23 +1137,31 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <React.Fragment key={row.id}>
                     <tr
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                      className={`h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer ${
-                        isExpanded ? 'border-l-4 border-blue-400' : ''
+                      className={`h-14 transition-colors duration-200 cursor-pointer ${
+                        isExpanded 
+                          ? 'bg-gray-700 hover:bg-gray-600' 
+                          : 'bg-gray-900 hover:bg-gray-700 rounded-lg shadow-md'
                       }`}
                       onClick={() => toggleRowExpansion(row.id)}
                     >
-                      {row.getVisibleCells().map((cell) => (
+                      {row.getVisibleCells().map((cell, index) => (
                         <td
                           key={cell.id}
-                          className={`px-0.5 py-2 align-middle ${getCellClasses(cell.column.id)}`}
+                          className={`px-0.5 py-2 align-middle relative ${getCellClasses(cell.column.id)}`}
                         >
+                          {/* Blue connector line for first cell when expanded */}
+                          {index === 0 && isExpanded && (
+                            <div className="absolute left-0 top-0 w-1 h-full bg-blue-400"></div>
+                          )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
                     </tr>
                     {isExpanded && (
-                      <tr className="border-l-4 border-blue-400">
-                        <td colSpan={columns.length} className="p-0 bg-gray-900">
+                      <tr>
+                        <td colSpan={columns.length} className="p-0 bg-gray-700 relative">
+                          {/* Blue connector line */}
+                          <div className="absolute left-0 top-0 w-1 h-full bg-blue-400"></div>
                           <ExpandedRowContent 
                             stockData={row.original}
                             chartRef={getChartRef(row.original.ticker)}
