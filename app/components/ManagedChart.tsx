@@ -34,50 +34,20 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
     updateWithPrice: (timestamp: number, price: number) => {
       if (!chartRef.current) return;
       
-      // Convert timestamp to seconds for lightweight-charts
-      const timeInSeconds = Math.floor(timestamp / 1000);
-      
-      console.log(`ManagedChart: Updating ${chartType} chart for ${stockData.ticker} with price ${price} at ${timestamp} (${timeInSeconds}s)`);
-      console.log(`ManagedChart: Input timestamp type:`, typeof timestamp, `timeInSeconds type:`, typeof timeInSeconds);
+      console.log(`ManagedChart: Updating ${chartType} chart for ${stockData.ticker} with price ${price} at ${timestamp}ms`);
       
       if (chartType === 'candlestick') {
-        // 1-minute candlestick aggregation
-        const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
-        console.log(`ManagedChart: bucketTime type:`, typeof bucketTime, `value:`, bucketTime);
+        // Use exact timestamp - no rounding or bucketing
+        const candleData = {
+          time: timestamp, // Chart.tsx expects milliseconds and will convert to seconds
+          open: price,
+          high: price,
+          low: price,
+          close: price,
+        };
         
-        if (currentCandleStartTime.current !== bucketTime) {
-          // Starting a new candle - finalize previous one if exists
-          if (currentCandle.current && currentCandleStartTime.current !== null) {
-            console.log(`ManagedChart: Finalizing candle for ${stockData.ticker} at ${new Date(currentCandleStartTime.current * 1000).toISOString()}`);
-            chartRef.current.updateData(currentCandle.current);
-          }
-          
-          // Start new candle
-          const candleTimeMs = bucketTime * 1000;
-          console.log(`ManagedChart: Creating NEW candle with time ${candleTimeMs} (type: ${typeof candleTimeMs})`);
-          currentCandle.current = {
-            time: candleTimeMs, // Chart.tsx expects milliseconds and will convert to seconds
-            open: price,
-            high: price,
-            low: price,
-            close: price,
-          };
-          currentCandleStartTime.current = bucketTime;
-          
-          console.log(`ManagedChart: Started new candle for ${stockData.ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
-          console.log(`ManagedChart: currentCandle.current.time:`, currentCandle.current.time, `type:`, typeof currentCandle.current.time);
-          
-          // Only update chart when we start a NEW candle
-          chartRef.current.updateData(currentCandle.current);
-        } else {
-          // Update current candle OHLC but DON'T update chart yet
-          if (currentCandle.current) {
-            currentCandle.current.high = Math.max(currentCandle.current.high, price);
-            currentCandle.current.low = Math.min(currentCandle.current.low, price);
-            currentCandle.current.close = price;
-            console.log(`ManagedChart: Updated current candle OHLC for ${stockData.ticker} - NOT sending to chart yet`);
-          }
-        }
+        console.log(`ManagedChart: Sending individual tick candle for ${stockData.ticker} at ${new Date(timestamp).toISOString()}`);
+        chartRef.current.updateData(candleData);
       } else {
         // Area chart - simple point update
         const areaPoint: ChartDataPoint = {
