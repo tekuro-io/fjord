@@ -16,6 +16,7 @@ import {
 import * as Tone from 'tone';
 import LiveChart from "../LiveChart";
 import Sentiment from "../Sentiment";
+import type { ChartHandle } from "../Chart";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
 import { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from "./types";
