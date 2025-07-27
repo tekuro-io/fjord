@@ -22,22 +22,51 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
   useEffect(() => {
     if (!containerRef.current || isInitialized.current) return;
 
-    // Create chart using ChartManager
-    chartManager.createChart(
-      stockData.ticker,
-      containerRef.current,
-      chartType
-    );
+    const initializeChart = async () => {
+      try {
+        // Create initial data point from current stock data if available
+        const initialData = [];
+        if (stockData.price && stockData.timestamp) {
+          const timestamp = new Date(stockData.timestamp).getTime();
+          if (chartType === 'candlestick') {
+            initialData.push({
+              time: timestamp,
+              open: stockData.price,
+              high: stockData.price,
+              low: stockData.price,
+              close: stockData.price,
+            });
+          } else {
+            initialData.push({
+              time: timestamp,
+              value: stockData.price,
+            });
+          }
+        }
 
-    isInitialized.current = true;
-    onChartReady?.();
+        // Create chart using ChartManager with initial data
+        chartManager.createChart(
+          stockData.ticker,
+          containerRef.current!,
+          chartType,
+          initialData
+        );
+
+        isInitialized.current = true;
+        onChartReady?.();
+      } catch (error) {
+        console.error('Failed to initialize chart for', stockData.ticker, error);
+      }
+    };
+
+    initializeChart();
 
     // Cleanup function
     return () => {
       chartManager.destroyChart(stockData.ticker);
       isInitialized.current = false;
     };
-  }, [stockData.ticker, chartType, onChartReady]);
+  }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, onChartReady]);
 
   return (
     <div 

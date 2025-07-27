@@ -21,6 +21,8 @@ export class ChartManager {
   private areaSeries: Map<string, ISeriesApi<'Area'>> = new Map();
   private candlestickSeries: Map<string, ISeriesApi<'Candlestick'>> = new Map();
   private chartTypes: Map<string, 'area' | 'candlestick'> = new Map();
+  private resizeObservers: Map<string, ResizeObserver> = new Map();
+  private destroyed: Set<string> = new Set();
 
   createChart(
     ticker: string, 
@@ -100,69 +102,126 @@ export class ChartManager {
     this.charts.set(ticker, chart);
     this.chartTypes.set(ticker, chartType);
 
-    // Handle resize
+    // Handle resize with error protection
     const resizeObserver = new ResizeObserver(() => {
-      chart.applyOptions({ width: container.clientWidth });
+      if (!this.destroyed.has(ticker) && this.charts.has(ticker)) {
+        try {
+          chart.applyOptions({ width: container.clientWidth });
+        } catch (error) {
+          console.warn(`ChartManager: Resize failed for ${ticker}, chart may be destroyed`);
+        }
+      }
     });
     resizeObserver.observe(container);
+    this.resizeObservers.set(ticker, resizeObserver);
+
+    // Mark as not destroyed
+    this.destroyed.delete(ticker);
   }
 
   updateChart(ticker: string, dataPoint: ChartDataPoint | CandleDataPoint): void {
+    // Don't update destroyed charts
+    if (this.destroyed.has(ticker)) {
+      return;
+    }
+
     const chartType = this.chartTypes.get(ticker);
     
-    if (chartType === 'candlestick') {
-      const series = this.candlestickSeries.get(ticker);
-      if (series && 'open' in dataPoint) {
-        series.update(dataPoint as CandlestickData);
+    try {
+      if (chartType === 'candlestick') {
+        const series = this.candlestickSeries.get(ticker);
+        if (series && 'open' in dataPoint) {
+          series.update(dataPoint as CandlestickData);
+        }
+      } else {
+        const series = this.areaSeries.get(ticker);
+        if (series && 'value' in dataPoint) {
+          series.update({ time: dataPoint.time, value: dataPoint.value } as LineData);
+        }
       }
-    } else {
-      const series = this.areaSeries.get(ticker);
-      if (series && 'value' in dataPoint) {
-        series.update({ time: dataPoint.time, value: dataPoint.value } as LineData);
-      }
+    } catch (error) {
+      console.warn(`ChartManager: Update failed for ${ticker}, chart may be destroyed:`, error);
+      // Mark as destroyed to prevent future updates
+      this.destroyed.add(ticker);
     }
   }
 
   addBatchData(ticker: string, dataPoints: ChartDataPoint[] | CandleDataPoint[]): void {
+    // Don't update destroyed charts
+    if (this.destroyed.has(ticker)) {
+      return;
+    }
+
     const chartType = this.chartTypes.get(ticker);
     
-    if (chartType === 'candlestick') {
-      const series = this.candlestickSeries.get(ticker);
-      if (series) {
-        dataPoints.forEach(point => {
-          if ('open' in point) {
-            series.update(point as CandlestickData);
-          }
-        });
+    try {
+      if (chartType === 'candlestick') {
+        const series = this.candlestickSeries.get(ticker);
+        if (series) {
+          dataPoints.forEach(point => {
+            if ('open' in point) {
+              series.update(point as CandlestickData);
+            }
+          });
+        }
+      } else {
+        const series = this.areaSeries.get(ticker);
+        if (series) {
+          dataPoints.forEach(point => {
+            if ('value' in point) {
+              series.update({ time: point.time, value: point.value } as LineData);
+            }
+          });
+        }
       }
-    } else {
-      const series = this.areaSeries.get(ticker);
-      if (series) {
-        dataPoints.forEach(point => {
-          if ('value' in point) {
-            series.update({ time: point.time, value: point.value } as LineData);
-          }
-        });
-      }
+    } catch (error) {
+      console.warn(`ChartManager: Batch update failed for ${ticker}, chart may be destroyed:`, error);
+      this.destroyed.add(ticker);
     }
   }
 
   fitContent(ticker: string): void {
+    if (this.destroyed.has(ticker)) {
+      return;
+    }
+
     const chart = this.charts.get(ticker);
     if (chart) {
-      chart.timeScale().fitContent();
+      try {
+        chart.timeScale().fitContent();
+      } catch (error) {
+        console.warn(`ChartManager: fitContent failed for ${ticker}:`, error);
+        this.destroyed.add(ticker);
+      }
     }
   }
 
   destroyChart(ticker: string): void {
+    // Mark as destroyed first to prevent any pending operations
+    this.destroyed.add(ticker);
+
+    // Clean up resize observer
+    const resizeObserver = this.resizeObservers.get(ticker);
+    if (resizeObserver) {
+      resizeObserver.disconnect();
+      this.resizeObservers.delete(ticker);
+    }
+
+    // Destroy chart with error protection
     const chart = this.charts.get(ticker);
     if (chart) {
-      chart.remove();
-      this.charts.delete(ticker);
-      this.areaSeries.delete(ticker);
-      this.candlestickSeries.delete(ticker);
-      this.chartTypes.delete(ticker);
+      try {
+        chart.remove();
+      } catch (error) {
+        console.warn(`ChartManager: Error destroying chart for ${ticker}:`, error);
+      }
     }
+
+    // Clean up all references
+    this.charts.delete(ticker);
+    this.areaSeries.delete(ticker);
+    this.candlestickSeries.delete(ticker);
+    this.chartTypes.delete(ticker);
   }
 
   destroyAllCharts(): void {

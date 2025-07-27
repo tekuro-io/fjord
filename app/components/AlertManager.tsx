@@ -186,19 +186,23 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
           });
         }
         
-        // Only process pattern_detection messages with valid data structure
-        if (data.topic === "pattern_detection" && data.data && data.data.ticker) {
-          console.log('🚨 NEW PATTERN ALERT:', {
-            ticker: data.data.ticker,
-            pattern: data.data.pattern_display_name,
-            direction: data.data.direction,
-            price: data.data.price,
-            confidence: data.data.confidence,
-            alert_level: data.data.alert_level
-          });
-          handleNewAlert(data);
-        } else if (data.topic === "pattern_detection") {
-          console.warn('🔔 AlertManager: Received pattern_detection message with invalid structure:', data);
+        // Only process actual pattern_detection alert messages
+        if (data.topic === "pattern_detection") {
+          if (data.type === "ack_subscribe") {
+            console.log('🔔 AlertManager: Successfully subscribed to pattern alerts');
+          } else if (data.data && data.data.ticker) {
+            console.log('🚨 NEW PATTERN ALERT:', {
+              ticker: data.data.ticker,
+              pattern: data.data.pattern_display_name,
+              direction: data.data.direction,
+              price: data.data.price,
+              confidence: data.data.confidence,
+              alert_level: data.data.alert_level
+            });
+            handleNewAlert(data);
+          } else {
+            console.warn('🔔 AlertManager: Received pattern_detection message with unexpected structure:', data);
+          }
         }
       } catch (error) {
         console.error("🔔 AlertManager: Error parsing pattern alert:", error);
