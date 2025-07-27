@@ -67,7 +67,7 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
         console.log(`🔑 Keys found:`, keys.map(k => k.toString()));
         
         // Store previous keys to detect new entries
-        const previousKeys = global.previousRedisKeys || new Set();
+        const previousKeys = (globalThis as any).previousRedisKeys || new Set();
         const currentKeys = new Set(keys.map(k => k.toString()));
         const newKeys = [...currentKeys].filter(key => !previousKeys.has(key));
         const removedKeys = [...previousKeys].filter(key => !currentKeys.has(key));
@@ -80,7 +80,7 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
         }
         
         // Update global tracking
-        global.previousRedisKeys = currentKeys;
+        (globalThis as any).previousRedisKeys = currentKeys;
 
         if (keys.length === 0) {
             console.warn("No 'scanner:latest:*' keys found in Redis.");
