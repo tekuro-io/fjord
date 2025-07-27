@@ -445,7 +445,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               // Update chart via ref if the ticker has an expanded chart
               const chartRef = chartRefs.current.get(update.ticker);
               if (chartRef?.current) {
-                console.log(`📊 Sending tick to chart: ${update.ticker} price=${update.price} timestamp=${timestamp}`);
+                console.log(`📊 StockTable->Chart: ${update.ticker} timestamp=${timestamp} (type: ${typeof timestamp}) price=${update.price} (type: ${typeof update.price})`);
                 chartRef.current.updateWithPrice(timestamp, update.price);
               }
             } else {

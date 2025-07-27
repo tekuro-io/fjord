@@ -36,7 +36,9 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
       if (!chartRef.current) return;
       
       // Convert timestamp to seconds for lightweight-charts (ensure it's a number)
+      console.log(`📊 ManagedChart input: ${stockData.ticker} timestamp=${timestamp} (type: ${typeof timestamp}) price=${price} (type: ${typeof price})`);
       const timeInSeconds = Math.floor(timestamp / 1000);
+      console.log(`📊 ManagedChart converted: timeInSeconds=${timeInSeconds} (type: ${typeof timeInSeconds})`);
       
       if (chartType === 'candlestick') {
         // 1-minute candlestick aggregation using official pattern
@@ -60,7 +62,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           currentCandleStartTime.current = bucketTime;
           
           // Send only the new candle to chart
-          console.log(`📊 NEW CANDLE: ${stockData.ticker} starting new minute: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
+          console.log(`📊 NEW CANDLE: ${stockData.ticker} starting new minute: time=${currentCandle.current.time} (type: ${typeof currentCandle.current.time}), O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
           chartRef.current.updateData(currentCandle.current);
         } else {
           // Update current candle - keep same timestamp, update OHLC
@@ -75,7 +77,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
             };
             
             // Update only the current candle with same timestamp
-            console.log(`📊 UPDATE CANDLE: ${stockData.ticker} updating current: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
+            console.log(`📊 UPDATE CANDLE: ${stockData.ticker} updating current: time=${currentCandle.current.time} (type: ${typeof currentCandle.current.time}), O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
             chartRef.current.updateData(currentCandle.current);
           }
         }

@@ -74,6 +74,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             updateData: (point: ChartDataPoint | CandleDataPoint) => {
                 if (seriesRef.current) {
                     // Ensure time is in seconds for lightweight-charts
+                    console.log(`📊 Chart.tsx input: point.time=${point.time} (type: ${typeof point.time})`);
                     let timeInSeconds: number;
                     
                     if (typeof point.time === 'number') {
@@ -87,6 +88,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     }
                     
                     const timeForChart = timeInSeconds as Time;
+                    console.log(`📊 Chart.tsx converted: timeInSeconds=${timeInSeconds} (type: ${typeof timeInSeconds}) timeForChart=${timeForChart} (type: ${typeof timeForChart})`);
                     
                     if (chartType === 'candlestick' && 'open' in point) {
                         // Handle candlestick data
