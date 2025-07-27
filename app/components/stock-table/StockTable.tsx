@@ -1425,11 +1425,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         />
       )}
 
-      {/* Pattern Alert Manager - Disabled to prevent duplicate WebSocket message handling */}
-      {/* <AlertManager
+      {/* Pattern Alert Manager */}
+      <AlertManager
         wsConnection={wsRef.current}
         onPatternAlert={handlePatternAlert}
-      /> */}
+      />
     </div>
   );
 }
