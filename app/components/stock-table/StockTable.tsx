@@ -1115,14 +1115,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       }, 8000);
     }
     
-    // Stop row flashing after 3 seconds
+    // Stop row flashing after 10 seconds (same as alert duration)
     setTimeout(() => {
       setPatternFlashingRows(prev => {
         const newMap = new Map(prev);
         newMap.delete(ticker);
         return newMap;
       });
-    }, 3000);
+    }, 10000);
   }, [expandedRows]);
 
   return (

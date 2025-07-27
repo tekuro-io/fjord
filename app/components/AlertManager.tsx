@@ -82,11 +82,57 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     
     setAlerts(prev => [...prev, alertWithId]);
     
-    // Play bell sound
+    // Play different sounds based on alert direction
     try {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCCqO2O+/dioAHHTY8+CWRQ0PVqzl9rNUEw1FqOL2u2QeByWF2vG9diQ');
-      audio.volume = 0.3;
-      audio.play().catch(err => console.warn('Could not play alert sound:', err));
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      if (alert.data.is_bullish) {
+        // Bullish: Pleasant ascending chime (C-E-G major chord)
+        const playChime = async () => {
+          const frequencies = [523.25, 659.25, 783.99]; // C5, E5, G5
+          for (let i = 0; i < frequencies.length; i++) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequencies[i], audioContext.currentTime);
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+            
+            oscillator.start(audioContext.currentTime + i * 0.1);
+            oscillator.stop(audioContext.currentTime + i * 0.1 + 0.4);
+          }
+        };
+        playChime();
+      } else {
+        // Bearish: Warning descending tone (G-D-A minor)
+        const playWarning = async () => {
+          const frequencies = [783.99, 587.33, 440]; // G5, D5, A4
+          for (let i = 0; i < frequencies.length; i++) {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequencies[i], audioContext.currentTime);
+            oscillator.type = 'sawtooth';
+            
+            gainNode.gain.setValueAtTime(0, audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime + i * 0.15);
+            oscillator.stop(audioContext.currentTime + i * 0.15 + 0.5);
+          }
+        };
+        playWarning();
+      }
     } catch (err) {
       console.warn('Audio not supported:', err);
     }
@@ -113,7 +159,7 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     if (!subscribed.current) {
       const subscribeMessage = {
         type: "subscribe",
-        topic: "pattern"
+        topic: "pattern_detection"
       };
       wsConnection.send(JSON.stringify(subscribeMessage));
       subscribed.current = true;
@@ -124,6 +170,15 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
+        
+        // Log any activity on pattern-related topics
+        if (data.topic && data.topic.includes('pattern')) {
+          console.log('📡 PATTERN TOPIC ACTIVITY:', {
+            topic: data.topic,
+            type: data.type,
+            data: data
+          });
+        }
         
         if (data.topic === "pattern_detection") {
           console.log('🚨 NEW PATTERN ALERT:', {
