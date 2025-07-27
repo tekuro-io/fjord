@@ -37,12 +37,14 @@ const ExpandedRowContent = React.memo(({
   stockData, 
   onOpenSentiment,
   patternAlert,
-  chartRef
+  chartRef,
+  historicalCandles
 }: { 
   stockData: StockItem;
   onOpenSentiment: () => void;
   patternAlert?: PatternAlertData;
   chartRef: React.RefObject<ManagedChartHandle | null>;
+  historicalCandles: CandleDataPoint[];
 }) => {
   const isBullish = patternAlert?.data.direction === 'bullish';
   const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
@@ -83,6 +85,7 @@ const ExpandedRowContent = React.memo(({
         ref={chartRef}
         stockData={stockData}
         chartType="candlestick"
+        historicalCandles={historicalCandles}
       />
     </div>
   );
@@ -142,6 +145,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [patternFlashingRows, setPatternFlashingRows] = React.useState<Map<string, 'bullish' | 'bearish'>>(new Map());
   const [expandedPatternAlerts, setExpandedPatternAlerts] = React.useState<Map<string, PatternAlertData>>(new Map());
   
+  // Background candle collection system for all tickers
+  const backgroundCandles = React.useRef<Map<string, CandleDataPoint[]>>(new Map());
+  const backgroundCurrentCandles = React.useRef<Map<string, CandleDataPoint>>(new Map());
+  const backgroundCandleStartTimes = React.useRef<Map<string, number>>(new Map());
+  
   // Chart data arrays are no longer needed - managed by ChartManager
   const [wsUrl, setWsUrl] = React.useState<string | null>(null);
   const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>(
@@ -164,6 +172,74 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       chartRefs.current.set(ticker, newRef);
     }
     return chartRefs.current.get(ticker)!;
+  }, []);
+
+  // Background candle collection for all tickers (independent of chart visibility)
+  const collectBackgroundCandle = React.useCallback((ticker: string, timestamp: number, price: number) => {
+    // Convert timestamp to seconds for lightweight-charts consistency
+    const timeInSeconds = Math.floor(timestamp / 1000);
+    const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
+    
+    // Get or initialize ticker data
+    if (!backgroundCandles.current.has(ticker)) {
+      backgroundCandles.current.set(ticker, []);
+    }
+    
+    const tickerCandles = backgroundCandles.current.get(ticker)!;
+    const currentCandle = backgroundCurrentCandles.current.get(ticker);
+    const currentStartTime = backgroundCandleStartTimes.current.get(ticker);
+    
+    if (currentStartTime !== bucketTime) {
+      // Starting a new minute - finalize previous candle and start new one
+      if (currentCandle && currentStartTime !== undefined) {
+        // Add completed candle to history
+        tickerCandles.push(currentCandle);
+        
+        // Keep only last 100 candles
+        if (tickerCandles.length > 100) {
+          tickerCandles.shift();
+        }
+      }
+      
+      // Start new current candle
+      const newCandle: CandleDataPoint = {
+        time: bucketTime * 1000, // Store in milliseconds for consistency
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      };
+      
+      backgroundCurrentCandles.current.set(ticker, newCandle);
+      backgroundCandleStartTimes.current.set(ticker, bucketTime);
+    } else {
+      // Update current candle - keep same timestamp, update OHLC
+      if (currentCandle) {
+        const updatedCandle: CandleDataPoint = {
+          time: currentCandle.time,
+          open: currentCandle.open,
+          close: price,
+          low: Math.min(currentCandle.low, price),
+          high: Math.max(currentCandle.high, price),
+        };
+        
+        backgroundCurrentCandles.current.set(ticker, updatedCandle);
+      }
+    }
+  }, []);
+
+  // Helper function to get historical candles for a ticker (for chart initialization)
+  const getHistoricalCandles = React.useCallback((ticker: string): CandleDataPoint[] => {
+    const historicalCandles = backgroundCandles.current.get(ticker) || [];
+    const currentCandle = backgroundCurrentCandles.current.get(ticker);
+    
+    // Combine historical + current candle
+    const allCandles = [...historicalCandles];
+    if (currentCandle) {
+      allCandles.push(currentCandle);
+    }
+    
+    return allCandles;
   }, []);
 
   // Helper function to toggle row expansion
@@ -262,6 +338,18 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           //          !('alert_level' in data) &&       // Exclude alerts
           //          !('confidence' in data);          // Exclude pattern confidence
           // };
+
+          // Type guard for StockItem - exclude pattern detection messages
+          const isStockItem = (data: unknown): data is StockItem => {
+            return typeof data === 'object' && 
+                   data !== null && 
+                   'ticker' in data && 
+                   typeof (data as StockItem).ticker === 'string' && 
+                   (data as StockItem).ticker.trim() !== '' &&
+                   !('pattern' in data) &&           // Exclude pattern detection
+                   !('alert_level' in data) &&       // Exclude alerts
+                   !('confidence' in data);          // Exclude pattern confidence
+          };
 
           // Type guard for pattern detection messages
           const isPatternDetection = (data: unknown): boolean => {
@@ -417,7 +505,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return Array.from(newDataMap.values());
           });
 
-          // Update charts directly via ChartManager (no React state updates!)
+          // Process all stock updates for background candle collection AND visible charts
           stockUpdates.forEach(update => {
             if (update.price != null && update.timestamp) {
               // Convert timestamp to number (Unix timestamp in milliseconds)
@@ -438,10 +526,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 return;
               }
               
+              // ALWAYS collect background candles for ALL tickers (regardless of chart visibility)
+              collectBackgroundCandle(update.ticker, timestamp, update.price);
+              
               // Update chart via ref if the ticker has an expanded chart
               const chartRef = chartRefs.current.get(update.ticker);
               if (chartRef?.current) {
-                console.log(`📊 StockTable->Chart: ${update.ticker} timestamp=${timestamp} (type: ${typeof timestamp}) price=${update.price} (type: ${typeof update.price})`);
                 try {
                   chartRef.current.updateWithPrice(timestamp, update.price);
                 } catch (chartError) {
@@ -1221,6 +1311,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
                             patternAlert={patternAlert}
                             chartRef={getChartRef(row.original.ticker)}
+                            historicalCandles={getHistoricalCandles(row.original.ticker)}
                           />
                         </td>
                       </tr>

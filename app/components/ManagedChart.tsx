@@ -10,6 +10,7 @@ interface ManagedChartProps {
   stockData: StockItem;
   chartType?: 'area' | 'candlestick';
   onChartReady?: () => void;
+  historicalCandles?: CandleDataPoint[]; // Add optional historical data
 }
 
 // Define the shape of the ref handle that this component will expose to its parent
@@ -21,7 +22,8 @@ export interface ManagedChartHandle {
 const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({ 
   stockData, 
   chartType = 'candlestick',
-  onChartReady 
+  onChartReady,
+  historicalCandles = [] // Default to empty array if no historical data
 }, ref) => {
   const chartRef = useRef<ChartHandle>(null);
   
@@ -36,9 +38,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
       if (!chartRef.current) return;
       
       // Convert timestamp to seconds for lightweight-charts (ensure it's a number)
-      console.log(`📊 ManagedChart input: ${stockData.ticker} timestamp=${timestamp} (type: ${typeof timestamp}) price=${price} (type: ${typeof price})`);
       const timeInSeconds = Math.floor(timestamp / 1000);
-      console.log(`📊 ManagedChart converted: timeInSeconds=${timeInSeconds} (type: ${typeof timeInSeconds})`);
       
       if (chartType === 'candlestick') {
         // 1-minute candlestick aggregation using official pattern
@@ -61,8 +61,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           };
           currentCandleStartTime.current = bucketTime;
           
-          // Send only the new candle to chart
-          console.log(`📊 NEW CANDLE: ${stockData.ticker} starting new minute: time=${currentCandle.current.time} (type: ${typeof currentCandle.current.time}), O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
           chartRef.current.updateData(currentCandle.current);
         } else {
           // Update current candle - keep same timestamp, update OHLC
@@ -76,8 +74,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
               high: Math.max(currentCandle.current.high, price),          // Extend high if needed
             };
             
-            // Update only the current candle with same timestamp
-            console.log(`📊 UPDATE CANDLE: ${stockData.ticker} updating current: time=${currentCandle.current.time} (type: ${typeof currentCandle.current.time}), O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
             chartRef.current.updateData(currentCandle.current);
           }
         }
@@ -92,8 +88,15 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
     }
   }));
 
-  // Create initial data from current stock data
+  // Create initial data from historical candles or current stock data
   const initialData = useMemo(() => {
+    // If we have historical candles, use them
+    if (historicalCandles.length > 0 && chartType === 'candlestick') {
+      console.log(`📊 ManagedChart: Using ${historicalCandles.length} historical candles for ${stockData.ticker}`);
+      return historicalCandles;
+    }
+    
+    // Fallback to current stock data if no historical data
     if (!stockData.price || !stockData.timestamp) {
       return [];
     }
@@ -101,7 +104,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
     const timestampMs = typeof stockData.timestamp === 'string' ? 
       new Date(stockData.timestamp).getTime() : 
       stockData.timestamp;
-    
     
     if (chartType === 'candlestick') {
       return [{
@@ -117,7 +119,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
         value: stockData.price,
       }] as ChartDataPoint[];
     }
-  }, [stockData.ticker, stockData.price, stockData.timestamp, chartType]);
+  }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, historicalCandles]);
 
   return (
     <div className="w-full h-96 bg-gray-900 rounded-lg" style={{ minHeight: '400px' }}>

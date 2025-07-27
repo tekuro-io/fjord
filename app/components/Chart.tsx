@@ -74,7 +74,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             updateData: (point: ChartDataPoint | CandleDataPoint) => {
                 if (seriesRef.current) {
                     // Ensure time is in seconds for lightweight-charts
-                    console.log(`📊 Chart.tsx input: point.time=${point.time} (type: ${typeof point.time})`);
                     let timeInSeconds: number;
                     
                     if (typeof point.time === 'number') {
@@ -88,11 +87,9 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     }
                     
                     const timeForChart = timeInSeconds as Time;
-                    console.log(`📊 Chart.tsx converted: timeInSeconds=${timeInSeconds} (type: ${typeof timeInSeconds}) timeForChart=${timeForChart} (type: ${typeof timeForChart})`);
                     
                     if (chartType === 'candlestick' && 'open' in point) {
                         // Handle candlestick data
-                        console.log(`📊 Chart.tsx BEFORE object creation: timeForChart=${timeForChart} (${typeof timeForChart}), point.open=${point.open} (${typeof point.open}), point.high=${point.high} (${typeof point.high}), point.low=${point.low} (${typeof point.low}), point.close=${point.close} (${typeof point.close})`);
                         
                         const candleData = {
                             time: timeForChart,
@@ -101,10 +98,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                             low: point.low,
                             close: point.close
                         };
-                        console.log(`📊 Chart.tsx AFTER object creation:`, candleData, 'time type:', typeof candleData.time);
-                        console.log(`📊 Chart.tsx calling series.update() with:`, candleData);
                         seriesRef.current.update(candleData);
-                        console.log(`📊 Chart.tsx series.update() completed successfully`);
                         
                         // Fit content after chart updates to keep data visible
                         if (chartRef.current) {
@@ -234,7 +228,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
 
         // Initialize with setData() ONLY ONCE - this is required before using update()
-        console.log(`📊 Chart.tsx: Initializing ${chartType} series with setData([]) - ONCE ONLY`);
         newSeries.setData([]);
         chart.timeScale().fitContent();
 
