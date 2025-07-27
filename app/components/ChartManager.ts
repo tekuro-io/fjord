@@ -117,6 +117,12 @@ export class ChartManager {
         // CRITICAL: Use setData for initial data, not individual updates
         candleSeries.setData(processedInitialData as CandlestickData[]);
         console.log(`ChartManager: Initial data set, series now has ${candleSeries.data().length} data points`);
+        
+        // Log the initial data timestamps for debugging
+        if (processedInitialData.length > 0) {
+          const firstPoint = processedInitialData[0];
+          console.log(`ChartManager: Initial data first point time: ${firstPoint.time} (${new Date(firstPoint.time * 1000).toISOString()})`);
+        }
       }
     } else {
       console.log(`ChartManager: Creating area series for ${ticker}`);
@@ -305,7 +311,16 @@ export class ChartManager {
         const lastTime = Number(lastPoint.time);
         if (candleForChart.time < lastTime) {
           console.warn(`ChartManager: Skipping update for ${ticker} - new time ${candleForChart.time} < last time ${lastTime}`);
-          return;
+          console.warn(`ChartManager: Time difference: ${lastTime - candleForChart.time} seconds`);
+          console.warn(`ChartManager: New time: ${new Date(candleForChart.time * 1000).toISOString()}`);
+          console.warn(`ChartManager: Last time: ${new Date(lastTime * 1000).toISOString()}`);
+          
+          // If the difference is small (< 2 minutes), allow the update anyway
+          if (lastTime - candleForChart.time < 120) {
+            console.warn(`ChartManager: Time difference is small (${lastTime - candleForChart.time}s), allowing update anyway`);
+          } else {
+            return;
+          }
         } else if (candleForChart.time === lastTime) {
           console.log(`ChartManager: Updating existing candle for ${ticker} at time ${candleForChart.time}`);
         }
