@@ -4,15 +4,15 @@ import React, { useState, useEffect } from 'react';
 import PatternAlert, { PatternAlertData } from './PatternAlert';
 
 interface AlertManagerProps {
-  wsUrl?: string;
+  wsConnection?: WebSocket | null;
   onPatternAlert?: (alert: PatternAlertData) => void;
 }
 
-export default function AlertManager({ wsUrl, onPatternAlert }: AlertManagerProps) {
+export default function AlertManager({ wsConnection, onPatternAlert }: AlertManagerProps) {
   const [alerts, setAlerts] = useState<(PatternAlertData & { id: string })[]>([]);
-  const wsRef = React.useRef<WebSocket | null>(null);
+  const subscribed = React.useRef<boolean>(false);
 
-  // Function to manually trigger a test alert
+  // Function to manually trigger a test bullish alert
   const triggerTestAlert = React.useCallback(() => {
     const testAlert: PatternAlertData = {
       topic: "pattern_detection",
@@ -38,13 +38,41 @@ export default function AlertManager({ wsUrl, onPatternAlert }: AlertManagerProp
     handleNewAlert(testAlert);
   }, []);
 
-  // Expose test function globally for development
-  React.useEffect(() => {
-    (window as Window & { triggerPatternAlert?: () => void }).triggerPatternAlert = triggerTestAlert;
-    return () => {
-      delete (window as Window & { triggerPatternAlert?: () => void }).triggerPatternAlert;
+  // Function to manually trigger a test bearish alert
+  const triggerTestBearishAlert = React.useCallback(() => {
+    const testAlert: PatternAlertData = {
+      topic: "pattern_detection",
+      data: {
+        ticker: "NVDA",
+        pattern: "bearish_reversal",
+        pattern_display_name: "Bearish Reversal",
+        price: 128.75,
+        timestamp: new Date().toISOString(),
+        confidence: 0.82,
+        alert_level: "high",
+        message: "Bearish Reversal detected for NVDA at $128.75 (82% confidence)",
+        is_bullish: false,
+        is_bearish: true,
+        direction: "bearish",
+        metadata: {
+          detection_type: "natural",
+          duration_minutes: 8.0,
+          stage: 2
+        }
+      }
     };
-  }, [triggerTestAlert]);
+    handleNewAlert(testAlert);
+  }, []);
+
+  // Expose test functions globally for development
+  React.useEffect(() => {
+    (window as Window & { triggerPatternAlert?: () => void; triggerBearishAlert?: () => void }).triggerPatternAlert = triggerTestAlert;
+    (window as Window & { triggerPatternAlert?: () => void; triggerBearishAlert?: () => void }).triggerBearishAlert = triggerTestBearishAlert;
+    return () => {
+      delete (window as Window & { triggerPatternAlert?: () => void; triggerBearishAlert?: () => void }).triggerPatternAlert;
+      delete (window as Window & { triggerPatternAlert?: () => void; triggerBearishAlert?: () => void }).triggerBearishAlert;
+    };
+  }, [triggerTestAlert, triggerTestBearishAlert]);
 
   const handleNewAlert = React.useCallback((alert: PatternAlertData) => {
     const alertWithId = {
@@ -53,6 +81,15 @@ export default function AlertManager({ wsUrl, onPatternAlert }: AlertManagerProp
     };
     
     setAlerts(prev => [...prev, alertWithId]);
+    
+    // Play bell sound
+    try {
+      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmgfCCqO2O+/dioAHHTY8+CWRQ0PVqzl9rNUEw1FqOL2u2QeByWF2vG9diQ');
+      audio.volume = 0.3;
+      audio.play().catch(err => console.warn('Could not play alert sound:', err));
+    } catch (err) {
+      console.warn('Audio not supported:', err);
+    }
     
     // Call the callback if provided
     if (onPatternAlert) {
@@ -65,62 +102,43 @@ export default function AlertManager({ wsUrl, onPatternAlert }: AlertManagerProp
     }, 10000);
   }, [onPatternAlert]);
 
-  // WebSocket connection for pattern alerts
+  // Subscribe to pattern alerts using existing WebSocket connection
   useEffect(() => {
-    if (!wsUrl) return;
+    if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+      subscribed.current = false;
+      return;
+    }
 
-    const connectWebSocket = () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('Pattern alert WebSocket connected');
-        // Subscribe to pattern detection topic
-        const subscribeMessage = {
-          type: "subscribe",
-          topic: "pattern"
-        };
-        ws.send(JSON.stringify(subscribeMessage));
+    // Subscribe to pattern detection topic if not already subscribed
+    if (!subscribed.current) {
+      const subscribeMessage = {
+        type: "subscribe",
+        topic: "pattern"
       };
+      wsConnection.send(JSON.stringify(subscribeMessage));
+      subscribed.current = true;
+      console.log('Subscribed to pattern alerts');
+    }
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.topic === "pattern_detection") {
-            handleNewAlert(data);
-          }
-        } catch (error) {
-          console.error("Error parsing pattern alert:", error);
+    // Add message listener for pattern alerts
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        if (data.topic === "pattern_detection") {
+          handleNewAlert(data);
         }
-      };
-
-      ws.onclose = () => {
-        console.log('Pattern alert WebSocket disconnected');
-        // Attempt to reconnect after 5 seconds
-        setTimeout(connectWebSocket, 5000);
-      };
-
-      ws.onerror = (error) => {
-        console.error("Pattern alert WebSocket error:", error);
-        ws.close();
-      };
+      } catch (error) {
+        console.error("Error parsing pattern alert:", error);
+      }
     };
 
-    connectWebSocket();
+    wsConnection.addEventListener('message', handleMessage);
 
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      wsConnection.removeEventListener('message', handleMessage);
     };
-  }, [wsUrl, handleNewAlert]);
+  }, [wsConnection, handleNewAlert]);
 
   const dismissAlert = (id: string) => {
     setAlerts(prev => prev.filter(alert => alert.id !== id));

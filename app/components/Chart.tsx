@@ -208,14 +208,14 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
 
         // Add Watermark
         createTextWatermark(chart.panes()[0], {
-            horzAlign: 'center',
-            vertAlign: 'center',
+            horzAlign: 'right',
+            vertAlign: 'bottom',
             lines: [
                 {
                     text: watermarkText,
-                    color: 'rgba(8, 242, 246, 0.5)',
-                    fontSize: 100,
-                    fontStyle: 'bold',
+                    color: 'rgba(8, 242, 246, 0.3)',
+                    fontSize: 24,
+                    fontStyle: 'normal',
                 },
             ],
         });
