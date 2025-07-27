@@ -265,9 +265,24 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           const parsedData: unknown = JSON.parse(event.data);
           console.log(`🌐 WebSocket: Parsed data type:`, typeof parsedData, Array.isArray(parsedData) ? `array of ${parsedData.length} items` : 'object');
 
-          // Type guard for StockItem
+          // Type guard for StockItem - exclude pattern detection messages
           const isStockItem = (data: unknown): data is StockItem => {
-            return typeof data === 'object' && data !== null && 'ticker' in data && typeof (data as StockItem).ticker === 'string' && (data as StockItem).ticker.trim() !== '';
+            return typeof data === 'object' && 
+                   data !== null && 
+                   'ticker' in data && 
+                   typeof (data as StockItem).ticker === 'string' && 
+                   (data as StockItem).ticker.trim() !== '' &&
+                   !('pattern' in data) &&           // Exclude pattern detection
+                   !('alert_level' in data) &&       // Exclude alerts
+                   !('confidence' in data);          // Exclude pattern confidence
+          };
+
+          // Type guard for pattern detection messages
+          const isPatternDetection = (data: unknown): boolean => {
+            return typeof data === 'object' && 
+                   data !== null && 
+                   (('pattern' in data || 'alert_level' in data || 'confidence' in data) ||
+                    ('topic' in data && (data as any).topic === 'pattern_detection'));
           };
 
           // Type guard for any message that has a 'type' property AND explicitly does NOT have a 'ticker' property
@@ -286,7 +301,18 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 // Other control message received
             }
             return; // Skip further processing for control messages
+          } else if (isPatternDetection(parsedData)) {
+            // Handle pattern detection messages - route to pattern alert system
+            console.log(`🎯 Pattern Detection: Received pattern alert for`, (parsedData as any).ticker);
+            handlePatternAlert(parsedData as PatternAlertData);
+            return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
+            // Check for pattern detection in arrays
+            const patternDetections = parsedData.filter(isPatternDetection);
+            if (patternDetections.length > 0) {
+              console.log(`🎯 Pattern Detection: Received ${patternDetections.length} pattern alerts from array`);
+              patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
+            }
             // Filter array to ensure all elements are StockItem
             stockUpdates = parsedData.filter(isStockItem);
             console.log(`🌐 WebSocket: Processing ${stockUpdates.length} stock updates from array:`, stockUpdates.map(s => `${s.ticker}(${s.price})`).join(', '));
