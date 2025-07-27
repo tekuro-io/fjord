@@ -25,7 +25,8 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
 }, ref) => {
   const chartRef = useRef<ChartHandle>(null);
   
-  // Track current 1-minute candle data for aggregation
+  // Track completed and current candles for 1-minute aggregation
+  const completedCandles = useRef<CandleDataPoint[]>([]);
   const currentCandle = useRef<CandleDataPoint | null>(null);
   const currentCandleStartTime = useRef<number | null>(null);
 
@@ -45,7 +46,14 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
         const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
         
         if (currentCandleStartTime.current !== bucketTime) {
-          // Starting a new minute - start new candle
+          // Starting a new minute - finalize previous candle and start new one
+          if (currentCandle.current && currentCandleStartTime.current !== null) {
+            // Move current candle to completed candles
+            console.log(`ManagedChart: Finalizing candle for ${stockData.ticker} at ${new Date(currentCandleStartTime.current * 1000).toISOString()}`);
+            completedCandles.current.push(currentCandle.current);
+          }
+          
+          // Start new current candle
           console.log(`ManagedChart: Starting NEW 1-minute candle for ${stockData.ticker} at bucket ${bucketTime} (${new Date(bucketTime * 1000).toISOString()})`);
           
           currentCandle.current = {
@@ -57,13 +65,15 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           };
           currentCandleStartTime.current = bucketTime;
           
-          // Send new candle to chart
-          chartRef.current.updateData(currentCandle.current);
+          // Update chart with all completed candles + new current candle
+          const allCandles = [...completedCandles.current, currentCandle.current];
+          console.log(`ManagedChart: Sending ${allCandles.length} candles to chart (${completedCandles.current.length} completed + 1 current)`);
+          chartRef.current.setData(allCandles);
         } else {
-          // Update current candle using official lightweight-charts pattern
+          // Update current candle - keep same timestamp, update OHLC
           if (currentCandle.current) {
-            // Official pattern: preserve time/open, update close/high/low
-            const updatedCandle = {
+            // Update the growing candle with new tick data
+            currentCandle.current = {
               time: currentCandle.current.time,                           // Keep SAME timestamp
               open: currentCandle.current.open,                           // Keep original open
               close: price,                                               // Update close to latest price
@@ -71,13 +81,11 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
               high: Math.max(currentCandle.current.high, price),          // Extend high if needed
             };
             
-            // Update our stored candle
-            currentCandle.current = updatedCandle;
+            console.log(`ManagedChart: Updating current 1-min candle for ${stockData.ticker} - close: ${price}, high: ${currentCandle.current.high}, low: ${currentCandle.current.low}`);
             
-            console.log(`ManagedChart: Updating current 1-min candle for ${stockData.ticker} - close: ${price}, high: ${updatedCandle.high}, low: ${updatedCandle.low}, time: ${updatedCandle.time} (type: ${typeof updatedCandle.time})`);
-            
-            // Send updated candle to chart with SAME timestamp (officially supported)
-            chartRef.current.updateData(updatedCandle);
+            // Update chart with all completed candles + updated current candle
+            const allCandles = [...completedCandles.current, currentCandle.current];
+            chartRef.current.setData(allCandles);
           }
         }
       } else {
