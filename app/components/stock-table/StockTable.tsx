@@ -49,32 +49,27 @@ const ExpandedRowContent = React.memo(({
   onOpenSentiment: () => void;
 }) => {
   return (
-    <div className="bg-gray-700 rounded-lg mx-2 mb-2 border-l-4 border-blue-400">
-      <div className="flex items-center justify-between p-3 pb-2">
+    <div className="bg-gray-700 p-4">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-300 flex items-center">
           <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
           Price Chart for {stockData.ticker}
         </h3>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onOpenSentiment}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors duration-200"
-          >
-            <Brain className="w-4 h-4" />
-            AI Analysis
-          </button>
-          <span className="text-xs text-gray-400 italic">Click row above to collapse</span>
-        </div>
+        <button
+          onClick={onOpenSentiment}
+          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-300 bg-gray-600 hover:bg-gray-500 rounded-md transition-colors duration-200"
+        >
+          <Brain className="w-4 h-4" />
+          AI Analysis
+        </button>
       </div>
-      <div className="px-3 pb-3">
-        <LiveChart
-          ref={chartRef}
-          stockData={stockData}
-          initialChartData={initialChartData}
-          initialCandleData={initialCandleData}
-          chartType="candlestick"
-        />
-      </div>
+      <LiveChart
+        ref={chartRef}
+        stockData={stockData}
+        initialChartData={initialChartData}
+        initialCandleData={initialCandleData}
+        chartType="candlestick"
+      />
     </div>
   );
 });
@@ -1142,7 +1137,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <React.Fragment key={row.id}>
                     <tr
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                      className="h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer"
+                      className={`h-14 hover:bg-gray-700 transition-colors duration-200 bg-gray-900 rounded-lg shadow-md cursor-pointer ${
+                        isExpanded ? 'border-l-4 border-blue-400' : ''
+                      }`}
                       onClick={() => toggleRowExpansion(row.id)}
                     >
                       {row.getVisibleCells().map((cell) => (
@@ -1155,7 +1152,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       ))}
                     </tr>
                     {isExpanded && (
-                      <tr>
+                      <tr className="border-l-4 border-blue-400">
                         <td colSpan={columns.length} className="p-0 bg-gray-900">
                           <ExpandedRowContent 
                             stockData={row.original}
