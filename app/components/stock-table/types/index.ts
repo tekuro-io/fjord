@@ -7,7 +7,7 @@ export interface StockItem {
   mav10: number | null;
   volume: number | null;
   multiplier: number | null;
-  timestamp?: string;
+  timestamp?: string | number;
   first_seen?: string;
   priceFlashDirection?: 'up' | 'down';
 }
