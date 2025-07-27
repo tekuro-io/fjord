@@ -21,7 +21,7 @@ import { chartManager } from "../ChartManager";
 import type { PatternAlertData } from "../PatternAlert";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
-import { StockItem, ChartDataPoint, InfoMessage } from "./types";
+import { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from "./types";
 import { 
   DELTA_FLASH_THRESHOLD, 
   PRICE_FLASH_THRESHOLD,
@@ -357,12 +357,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             if (update.price != null && update.timestamp) {
               const timestamp = new Date(update.timestamp).getTime();
               
-              // Update chart directly via ChartManager
-              const dataPoint: ChartDataPoint = {
-                time: timestamp,
-                value: update.price,
-              };
-              chartManager.updateChart(update.ticker, dataPoint);
+              // Let ChartManager handle the conversion based on chart type
+              chartManager.updateChartWithPrice(update.ticker, timestamp, update.price);
             } else {
               console.warn("StockTable: Skipping chart update for stock with missing price or timestamp:", update);
             }

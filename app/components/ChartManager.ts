@@ -146,6 +146,44 @@ export class ChartManager {
     }
   }
 
+  updateChartWithPrice(ticker: string, timestamp: number, price: number): void {
+    // Don't update destroyed charts
+    if (this.destroyed.has(ticker)) {
+      return;
+    }
+
+    const chartType = this.chartTypes.get(ticker);
+    
+    try {
+      if (chartType === 'candlestick') {
+        const series = this.candlestickSeries.get(ticker);
+        if (series) {
+          // Create a candlestick where OHLC are all the same price (tick candle)
+          const candleData: CandlestickData = {
+            time: timestamp as any,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+          };
+          series.update(candleData);
+        }
+      } else {
+        const series = this.areaSeries.get(ticker);
+        if (series) {
+          const lineData: LineData = {
+            time: timestamp as any,
+            value: price,
+          };
+          series.update(lineData);
+        }
+      }
+    } catch (error) {
+      console.warn(`ChartManager: Price update failed for ${ticker}, chart may be destroyed:`, error);
+      this.destroyed.add(ticker);
+    }
+  }
+
   addBatchData(ticker: string, dataPoints: ChartDataPoint[] | CandleDataPoint[]): void {
     // Don't update destroyed charts
     if (this.destroyed.has(ticker)) {
