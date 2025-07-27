@@ -99,11 +99,6 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                             close: point.close
                         };
                         seriesRef.current.update(candleData);
-                        
-                        // Fit content after chart updates to keep data visible
-                        if (chartRef.current) {
-                            chartRef.current.timeScale().fitContent();
-                        }
                     } else if (chartType === 'area' && 'value' in point) {
                         // Handle area chart data
                         seriesRef.current.update({ time: timeForChart, value: point.value });

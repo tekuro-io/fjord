@@ -362,7 +362,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return; // Skip further processing for control messages
           } else if (isPatternDetection(parsedData)) {
             // Handle pattern detection messages - route to pattern alert system
-            console.log(`🎯 Pattern Detection: Routing pattern alert for ${(parsedData as {ticker: string}).ticker}`);
+            const ticker = 'ticker' in parsedData ? (parsedData as {ticker: string}).ticker : 'unknown';
+            console.log(`🎯 Pattern Detection: Routing pattern alert for ${ticker}`);
             handlePatternAlert(parsedData as PatternAlertData);
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
