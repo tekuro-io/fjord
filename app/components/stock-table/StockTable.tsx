@@ -367,8 +367,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             if (typeof parsedData === 'object' && parsedData !== null) {
               if ('ticker' in parsedData) {
                 ticker = (parsedData as {ticker: string}).ticker;
-              } else if ('data' in parsedData && typeof (parsedData as {data: any}).data === 'object' && (parsedData as {data: any}).data !== null && 'ticker' in (parsedData as {data: any}).data) {
-                ticker = (parsedData as {data: {ticker: string}}).data.ticker;
+              } else if ('data' in parsedData) {
+                const dataObj = (parsedData as {data: unknown}).data;
+                if (typeof dataObj === 'object' && dataObj !== null && 'ticker' in dataObj) {
+                  ticker = (dataObj as {ticker: string}).ticker;
+                }
               }
             }
             console.log(`🎯 Pattern Detection: Routing pattern alert for ${ticker}`);
