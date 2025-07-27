@@ -107,7 +107,7 @@ export class ChartManager {
       if (!this.destroyed.has(ticker) && this.charts.has(ticker)) {
         try {
           chart.applyOptions({ width: container.clientWidth });
-        } catch (error) {
+        } catch {
           console.warn(`ChartManager: Resize failed for ${ticker}, chart may be destroyed`);
         }
       }
@@ -159,22 +159,22 @@ export class ChartManager {
         const series = this.candlestickSeries.get(ticker);
         if (series) {
           // Create a candlestick where OHLC are all the same price (tick candle)
-          const candleData: CandlestickData = {
-            time: timestamp as any,
+          const candleData = {
+            time: timestamp,
             open: price,
             high: price,
             low: price,
             close: price,
-          };
+          } as CandlestickData;
           series.update(candleData);
         }
       } else {
         const series = this.areaSeries.get(ticker);
         if (series) {
-          const lineData: LineData = {
-            time: timestamp as any,
+          const lineData = {
+            time: timestamp,
             value: price,
-          };
+          } as LineData;
           series.update(lineData);
         }
       }
