@@ -61,6 +61,37 @@ const StockTableStyles: React.FC = () => {
     .expanded-table tbody .expanded-parent + .expanded-child {
       --border-spacing-y: 0px;
     }
+
+    /* Pattern alert animations */
+    @keyframes pattern-flash-bullish {
+      0% { background-color: rgb(31 41 55); } /* gray-800 */
+      50% { background-color: rgba(34, 197, 94, 0.3); } /* green flash */
+      100% { background-color: rgb(31 41 55); }
+    }
+
+    @keyframes pattern-flash-bearish {
+      0% { background-color: rgb(31 41 55); } /* gray-800 */
+      50% { background-color: rgba(239, 68, 68, 0.3); } /* red flash */
+      100% { background-color: rgb(31 41 55); }
+    }
+
+    .pattern-flash-bullish {
+      animation: pattern-flash-bullish 1s ease-in-out 3;
+    }
+
+    .pattern-flash-bearish {
+      animation: pattern-flash-bearish 1s ease-in-out 3;
+    }
+
+    /* Pattern alert box animation */
+    @keyframes pattern-alert-flash {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.9; transform: scale(1.02); }
+    }
+
+    .pattern-alert-flash {
+      animation: pattern-alert-flash 0.8s ease-in-out 4;
+    }
   `, []);
 
   return <style>{stockTableStyles}</style>;

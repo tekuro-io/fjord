@@ -10,13 +10,15 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowUp, ArrowDown, X, Tag, DollarSign, Percent, BarChart2, Activity,
-  ChevronRight, ChevronDown, Frown, Brain
+  ChevronRight, ChevronDown, Frown, Brain, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 import * as Tone from 'tone';
 import LiveChart from "../LiveChart";
 import SentimentModal from "../SentimentModal";
+import AlertManager from "../AlertManager";
 import type { ChartHandle } from "../Chart";
+import type { PatternAlertData } from "../PatternAlert";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
 import { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from "./types";
@@ -40,16 +42,38 @@ const ExpandedRowContent = React.memo(({
   chartRef,
   initialChartData, 
   initialCandleData,
-  onOpenSentiment
+  onOpenSentiment,
+  patternAlert
 }: { 
   stockData: StockItem;
   chartRef: React.RefObject<ChartHandle | null>;
   initialChartData: ChartDataPoint[];
   initialCandleData: CandleDataPoint[];
   onOpenSentiment: () => void;
+  patternAlert?: PatternAlertData;
 }) => {
+  const isBullish = patternAlert?.data.direction === 'bullish';
+  const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
+  
   return (
     <div className="bg-gray-700 p-4">
+      {/* Pattern Alert Box */}
+      {patternAlert && (
+        <div className={`mb-4 p-3 rounded-lg border-2 pattern-alert-flash ${
+          isBullish 
+            ? 'bg-green-900/30 border-green-500 text-green-100' 
+            : 'bg-red-900/30 border-red-500 text-red-100'
+        }`}>
+          <div className="flex items-center gap-2">
+            {PatternIcon && <PatternIcon className={`w-5 h-5 ${isBullish ? 'text-green-400' : 'text-red-400'}`} />}
+            <span className="font-semibold">{patternAlert.data.pattern_display_name}</span>
+            <span className="text-sm opacity-75">
+              ${patternAlert.data.price.toFixed(2)} ({Math.round(patternAlert.data.confidence * 100)}%)
+            </span>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-300 flex items-center">
           <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
@@ -104,6 +128,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [stockCandleHistory, setStockCandleHistory] = React.useState<Map<string, CandleDataPoint[]>>(new Map());
   const [sentimentModalOpen, setSentimentModalOpen] = React.useState(false);
   const [sentimentTicker, setSentimentTicker] = React.useState<string>('');
+  const [patternFlashingRows, setPatternFlashingRows] = React.useState<Map<string, 'bullish' | 'bearish'>>(new Map());
+  const [expandedPatternAlerts, setExpandedPatternAlerts] = React.useState<Map<string, PatternAlertData>>(new Map());
   
   // Memoized empty arrays to prevent unnecessary re-renders
   const emptyChartData = React.useMemo(() => [], []);
@@ -1067,6 +1093,38 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     setSentimentTicker('');
   }, []);
 
+  // Handler for pattern alerts
+  const handlePatternAlert = React.useCallback((alert: PatternAlertData) => {
+    const ticker = alert.data.ticker;
+    const direction = alert.data.direction;
+    
+    // Flash the row background
+    setPatternFlashingRows(prev => new Map(prev).set(ticker, direction));
+    
+    // Show alert in expanded row if it's expanded
+    if (expandedRows.has(ticker)) {
+      setExpandedPatternAlerts(prev => new Map(prev).set(ticker, alert));
+      
+      // Auto-hide expanded alert after 8 seconds
+      setTimeout(() => {
+        setExpandedPatternAlerts(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(ticker);
+          return newMap;
+        });
+      }, 8000);
+    }
+    
+    // Stop row flashing after 3 seconds
+    setTimeout(() => {
+      setPatternFlashingRows(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(ticker);
+        return newMap;
+      });
+    }, 3000);
+  }, [expandedRows]);
+
   return (
     <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
       <StockTableStyles />
@@ -1133,6 +1191,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             ) : (
               table.getRowModel().rows.slice(0, numStocksToShow).map((row) => {
                 const isExpanded = expandedRows.has(row.id);
+                const patternFlash = patternFlashingRows.get(row.original.ticker);
+                const patternAlert = expandedPatternAlerts.get(row.original.ticker);
+                
                 return (
                   <React.Fragment key={row.id}>
                     <tr
@@ -1141,6 +1202,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         isExpanded 
                           ? 'bg-gray-600 hover:bg-gray-500 expanded-parent' 
                           : 'bg-gray-900 hover:bg-gray-700 rounded-lg shadow-md'
+                      } ${
+                        patternFlash ? `pattern-flash-${patternFlash}` : ''
                       }`}
                       onClick={() => toggleRowExpansion(row.id)}
                     >
@@ -1168,6 +1231,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                             initialChartData={stableExpandedData.current.get(row.original.ticker)?.chartData || emptyChartData}
                             initialCandleData={stableExpandedData.current.get(row.original.ticker)?.candleData || emptyCandleData}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
+                            patternAlert={patternAlert}
                           />
                         </td>
                       </tr>
@@ -1197,6 +1261,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         isOpen={sentimentModalOpen}
         onClose={closeSentimentModal}
         ticker={sentimentTicker}
+      />
+
+      {/* Pattern Alert Manager */}
+      <AlertManager
+        wsUrl={wsUrl}
+        onPatternAlert={handlePatternAlert}
       />
     </div>
   );
