@@ -31,6 +31,20 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   const completedCandles = useRef<CandleDataPoint[]>([]);
   const currentCandle = useRef<CandleDataPoint | null>(null);
   const currentCandleStartTime = useRef<number | null>(null);
+  
+  // Initialize tracking from historical data if available
+  React.useEffect(() => {
+    if (historicalCandles.length > 0) {
+      // If we have historical data, use the last candle as our starting point
+      const lastCandle = historicalCandles[historicalCandles.length - 1];
+      const timeInSeconds = Math.floor(lastCandle.time / 1000);
+      const bucketTime = Math.floor(timeInSeconds / 60) * 60;
+      
+      // Set the current candle tracking to match the last historical candle
+      currentCandle.current = { ...lastCandle };
+      currentCandleStartTime.current = bucketTime;
+    }
+  }, [historicalCandles, stockData.ticker]);
 
   // Expose updateWithPrice method to parent via ref
   useImperativeHandle(ref, () => ({
@@ -92,7 +106,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   const initialData = useMemo(() => {
     // If we have historical candles, use them
     if (historicalCandles.length > 0 && chartType === 'candlestick') {
-      console.log(`📊 ManagedChart: Using ${historicalCandles.length} historical candles for ${stockData.ticker}`);
       return historicalCandles;
     }
     
@@ -122,7 +135,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, historicalCandles]);
 
   return (
-    <div className="w-full h-96 bg-gray-900 rounded-lg" style={{ minHeight: '400px' }}>
+    <div className="w-full bg-gray-900 rounded-lg" style={{ height: '400px' }}>
       <ChartComponent
         ref={chartRef}
         initialData={initialData}

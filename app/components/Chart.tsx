@@ -159,7 +159,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 textColor,
             },
             width: chartContainerRef.current.clientWidth,
-            height: 300,
+            height: chartContainerRef.current.clientHeight,
             grid: {
                 vertLines: {
                     color: vertLinesColor,
@@ -167,7 +167,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
                 horzLines: {
                     color: horzLinesColor,
-                    visible: false,
+                    visible: true,
                 },
             },
             timeScale: {
@@ -227,8 +227,31 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         seriesRef.current = newSeries;
 
 
-        // Initialize with setData() ONLY ONCE - this is required before using update()
-        newSeries.setData([]);
+        // Initialize with historical data if available, otherwise empty
+        if (initialData.length > 0) {
+            // Process initial data to ensure proper time format
+            if (chartType === 'candlestick' && 'open' in initialData[0]) {
+                const processedData = (initialData as CandleDataPoint[]).map(point => ({
+                    time: (typeof point.time === 'number' && point.time > 1e12 ? 
+                           Math.floor(point.time / 1000) : point.time) as Time,
+                    open: point.open,
+                    high: point.high,
+                    low: point.low,
+                    close: point.close
+                }));
+                newSeries.setData(processedData);
+            } else if (chartType === 'area' && 'value' in initialData[0]) {
+                const processedData = (initialData as ChartDataPoint[]).map(point => ({
+                    time: (typeof point.time === 'number' && point.time > 1e12 ? 
+                           Math.floor(point.time / 1000) : point.time) as Time,
+                    value: point.value
+                }));
+                newSeries.setData(processedData);
+            }
+        } else {
+            // No initial data - start with empty series
+            newSeries.setData([]);
+        }
         chart.timeScale().fitContent();
 
         // Notify parent that the chart is ready
@@ -240,7 +263,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         // Handle window resizing
         const handleResize = () => {
             if (chartRef.current && chartContainerRef.current) {
-                chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
+                chartRef.current.applyOptions({ 
+                    width: chartContainerRef.current.clientWidth,
+                    height: chartContainerRef.current.clientHeight
+                });
             }
         };
 
@@ -264,7 +290,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         watermarkTextColor,
         lineColor, areaTopColor, areaBottomColor,
         upColor, downColor, wickUpColor, wickDownColor,
-        // Removed initialData since we always initialize with empty data
+        initialData, // Re-added since we now use initialData for initialization
         onChartReady // Add onChartReady to dependencies for stability
     ]); // Dependencies for chart initialization
 
@@ -274,7 +300,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     return (
         <div
             ref={chartContainerRef}
-            style={{ width: '100%', height: '300px' }}
+            style={{ width: '100%', height: '100%' }}
         />
     );
 });
