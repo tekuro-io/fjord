@@ -28,10 +28,17 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
         let initialData: ChartDataPoint[] | CandleDataPoint[] | undefined = undefined;
         
         if (stockData.price && stockData.timestamp) {
-          const timestamp = new Date(stockData.timestamp).getTime();
+          // Convert to seconds for lightweight-charts consistency
+          const timestampMs = typeof stockData.timestamp === 'string' ? 
+            new Date(stockData.timestamp).getTime() : 
+            stockData.timestamp;
+          const timestampSeconds = Math.floor(timestampMs / 1000);
+          
+          console.log(`ManagedChart: Creating initial data for ${stockData.ticker} with timestamp ${timestampSeconds}s (from ${timestampMs}ms)`);
+          
           if (chartType === 'candlestick') {
             initialData = [{
-              time: timestamp,
+              time: timestampSeconds,
               open: stockData.price,
               high: stockData.price,
               low: stockData.price,
@@ -39,7 +46,7 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
             }] as CandleDataPoint[];
           } else {
             initialData = [{
-              time: timestamp,
+              time: timestampSeconds,
               value: stockData.price,
             }] as ChartDataPoint[];
           }

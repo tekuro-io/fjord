@@ -86,8 +86,17 @@ export class ChartManager {
       console.log(`ChartManager: Candlestick series created for ${ticker}, stored in map:`, this.candlestickSeries.has(ticker));
       
       if (initialData) {
-        console.log(`ChartManager: Setting initial candlestick data for ${ticker}:`, initialData);
-        candleSeries.setData(initialData as CandlestickData[]);
+        // Ensure initial data has proper time format (numbers in seconds)
+        const processedInitialData = (initialData as CandleDataPoint[]).map(point => ({
+          ...point,
+          time: typeof point.time === 'number' ? 
+            (point.time > 1e12 ? Math.floor(point.time / 1000) : point.time) : 
+            Math.floor(new Date(point.time).getTime() / 1000)
+        }));
+        
+        console.log(`ChartManager: Setting initial candlestick data for ${ticker}:`, processedInitialData);
+        console.log(`ChartManager: Sample initial data time types:`, processedInitialData.slice(0, 2).map(d => ({ time: d.time, type: typeof d.time })));
+        candleSeries.setData(processedInitialData as CandlestickData[]);
       }
     } else {
       console.log(`ChartManager: Creating area series for ${ticker}`);
@@ -243,7 +252,16 @@ export class ChartManager {
     
     // Update the chart with current candle
     console.log(`ChartManager: Updating 1-min candle for ${ticker}:`, currentCandle);
-    series.update(currentCandle as CandlestickData);
+    console.log(`ChartManager: Candle time type for ${ticker}:`, typeof currentCandle.time, currentCandle.time);
+    
+    // Ensure the candle time is a proper number
+    const candleForChart = {
+      ...currentCandle,
+      time: currentCandle.time // Should already be a number in seconds
+    };
+    
+    console.log(`ChartManager: Final candle data for chart:`, candleForChart);
+    series.update(candleForChart as CandlestickData);
     
     // Set/reset timer to finalize this candle (1 minute from bucket start + buffer)
     if (tickerTimers.has(bucketTime)) {
