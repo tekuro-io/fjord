@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTheme } from '../../ThemeContext';
 
 interface OptionsDrawerProps {
   showOptionsDrawer: boolean;
@@ -15,13 +16,15 @@ const OptionsDrawer: React.FC<OptionsDrawerProps> = ({
   multiplierFilter,
   setMultiplierFilter,
 }) => {
+  const { colors } = useTheme();
+  
   if (!showOptionsDrawer) return null;
 
   return (
-    <div className="mx-6 mb-6 p-4 bg-gray-700 rounded-lg shadow-inner flex flex-col gap-4 transition-all duration-300 ease-in-out">
+    <div className={`mx-6 mb-6 p-4 ${colors.secondary} rounded-lg ${colors.shadowMd} flex flex-col gap-4 transition-all duration-300 ease-in-out border ${colors.border}`}>
       <div className="flex flex-col sm:flex-row items-center justify-between mb-4">
-        <label htmlFor="num-stocks-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-          Show Count: <span className="text-blue-400">{numStocksToShow}</span>
+        <label htmlFor="num-stocks-slider" className={`${colors.textSecondary} text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0`}>
+          Show Count: <span className={colors.accent}>{numStocksToShow}</span>
         </label>
         <input
           id="num-stocks-slider"
@@ -31,12 +34,12 @@ const OptionsDrawer: React.FC<OptionsDrawerProps> = ({
           step="1"
           value={numStocksToShow}
           onChange={(e) => setNumStocksToShow(parseInt(e.target.value))}
-          className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          className={`w-full h-2 ${colors.inputBackground} ${colors.inputBorder} rounded-lg appearance-none cursor-pointer accent-blue-500`}
         />
       </div>
       <div className="flex flex-col sm:flex-row items-center justify-between">
-        <label htmlFor="multiplier-filter-slider" className="text-gray-300 text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0">
-          Min Multiplier: <span className="text-blue-400">{multiplierFilter.toFixed(1)}</span>
+        <label htmlFor="multiplier-filter-slider" className={`${colors.textSecondary} text-lg font-semibold mb-2 sm:mb-0 sm:mr-4 flex-shrink-0`}>
+          Min Multiplier: <span className={colors.accent}>{multiplierFilter.toFixed(1)}</span>
         </label>
         <input
           id="multiplier-filter-slider"
@@ -46,7 +49,7 @@ const OptionsDrawer: React.FC<OptionsDrawerProps> = ({
           step="0.1"
           value={multiplierFilter}
           onChange={(e) => setMultiplierFilter(parseFloat(e.target.value))}
-          className="w-full h-2 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-blue-500"
+          className={`w-full h-2 ${colors.inputBackground} ${colors.inputBorder} rounded-lg appearance-none cursor-pointer accent-blue-500`}
         />
       </div>
     </div>
