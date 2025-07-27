@@ -117,7 +117,7 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
       };
       wsConnection.send(JSON.stringify(subscribeMessage));
       subscribed.current = true;
-      console.log('Subscribed to pattern alerts');
+      console.log('🔔 AlertManager: Subscribed to pattern alerts');
     }
 
     // Add message listener for pattern alerts
@@ -126,10 +126,18 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
         const data = JSON.parse(event.data);
         
         if (data.topic === "pattern_detection") {
+          console.log('🚨 NEW PATTERN ALERT:', {
+            ticker: data.data?.ticker,
+            pattern: data.data?.pattern_display_name,
+            direction: data.data?.direction,
+            price: data.data?.price,
+            confidence: data.data?.confidence,
+            alert_level: data.data?.alert_level
+          });
           handleNewAlert(data);
         }
       } catch (error) {
-        console.error("Error parsing pattern alert:", error);
+        console.error("🔔 AlertManager: Error parsing pattern alert:", error);
       }
     };
 
