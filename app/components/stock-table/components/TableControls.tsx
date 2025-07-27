@@ -34,20 +34,8 @@ const TableControls: React.FC<TableControlsProps> = ({
       {/* Far left: Market Status */}
       <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
 
-      {/* Right side: Search bar and buttons */}
+      {/* Right side: Buttons and search bar */}
       <div className="flex items-center gap-4 mt-4 sm:mt-0">
-        {/* Search bar */}
-        <div className="relative flex items-center w-full sm:w-48">
-          <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={globalFilter || ''}
-            onChange={e => setGlobalFilter(e.target.value)}
-            className={`w-full pl-8 pr-2 py-1 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
-          />
-        </div>
-
         {/* Button group */}
         <div className={`flex items-center ${colors.secondary} rounded-lg ${colors.shadowSm} p-1`}>
           <button
@@ -88,6 +76,18 @@ const TableControls: React.FC<TableControlsProps> = ({
           >
             {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
           </button>
+        </div>
+
+        {/* Search bar */}
+        <div className="relative flex items-center w-full sm:w-48">
+          <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={globalFilter || ''}
+            onChange={e => setGlobalFilter(e.target.value)}
+            className={`w-full pl-8 pr-2 py-1 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
+          />
         </div>
       </div>
     </div>

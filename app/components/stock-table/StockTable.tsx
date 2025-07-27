@@ -95,12 +95,14 @@ const ExpandedRowContent = React.memo(({
           </button>
         </div>
       </div>
-      <ManagedChart
-        ref={chartRef}
-        stockData={stockData}
-        chartType="candlestick"
-        historicalCandles={historicalCandles}
-      />
+      <div style={{ height: '400px' }}>
+        <ManagedChart
+          ref={chartRef}
+          stockData={stockData}
+          chartType="candlestick"
+          historicalCandles={historicalCandles}
+        />
+      </div>
     </div>
   );
 });
@@ -1374,7 +1376,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       <tr className="expanded-child">
                         <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border-l border-r border-b ${colors.border}`}>
                           {/* Blue connector line */}
-                          <div className={`absolute left-px top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                          <div className={`absolute left-0.5 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           <ExpandedRowContent 
                             stockData={row.original}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
