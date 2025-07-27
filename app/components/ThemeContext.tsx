@@ -100,8 +100,8 @@ const darkColors = {
   primary: 'bg-gray-800',
   secondary: 'bg-gray-700',
   tertiary: 'bg-gray-900',
-  gradient: 'bg-gradient-to-br from-gray-800 via-gray-700 to-gray-800',
-  containerGradient: 'bg-gradient-to-b from-gray-700 to-gray-800',
+  gradient: 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900',
+  containerGradient: 'bg-gradient-to-b from-gray-800 to-gray-900',
   
   // Text colors
   textPrimary: 'text-white',
@@ -123,12 +123,12 @@ const darkColors = {
   
   // Table specific
   tableHeader: 'bg-gray-700',
-  tableHeaderGradient: 'bg-gradient-to-r from-gray-700 to-gray-600',
+  tableHeaderGradient: 'bg-gray-700',
   tableRow: 'bg-gray-900',
   tableRowHover: 'hover:bg-gray-700',
   tableRowAlternate: 'bg-gray-800/50',
   expandedRow: 'bg-gray-700',
-  expandedRowGradient: 'bg-gradient-to-r from-gray-700 to-gray-600',
+  expandedRowGradient: 'bg-gray-700',
   
   // Chart specific  
   chartBackground: 'bg-gray-900',
@@ -192,8 +192,8 @@ const lightColors = {
   primary: 'bg-white',
   secondary: 'bg-slate-100',
   tertiary: 'bg-gray-50',
-  gradient: 'bg-gradient-to-br from-slate-300 via-slate-100 to-slate-400',
-  containerGradient: 'bg-gradient-to-b from-slate-50 via-slate-200/50 to-slate-200',
+  gradient: 'bg-gradient-to-br from-slate-200 via-blue-100 to-slate-100',
+  containerGradient: 'bg-gradient-to-b from-white via-blue-50/30 to-slate-100',
   
   // Text colors
   textPrimary: 'text-slate-900',
@@ -215,12 +215,12 @@ const lightColors = {
   
   // Table specific
   tableHeader: 'bg-slate-200',
-  tableHeaderGradient: 'bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300',
+  tableHeaderGradient: 'bg-slate-200',
   tableRow: 'bg-white',
   tableRowHover: 'hover:bg-slate-100/50',
   tableRowAlternate: 'bg-slate-50/50',
   expandedRow: 'bg-slate-50',
-  expandedRowGradient: 'bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200',
+  expandedRowGradient: 'bg-slate-50',
   
   // Chart specific  
   chartBackground: 'bg-white',

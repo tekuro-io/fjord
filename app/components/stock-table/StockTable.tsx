@@ -55,7 +55,7 @@ const ExpandedRowContent = React.memo(({
   const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
   
   return (
-    <div className={`${useTheme().colors.expandedRow} pl-1 pr-2 py-4`}>
+    <div className={`${useTheme().colors.expandedRow} pl-4 pr-2 py-4`}>
       {/* Pattern Alert Box */}
       {patternAlert && (
         <div className={`mb-4 p-3 rounded-lg border-2 pattern-alert-flash ${
@@ -1374,7 +1374,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       <tr className="expanded-child">
                         <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border-l border-r border-b ${colors.border}`}>
                           {/* Blue connector line */}
-                          <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                          <div className={`absolute left-px top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           <ExpandedRowContent 
                             stockData={row.original}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
