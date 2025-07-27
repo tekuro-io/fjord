@@ -100,7 +100,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     if (typeof newData === 'function') {
       setCurrentData(prevData => {
         const result = newData(prevData);
-        console.log(`🔄 StockTable setState: Function update - prev: ${prevData.length} items, new: ${result.length} items`);
         
         // Check for new tickers
         const prevTickers = new Set(prevData.map(item => item.ticker));
@@ -112,7 +111,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         return result;
       });
     } else {
-      console.log(`🔄 StockTable setState: Direct update - ${newData.length} items`);
       setCurrentData(newData);
     }
   }, []);
@@ -305,9 +303,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             stockUpdates = parsedData.filter(item => isStockItem(item) && !isPatternDetection(item));
           } else if (isStockItem(parsedData)) {
             stockUpdates = [parsedData];
-            console.log(`📈 Stock Update: Processing ${(parsedData as {ticker: string}).ticker}`);
           } else {
-            console.log(`❌ Unknown message type, skipping`);
             return;
           }
 
