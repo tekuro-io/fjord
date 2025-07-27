@@ -1349,15 +1349,19 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <React.Fragment key={row.id}>
                     <div
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                      className={`h-14 transition-colors duration-200 cursor-pointer flex mb-1 ${
+                      className={`h-14 transition-colors duration-200 cursor-pointer flex mb-1 relative ${
                         isExpanded 
-                          ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border} border-l-4 ${colors.accent.replace('text-', 'border-')}` 
+                          ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
                           : `${colors.tableRow} ${colors.tableRowHover} rounded-lg ${colors.shadowSm} border ${colors.border}`
                       } ${
                         patternFlash ? `pattern-flash-${patternFlash}` : ''
                       }`}
                       onClick={() => toggleRowExpansion(row.id)}
                     >
+                      {/* Blue border when expanded */}
+                      {isExpanded && (
+                        <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                      )}
                       {row.getVisibleCells().map((cell, index) => (
                         <div
                           key={cell.id}
@@ -1368,7 +1372,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       ))}
                     </div>
                     {isExpanded && (
-                      <div className={`expanded-child p-0 ${colors.expandedRowGradient} border-l-4 ${colors.accent.replace('text-', 'border-')} border-r border-b ${colors.border} -mt-1`}>
+                      <div className={`expanded-child p-0 ${colors.expandedRowGradient} border ${colors.border} -mt-1 relative`}>
+                        {/* Blue border continuation */}
+                        <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                         <ExpandedRowContent 
                           stockData={row.original}
                           onOpenSentiment={() => openSentimentModal(row.original.ticker)}
