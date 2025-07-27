@@ -270,7 +270,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return typeof data === 'object' && 
                    data !== null && 
                    (('pattern' in data || 'alert_level' in data || 'confidence' in data) ||
-                    ('topic' in data && (data as any).topic === 'pattern_detection'));
+                    ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
           };
 
           // Type guard for any message that has a 'type' property AND explicitly does NOT have a 'ticker' property
