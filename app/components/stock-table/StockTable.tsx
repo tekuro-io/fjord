@@ -10,12 +10,13 @@ import {
 } from "@tanstack/react-table";
 import {
   ArrowUp, ArrowDown, X, Tag, DollarSign, Percent, BarChart2, Activity,
-  ChevronRight, ChevronDown, Frown, Brain, TrendingUp, TrendingDown
+  ChevronRight, ChevronDown, Frown, Brain, TrendingUp, TrendingDown, Maximize2
 } from 'lucide-react';
 
 import * as Tone from 'tone';
 import ManagedChart, { type ManagedChartHandle } from "../ManagedChart";
 import SentimentModal from "../SentimentModal";
+import ChartModal from "../ChartModal";
 import AlertManager from "../AlertManager";
 import type { PatternAlertData } from "../PatternAlert";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
@@ -37,12 +38,14 @@ const columnHelper = createColumnHelper<StockItem>();
 const ExpandedRowContent = React.memo(({ 
   stockData, 
   onOpenSentiment,
+  onOpenChart,
   patternAlert,
   chartRef,
   historicalCandles
 }: { 
   stockData: StockItem;
   onOpenSentiment: () => void;
+  onOpenChart: () => void;
   patternAlert?: PatternAlertData;
   chartRef: React.RefObject<ManagedChartHandle | null>;
   historicalCandles: CandleDataPoint[];
@@ -75,13 +78,22 @@ const ExpandedRowContent = React.memo(({
           <span className={`w-2 h-2 ${useTheme().colors.accent.replace('text-', 'bg-')} rounded-full mr-2`}></span>
           Price Chart for {stockData.ticker}
         </h3>
-        <button
-          onClick={onOpenSentiment}
-          className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
-        >
-          <Brain className="w-4 h-4" />
-          <span className="leading-none">AI Analysis</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenChart}
+            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonSecondary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
+          >
+            <Maximize2 className="w-4 h-4" />
+            <span className="leading-none">Expand Chart</span>
+          </button>
+          <button
+            onClick={onOpenSentiment}
+            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
+          >
+            <Brain className="w-4 h-4" />
+            <span className="leading-none">AI Analysis</span>
+          </button>
+        </div>
       </div>
       <ManagedChart
         ref={chartRef}
@@ -144,6 +156,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const chartRefs = React.useRef<Map<string, React.RefObject<ManagedChartHandle | null>>>(new Map());
   const [sentimentModalOpen, setSentimentModalOpen] = React.useState(false);
   const [sentimentTicker, setSentimentTicker] = React.useState<string>('');
+  const [chartModalOpen, setChartModalOpen] = React.useState(false);
+  const [chartModalData, setChartModalData] = React.useState<{ stockData: StockItem; historicalCandles: CandleDataPoint[] } | null>(null);
   const [patternFlashingRows, setPatternFlashingRows] = React.useState<Map<string, 'bullish' | 'bearish'>>(new Map());
   const [expandedPatternAlerts, setExpandedPatternAlerts] = React.useState<Map<string, PatternAlertData>>(new Map());
   
@@ -1189,6 +1203,21 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     setSentimentTicker('');
   }, []);
 
+  // Handler to open chart modal
+  const openChartModal = React.useCallback((ticker: string) => {
+    const stockData = currentData.find(item => item.ticker === ticker);
+    if (stockData) {
+      const historicalCandles = getHistoricalCandles(ticker);
+      setChartModalData({ stockData, historicalCandles });
+      setChartModalOpen(true);
+    }
+  }, [currentData]);
+
+  const closeChartModal = React.useCallback(() => {
+    setChartModalOpen(false);
+    setChartModalData(null);
+  }, []);
+
   // Handler for pattern alerts
   const handlePatternAlert = React.useCallback((alert: PatternAlertData) => {
     const ticker = alert.data.ticker;
@@ -1324,6 +1353,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                           <ExpandedRowContent 
                             stockData={row.original}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
+                            onOpenChart={() => openChartModal(row.original.ticker)}
                             patternAlert={patternAlert}
                             chartRef={getChartRef(row.original.ticker)}
                             historicalCandles={getHistoricalCandles(row.original.ticker)}
@@ -1357,6 +1387,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         onClose={closeSentimentModal}
         ticker={sentimentTicker}
       />
+
+      {/* Chart Modal */}
+      {chartModalData && (
+        <ChartModal
+          isOpen={chartModalOpen}
+          onClose={closeChartModal}
+          stockData={chartModalData.stockData}
+          chartType="candlestick"
+          historicalCandles={chartModalData.historicalCandles}
+        />
+      )}
 
       {/* Pattern Alert Manager - Disabled to prevent duplicate WebSocket message handling */}
       {/* <AlertManager
