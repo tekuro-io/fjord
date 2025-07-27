@@ -38,9 +38,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
       // Convert timestamp to seconds for lightweight-charts (ensure it's a number)
       const timeInSeconds = Math.floor(timestamp / 1000);
       
-      console.log(`ManagedChart: Updating ${chartType} chart for ${stockData.ticker} with price ${price} at ${timestamp}ms (${timeInSeconds}s)`);
-      console.log(`ManagedChart: timestamp type:`, typeof timestamp, `timeInSeconds type:`, typeof timeInSeconds);
-      
       if (chartType === 'candlestick') {
         // 1-minute candlestick aggregation using official pattern
         const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
@@ -49,13 +46,10 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           // Starting a new minute - finalize previous candle and start new one
           if (currentCandle.current && currentCandleStartTime.current !== null) {
             // Move current candle to completed candles
-            console.log(`ManagedChart: Finalizing candle for ${stockData.ticker} at ${new Date(currentCandleStartTime.current * 1000).toISOString()}`);
             completedCandles.current.push(currentCandle.current);
           }
           
           // Start new current candle
-          console.log(`ManagedChart: Starting NEW 1-minute candle for ${stockData.ticker} at bucket ${bucketTime} (${new Date(bucketTime * 1000).toISOString()})`);
-          
           currentCandle.current = {
             time: bucketTime * 1000, // Chart.tsx expects milliseconds and will convert to seconds
             open: price,
@@ -67,7 +61,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           
           // Update chart with all completed candles + new current candle
           const allCandles = [...completedCandles.current, currentCandle.current];
-          console.log(`ManagedChart: Sending ${allCandles.length} candles to chart (${completedCandles.current.length} completed + 1 current)`);
           chartRef.current.setData(allCandles);
         } else {
           // Update current candle - keep same timestamp, update OHLC
@@ -80,8 +73,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
               low: Math.min(currentCandle.current.low, price),            // Extend low if needed
               high: Math.max(currentCandle.current.high, price),          // Extend high if needed
             };
-            
-            console.log(`ManagedChart: Updating current 1-min candle for ${stockData.ticker} - close: ${price}, high: ${currentCandle.current.high}, low: ${currentCandle.current.low}`);
             
             // Update chart with all completed candles + updated current candle
             const allCandles = [...completedCandles.current, currentCandle.current];
@@ -109,7 +100,6 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
       new Date(stockData.timestamp).getTime() : 
       stockData.timestamp;
     
-    console.log(`ManagedChart: Creating initial data for ${stockData.ticker} with timestamp ${timestampMs}ms`);
     
     if (chartType === 'candlestick') {
       return [{
