@@ -66,6 +66,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | ISeriesApi<'Candlestick'> | null>(null);
+    const initializedWithData = useRef<boolean>(false);
 
     // useImperativeHandle: Expose updateData and setData methods to the parent via ref
     useImperativeHandle(ref, () => {
@@ -283,12 +284,37 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         watermarkTextColor,
         lineColor, areaTopColor, areaBottomColor,
         upColor, downColor, wickUpColor, wickDownColor,
-        initialData, // Re-added since we now use initialData for initialization
+        // Removed initialData from dependencies to prevent chart recreation on data updates
         onChartReady // Add onChartReady to dependencies for stability
     ]); // Dependencies for chart initialization
 
-    // No longer need a separate useEffect for internal chartData state,
-    // as updates are now handled directly by updateData/setData via ref.
+    // Separate effect to handle initial data loading (only once)
+    useEffect(() => {
+        if (seriesRef.current && initialData.length > 0 && !initializedWithData.current) {
+            // Initialize with historical data if available
+            if (chartType === 'candlestick' && 'open' in initialData[0]) {
+                const processedData = (initialData as CandleDataPoint[]).map(point => ({
+                    time: (typeof point.time === 'number' && point.time > 1e12 ? 
+                           Math.floor(point.time / 1000) : point.time) as Time,
+                    open: point.open,
+                    high: point.high,
+                    low: point.low,
+                    close: point.close
+                }));
+                seriesRef.current.setData(processedData);
+                chartRef.current?.timeScale().fitContent(); // Only fit content for initial data load
+            } else if (chartType === 'area' && 'value' in initialData[0]) {
+                const processedData = (initialData as ChartDataPoint[]).map(point => ({
+                    time: (typeof point.time === 'number' && point.time > 1e12 ? 
+                           Math.floor(point.time / 1000) : point.time) as Time,
+                    value: point.value
+                }));
+                seriesRef.current.setData(processedData);
+                chartRef.current?.timeScale().fitContent(); // Only fit content for initial data load
+            }
+            initializedWithData.current = true;
+        }
+    }, [initialData, chartType]); // Only depend on initialData and chartType
 
     return (
         <div

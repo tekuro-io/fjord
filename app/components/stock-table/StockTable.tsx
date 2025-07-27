@@ -21,6 +21,7 @@ import type { PatternAlertData } from "../PatternAlert";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
 import { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from "./types";
+import { useTheme } from "../ThemeContext";
 import { 
   DELTA_FLASH_THRESHOLD, 
   PRICE_FLASH_THRESHOLD,
@@ -75,10 +76,10 @@ const ExpandedRowContent = React.memo(({
         </h3>
         <button
           onClick={onOpenSentiment}
-          className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors duration-200 shadow-md hover:shadow-lg"
+          className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors duration-200 shadow-md hover:shadow-lg"
         >
           <Brain className="w-4 h-4" />
-          AI Analysis
+          <span>AI Analysis</span>
         </button>
       </div>
       <ManagedChart
@@ -95,7 +96,7 @@ ExpandedRowContent.displayName = 'ExpandedRowContent';
 
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
-
+  const { theme, colors } = useTheme();
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
 
   // LOG ALL STATE CHANGES TO TRACK DATA SOURCES
@@ -1211,7 +1212,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   }, [expandedRows]);
 
   return (
-    <div className="bg-gray-800 rounded-lg shadow-xl mx-auto max-w-screen-lg relative">
+    <div className={`${colors.primary} rounded-lg shadow-xl mx-auto max-w-screen-lg relative`}>
       <StockTableStyles />
       <TableHeader connectionStatus={connectionStatus} />
       <TableControls
@@ -1236,16 +1237,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {/* Table Container with horizontal overflow */}
       <div className="overflow-x-auto px-0 sm:px-6 pb-6">
-        <table className="w-full table-auto text-sm text-gray-200 font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg expanded-table">
-          <thead className="bg-gray-700">
+        <table className={`w-full table-auto text-sm ${colors.textSecondary} font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg expanded-table`}>
+          <thead className={colors.tableHeader}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="h-12">
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
                     colSpan={header.colSpan}
-                    className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider text-gray-300 ${
-                      header.column.getCanSort() ? "cursor-pointer select-none hover:bg-gray-600 transition-colors duration-200" : ""
+                    className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider ${colors.textSecondary} ${
+                      header.column.getCanSort() ? `cursor-pointer select-none hover:${colors.secondary} transition-colors duration-200` : ""
                     } ${getHeaderClasses(header.id)}`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
@@ -1261,15 +1262,15 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               </tr>
             ))}
           </thead>
-          <tbody className="bg-gray-800">
+          <tbody className={colors.primary}>
             {/* Slice the rows here to display only the top N */}
             {table.getRowModel().rows.slice(0, numStocksToShow).length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="text-center py-8 text-gray-400">
+                <td colSpan={columns.length} className={`text-center py-8 ${colors.textMuted}`}>
                   <div className="flex flex-col items-center justify-center">
-                    <Frown className="w-12 h-12 mb-4 text-gray-500" />
-                    <p className="text-lg font-semibold">No one but us chickens here.</p>
-                    <p className="text-sm">Try adjusting your filters or search terms.</p>
+                    <Frown className={`w-12 h-12 mb-4 ${colors.textMuted}`} />
+                    <p className={`text-lg font-semibold ${colors.textSecondary}`}>No one but us chickens here.</p>
+                    <p className={`text-sm ${colors.textMuted}`}>Try adjusting your filters or search terms.</p>
                   </div>
                 </td>
               </tr>
@@ -1347,11 +1348,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         ticker={sentimentTicker}
       />
 
-      {/* Pattern Alert Manager */}
-      <AlertManager
+      {/* Pattern Alert Manager - Disabled to prevent duplicate WebSocket message handling */}
+      {/* <AlertManager
         wsConnection={wsRef.current}
         onPatternAlert={handlePatternAlert}
-      />
+      /> */}
     </div>
   );
 }
