@@ -5,6 +5,7 @@ import React, { useRef, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { ChartComponent, type ChartHandle } from './Chart';
 import type { ChartDataPoint, CandleDataPoint } from './stock-table/types';
 import type { StockItem } from './stock-table/types';
+import { useTheme } from './ThemeContext';
 
 interface ManagedChartProps {
   stockData: StockItem;
@@ -26,6 +27,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   historicalCandles = [] // Default to empty array if no historical data
 }, ref) => {
   const chartRef = useRef<ChartHandle>(null);
+  const { colors } = useTheme();
   
   // Track completed and current candles for 1-minute aggregation
   const completedCandles = useRef<CandleDataPoint[]>([]);
@@ -135,13 +137,23 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, historicalCandles]);
 
   return (
-    <div className="w-full bg-gray-900 rounded-lg overflow-hidden" style={{ height: '400px' }}>
+    <div className={`w-full ${colors.chartBackground} rounded-lg overflow-hidden border ${colors.border}`} style={{ height: '400px' }}>
       <ChartComponent
         ref={chartRef}
         initialData={initialData}
         chartType={chartType}
         watermarkText={stockData.ticker}
         onChartReady={onChartReady}
+        colors={{
+          backgroundColor: colors.chartBackgroundHex,
+          upColor: colors.candleUpColor,
+          downColor: colors.candleDownColor,
+          wickUpColor: colors.candleWickUpColor,
+          wickDownColor: colors.candleWickDownColor,
+          vertLinesColor: colors.gridLines,
+          horzLinesColor: colors.gridLines,
+          watermarkTextColor: colors.chartWatermark,
+        }}
       />
     </div>
   );

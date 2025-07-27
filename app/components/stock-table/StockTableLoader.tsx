@@ -1,8 +1,7 @@
 import { connection } from "next/server";
 import StockTable from "./StockTable"; 
 import { getStockDataFromRedis } from "../../lib/redis";
-import type { StockItem } from "./types";
-import { ThemeProvider } from "../ThemeContext"; 
+import type { StockItem } from "./types"; 
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +30,9 @@ export default async function StockTableLoader() {
             }
         });
         
-        return (
-            <ThemeProvider>
-                <StockTable data={data} />
-            </ThemeProvider>
-        );
+        return <StockTable data={data} />;
     } catch (error) {
         console.error("Error in StockTableLoader: Failed to fetch data for StockTable:", error);
-        return (
-            <ThemeProvider>
-                <StockTable data={[]} />
-            </ThemeProvider>
-        );
+        return <StockTable data={[]} />;
     }
 }

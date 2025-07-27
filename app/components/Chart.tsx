@@ -58,7 +58,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         } = {},
         showWatermark = true,
         watermarkText = 'BOOP',
-        watermarkTextColor = 'rgba(250, 6, 6, 0.75)',
+        watermarkTextColor = 'rgba(59, 130, 246, 0.15)',
         onChartReady,
     } = props;
 
@@ -189,7 +189,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             lines: [
                 {
                     text: watermarkText,
-                    color: 'rgba(8, 242, 246, 0.3)',
+                    color: watermarkTextColor,
                     fontSize: 24,
                     fontStyle: 'normal',
                 },

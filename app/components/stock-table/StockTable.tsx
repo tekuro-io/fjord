@@ -51,7 +51,7 @@ const ExpandedRowContent = React.memo(({
   const PatternIcon = patternAlert ? (isBullish ? TrendingUp : TrendingDown) : null;
   
   return (
-    <div className="bg-gray-700 p-4">
+    <div className={`${useTheme().colors.expandedRow} p-4`}>
       {/* Pattern Alert Box */}
       {patternAlert && (
         <div className={`mb-4 p-3 rounded-lg border-2 pattern-alert-flash ${
@@ -70,13 +70,13 @@ const ExpandedRowContent = React.memo(({
       )}
 
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-300 flex items-center">
-          <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+        <h3 className={`text-sm font-semibold ${useTheme().colors.textSecondary} flex items-center`}>
+          <span className={`w-2 h-2 ${useTheme().colors.accent.replace('text-', 'bg-')} rounded-full mr-2`}></span>
           Price Chart for {stockData.ticker}
         </h3>
         <button
           onClick={onOpenSentiment}
-          className="flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-md transition-colors duration-200 shadow-md hover:shadow-lg"
+          className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
         >
           <Brain className="w-4 h-4" />
           <span>AI Analysis</span>
@@ -1212,7 +1212,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   }, [expandedRows]);
 
   return (
-    <div className={`${colors.primary} rounded-lg shadow-xl mx-auto max-w-screen-lg relative`}>
+    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-auto max-w-screen-lg relative border ${colors.border}`}>
       <StockTableStyles />
       <TableHeader connectionStatus={connectionStatus} />
       <TableControls
@@ -1238,7 +1238,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       {/* Table Container with horizontal overflow */}
       <div className="overflow-x-auto px-0 sm:px-6 pb-6">
         <table className={`w-full table-auto text-sm ${colors.textSecondary} font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg expanded-table`}>
-          <thead className={colors.tableHeader}>
+          <thead className={colors.tableHeaderGradient}>
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id} className="h-12">
                 {headerGroup.headers.map((header) => (
@@ -1286,8 +1286,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                       className={`h-14 transition-colors duration-200 cursor-pointer ${
                         isExpanded 
-                          ? 'bg-gray-600 hover:bg-gray-500 expanded-parent' 
-                          : 'bg-gray-900 hover:bg-gray-700 rounded-lg shadow-md'
+                          ? `${colors.expandedRowGradient} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
+                          : `${colors.tableRow} ${colors.tableRowHover} rounded-lg ${colors.shadowSm} border ${colors.border}`
                       } ${
                         patternFlash ? `pattern-flash-${patternFlash}` : ''
                       }`}
@@ -1308,9 +1308,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     </tr>
                     {isExpanded && (
                       <tr className="expanded-child">
-                        <td colSpan={columns.length} className="p-0 bg-gray-700 relative">
+                        <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border ${colors.border}`}>
                           {/* Blue connector line */}
-                          <div className="absolute left-0 top-0 w-1 h-full bg-blue-400"></div>
+                          <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           <ExpandedRowContent 
                             stockData={row.original}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}
