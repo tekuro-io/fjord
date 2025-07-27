@@ -426,7 +426,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const newData: StockItem[] = await response.json();
-        console.log('Redis fetch returned:', newData.length, 'items. Sample item:', newData[0]);
+        console.log('Redis fetch returned:', newData.length, 'items');
+        console.log('First 3 items from Redis:', newData.slice(0, 3));
+        console.log('Sample item structure:', Object.keys(newData[0] || {}));
 
         setConnectionStatus('connected');
 

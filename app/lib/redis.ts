@@ -75,6 +75,13 @@ export async function getStockDataFromRedis(): Promise<StockItem[]> {
             if (jsonString) {
                 try {
                     const item: StockItem = JSON.parse(jsonString);
+                    // Debug first few items to see structure
+                    if (index < 3) {
+                        console.log(`Redis key ${keys[index]}:`);
+                        console.log('Raw JSON:', jsonString);
+                        console.log('Parsed item:', item);
+                        console.log('Item keys:', Object.keys(item));
+                    }
                     stockItems.push(item);
                 } catch (parseError) {
                     console.error(`Error parsing JSON for key ${keys[index]}:`, parseError);
