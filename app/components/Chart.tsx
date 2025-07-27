@@ -44,17 +44,17 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         initialData, // Use initialData for the very first chart load
         chartType = 'area',
         colors: {
-            backgroundColor = '000000',
-            lineColor = '#5da7f7',
-            textColor = '#296e80',
-            areaTopColor = 'rgba(135, 206, 235, 0.7)',
-            areaBottomColor = 'rgba(135, 206, 235, 0.01)',
+            backgroundColor = '#1f2937',
+            lineColor = '#08f2f6',
+            textColor = '#e5e7eb',
+            areaTopColor = 'rgba(8, 242, 246, 0.4)',
+            areaBottomColor = 'rgba(8, 242, 246, 0.0)',
             vertLinesColor = '#374151',
             horzLinesColor = '#374151',
-            upColor = '#26a69a',
-            downColor = '#ef5350',
-            wickUpColor = '#26a69a',
-            wickDownColor = '#ef5350',
+            upColor = '#22c55e',
+            downColor = '#ef4444',
+            wickUpColor = '#22c55e',
+            wickDownColor = '#ef4444',
         } = {},
         showWatermark = true,
         watermarkText = 'BOOP',
@@ -102,7 +102,14 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                             close: point.close
                         };
                         console.log(`📊 Chart.tsx AFTER object creation:`, candleData, 'time type:', typeof candleData.time);
+                        console.log(`📊 Chart.tsx calling series.update() with:`, candleData);
                         seriesRef.current.update(candleData);
+                        console.log(`📊 Chart.tsx series.update() completed successfully`);
+                        
+                        // Fit content after chart updates to keep data visible
+                        if (chartRef.current) {
+                            chartRef.current.timeScale().fitContent();
+                        }
                     } else if (chartType === 'area' && 'value' in point) {
                         // Handle area chart data
                         seriesRef.current.update({ time: timeForChart, value: point.value });

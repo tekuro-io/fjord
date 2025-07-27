@@ -252,16 +252,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           const parsedData: unknown = JSON.parse(event.data);
 
           // Type guard for StockItem - exclude pattern detection messages
-          const isStockItem = (data: unknown): data is StockItem => {
-            return typeof data === 'object' && 
-                   data !== null && 
-                   'ticker' in data && 
-                   typeof (data as StockItem).ticker === 'string' && 
-                   (data as StockItem).ticker.trim() !== '' &&
-                   !('pattern' in data) &&           // Exclude pattern detection
-                   !('alert_level' in data) &&       // Exclude alerts
-                   !('confidence' in data);          // Exclude pattern confidence
-          };
+          // const isStockItem = (data: unknown): data is StockItem => {
+          //   return typeof data === 'object' && 
+          //          data !== null && 
+          //          'ticker' in data && 
+          //          typeof (data as StockItem).ticker === 'string' && 
+          //          (data as StockItem).ticker.trim() !== '' &&
+          //          !('pattern' in data) &&           // Exclude pattern detection
+          //          !('alert_level' in data) &&       // Exclude alerts
+          //          !('confidence' in data);          // Exclude pattern confidence
+          // };
 
           // Type guard for pattern detection messages
           const isPatternDetection = (data: unknown): boolean => {
