@@ -23,6 +23,10 @@ export class ChartManager {
   private chartTypes: Map<string, 'area' | 'candlestick'> = new Map();
   private resizeObservers: Map<string, ResizeObserver> = new Map();
   private destroyed: Set<string> = new Set();
+  
+  // 1-minute candlestick aggregation data
+  private currentCandles: Map<string, Map<number, CandleDataPoint>> = new Map();
+  private candleTimers: Map<string, Map<number, NodeJS.Timeout>> = new Map();
 
   createChart(
     ticker: string, 
@@ -152,6 +156,11 @@ export class ChartManager {
     }
   }
 
+  private get1MinuteBucket(timestamp: number): number {
+    // Round down to the nearest minute
+    return Math.floor(timestamp / 60000) * 60000;
+  }
+
   updateChartWithPrice(ticker: string, timestamp: number, price: number): void {
     // Don't update destroyed charts
     if (this.destroyed.has(ticker)) {
@@ -168,21 +177,7 @@ export class ChartManager {
     
     try {
       if (chartType === 'candlestick') {
-        const series = this.candlestickSeries.get(ticker);
-        if (series) {
-          // Create a candlestick where OHLC are all the same price (tick candle)
-          const candleData = {
-            time: timestamp,
-            open: price,
-            high: price,
-            low: price,
-            close: price,
-          } as CandlestickData;
-          console.log(`ChartManager: Adding candlestick data for ${ticker}:`, candleData);
-          series.update(candleData);
-        } else {
-          console.warn(`ChartManager: No candlestick series found for ${ticker}`);
-        }
+        this.updateCandlestickWithTick(ticker, timestamp, price);
       } else {
         const series = this.areaSeries.get(ticker);
         if (series) {
@@ -199,6 +194,70 @@ export class ChartManager {
     } catch (error) {
       console.error(`ChartManager: Price update failed for ${ticker}:`, error);
       this.destroyed.add(ticker);
+    }
+  }
+
+  private updateCandlestickWithTick(ticker: string, timestamp: number, price: number): void {
+    const series = this.candlestickSeries.get(ticker);
+    if (!series) {
+      console.warn(`ChartManager: No candlestick series found for ${ticker}`);
+      return;
+    }
+
+    // Get the 1-minute bucket for this timestamp
+    const bucketTime = this.get1MinuteBucket(timestamp);
+    
+    // Initialize ticker candle tracking if needed
+    if (!this.currentCandles.has(ticker)) {
+      this.currentCandles.set(ticker, new Map());
+    }
+    if (!this.candleTimers.has(ticker)) {
+      this.candleTimers.set(ticker, new Map());
+    }
+    
+    const tickerCandles = this.currentCandles.get(ticker)!;
+    const tickerTimers = this.candleTimers.get(ticker)!;
+    
+    // Get or create current candle for this minute bucket
+    let currentCandle = tickerCandles.get(bucketTime);
+    if (!currentCandle) {
+      // Start new candle
+      currentCandle = {
+        time: bucketTime,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      };
+      tickerCandles.set(bucketTime, currentCandle);
+      console.log(`ChartManager: Starting new 1-min candle for ${ticker} at ${new Date(bucketTime).toISOString()}`);
+    } else {
+      // Update existing candle
+      currentCandle.high = Math.max(currentCandle.high, price);
+      currentCandle.low = Math.min(currentCandle.low, price);
+      currentCandle.close = price; // Close is always the latest price
+    }
+    
+    // Update the chart with current candle
+    console.log(`ChartManager: Updating 1-min candle for ${ticker}:`, currentCandle);
+    series.update(currentCandle as CandlestickData);
+    
+    // Set/reset timer to finalize this candle (1 minute from bucket start + buffer)
+    if (tickerTimers.has(bucketTime)) {
+      clearTimeout(tickerTimers.get(bucketTime));
+    }
+    
+    const timeUntilNextBucket = (bucketTime + 60000) - Date.now() + 1000; // 1 second buffer
+    if (timeUntilNextBucket > 0) {
+      const timer = setTimeout(() => {
+        console.log(`ChartManager: Finalizing 1-min candle for ${ticker} at ${new Date(bucketTime).toISOString()}`);
+        tickerCandles.delete(bucketTime);
+        tickerTimers.delete(bucketTime);
+        // Auto-fit content periodically
+        this.fitContent(ticker);
+      }, timeUntilNextBucket);
+      
+      tickerTimers.set(bucketTime, timer);
     }
   }
 
@@ -263,6 +322,13 @@ export class ChartManager {
       this.resizeObservers.delete(ticker);
     }
 
+    // Clean up candlestick aggregation timers
+    const tickerTimers = this.candleTimers.get(ticker);
+    if (tickerTimers) {
+      tickerTimers.forEach(timer => clearTimeout(timer));
+      this.candleTimers.delete(ticker);
+    }
+
     // Destroy chart with error protection
     const chart = this.charts.get(ticker);
     if (chart) {
@@ -278,6 +344,7 @@ export class ChartManager {
     this.areaSeries.delete(ticker);
     this.candlestickSeries.delete(ticker);
     this.chartTypes.delete(ticker);
+    this.currentCandles.delete(ticker);
   }
 
   destroyAllCharts(): void {
