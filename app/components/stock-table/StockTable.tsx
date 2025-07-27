@@ -59,6 +59,10 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [priceFlashingStates, setPriceFlashingStates] = React.useState<Map<string, 'up' | 'down'>>(new Map());
   const [stockChartHistory, setStockChartHistory] = React.useState<Map<string, ChartDataPoint[]>>(new Map());
   const [stockCandleHistory, setStockCandleHistory] = React.useState<Map<string, CandleDataPoint[]>>(new Map());
+  
+  // Memoized empty arrays to prevent unnecessary re-renders
+  const emptyChartData = React.useMemo(() => [], []);
+  const emptyCandleData = React.useMemo(() => [], []);
   const [wsUrl, setWsUrl] = React.useState<string | null>(null);
   const [tickersToSubscribe, setTickersToSubscribe] = React.useState<string[]>(
     initialData.map(item => item.ticker).filter(Boolean) as string[]
@@ -1052,8 +1056,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                                   </h3>
                                   <LiveChart
                                     stockData={row.original}
-                                    initialChartData={stockChartHistory.get(row.original.ticker) || []}
-                                    initialCandleData={stockCandleHistory.get(row.original.ticker) || []}
+                                    initialChartData={stockChartHistory.get(row.original.ticker) || emptyChartData}
+                                    initialCandleData={stockCandleHistory.get(row.original.ticker) || emptyCandleData}
                                     chartType="candlestick"
                                   />
                                 </div>

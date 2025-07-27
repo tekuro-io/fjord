@@ -1,5 +1,5 @@
 // Import types at the top level
-import type { ChartDataPoint, CandleDataPoint } from '../types';
+import type { ChartDataPoint, CandleDataPoint } from '../types/index';
 
 export const DELTA_FLASH_THRESHOLD = 0.005;
 export const PRICE_FLASH_THRESHOLD = 0.005;

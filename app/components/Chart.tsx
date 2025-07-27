@@ -4,7 +4,7 @@ import { AreaSeries, CandlestickSeries, createChart, ColorType, IChartApi, ISeri
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
 // Import ChartDataPoint and CandleDataPoint from StockTable to ensure consistency across components
-import { ChartDataPoint, CandleDataPoint } from './stock-table';
+import type { ChartDataPoint, CandleDataPoint } from './stock-table';
 
 interface ChartColors {
     backgroundColor?: string;
@@ -91,7 +91,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                         seriesRef.current.update({ time: timeInSeconds, value: point.value });
                     }
                     
-                    chartRef.current?.timeScale().scrollToRealTime(); // Keep chart scrolled to the latest point
+                    // Note: Removed scrollToRealTime() call - auto-scroll is now controlled by shiftVisibleRangeOnNewBar option
                 } else {
                     console.warn('ChartComponent: seriesRef.current not available for updateData (inside handle).');
                 }
@@ -168,6 +168,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 lockVisibleTimeRangeOnResize: true,
                 rightBarStaysOnScroll: true,
                 minBarSpacing: 0.5,
+                shiftVisibleRangeOnNewBar: false, // Disable auto-scroll on new data - allows user interaction
             },
             rightPriceScale: {
                 autoScale: true,
