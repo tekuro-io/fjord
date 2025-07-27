@@ -1149,9 +1149,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                           key={cell.id}
                           className={`px-0.5 py-2 align-middle relative ${getCellClasses(cell.column.id)}`}
                         >
-                          {/* Blue connector line for first cell when expanded */}
+                          {/* Blue connector line for first cell when expanded - brighter to show it's clickable */}
                           {index === 0 && isExpanded && (
-                            <div className="absolute left-0 top-0 w-1 h-full bg-blue-400"></div>
+                            <div className="absolute left-0 top-0 w-1 h-full bg-blue-300 hover:bg-blue-200 transition-colors"></div>
                           )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>

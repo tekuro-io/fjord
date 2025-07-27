@@ -48,8 +48,14 @@ const StockTableStyles: React.FC = () => {
     }
     
     .expanded-table .expanded-child {
-      margin-top: -4px !important;
-      transform: translateY(-4px);
+      margin-top: -6px !important;
+      transform: translateY(-2px);
+    }
+    
+    /* Special handling for first expanded row */
+    .expanded-table tbody tr:first-child.expanded-parent + .expanded-child {
+      margin-top: -5px !important;
+      transform: translateY(-1px);
     }
     
     .expanded-table .expanded-child td {
