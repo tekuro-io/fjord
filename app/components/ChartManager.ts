@@ -1,7 +1,7 @@
 // components/ChartManager.ts
 'use client';
 
-import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, createTextWatermark, CandlestickSeries, AreaSeries } from 'lightweight-charts';
+import { createChart, IChartApi, ISeriesApi, CandlestickData, LineData, createTextWatermark, CandlestickSeries, AreaSeries, Time } from 'lightweight-charts';
 
 export interface ChartDataPoint {
   time: number;
@@ -113,7 +113,10 @@ export class ChartManager {
         
         console.log(`ChartManager: Setting initial candlestick data for ${ticker}:`, processedInitialData);
         console.log(`ChartManager: Sample initial data time types:`, processedInitialData.slice(0, 2).map(d => ({ time: d.time, type: typeof d.time })));
+        
+        // CRITICAL: Use setData for initial data, not individual updates
         candleSeries.setData(processedInitialData as CandlestickData[]);
+        console.log(`ChartManager: Initial data set, series now has ${candleSeries.data().length} data points`);
       }
     } else {
       console.log(`ChartManager: Creating area series for ${ticker}`);
@@ -198,8 +201,8 @@ export class ChartManager {
       return; // No chart created for this ticker yet
     }
 
-    // Convert timestamp to seconds if it's in milliseconds (lightweight-charts expects seconds)
-    const timeInSeconds = timestamp > 1e12 ? Math.floor(timestamp / 1000) : timestamp;
+    // Convert timestamp to seconds (lightweight-charts expects seconds) - ALWAYS divide by 1000 like the working version
+    const timeInSeconds = Math.floor(timestamp / 1000);
 
     const chartType = this.chartTypes.get(ticker);
     console.log(`ChartManager: Updating ${chartType} chart for ${ticker} with price ${price} at ${timestamp} (${timeInSeconds}s)`);
@@ -235,6 +238,7 @@ export class ChartManager {
 
     // Get the 1-minute bucket for this timestamp
     const bucketTime = this.get1MinuteBucket(timestamp);
+    console.log(`ChartManager: Tick for ${ticker} - original timestamp: ${timestamp}s, bucket: ${bucketTime}s, bucket date: ${new Date(bucketTime * 1000).toISOString()}`);
     
     // Initialize ticker candle tracking if needed
     if (!this.currentCandles.has(ticker)) {
@@ -262,9 +266,12 @@ export class ChartManager {
       console.log(`ChartManager: Starting new 1-min candle for ${ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
     } else {
       // Update existing candle
+      const oldHigh = currentCandle.high;
+      const oldLow = currentCandle.low;
       currentCandle.high = Math.max(currentCandle.high, price);
       currentCandle.low = Math.min(currentCandle.low, price);
       currentCandle.close = price; // Close is always the latest price
+      console.log(`ChartManager: Updated existing 1-min candle for ${ticker} - price: ${price}, high: ${oldHigh}->${currentCandle.high}, low: ${oldLow}->${currentCandle.low}`);
     }
     
     // Update the chart with current candle
@@ -296,9 +303,11 @@ export class ChartManager {
       if (existingData.length > 0) {
         const lastPoint = existingData[existingData.length - 1];
         const lastTime = Number(lastPoint.time);
-        if (candleForChart.time <= lastTime) {
-          console.warn(`ChartManager: Skipping update for ${ticker} - new time ${candleForChart.time} <= last time ${lastTime}`);
+        if (candleForChart.time < lastTime) {
+          console.warn(`ChartManager: Skipping update for ${ticker} - new time ${candleForChart.time} < last time ${lastTime}`);
           return;
+        } else if (candleForChart.time === lastTime) {
+          console.log(`ChartManager: Updating existing candle for ${ticker} at time ${candleForChart.time}`);
         }
       }
     } catch (dataCheckError) {
@@ -306,8 +315,15 @@ export class ChartManager {
     }
 
     try {
-      series.update(candleForChart as CandlestickData);
-      console.log(`ChartManager: Successfully updated candlestick for ${ticker}`);
+      // Use the same pattern as the working Chart.tsx - pass complete OHLC data
+      series.update({
+        time: candleForChart.time as Time,
+        open: candleForChart.open,
+        high: candleForChart.high,
+        low: candleForChart.low,
+        close: candleForChart.close
+      });
+      console.log(`ChartManager: Successfully updated candlestick for ${ticker} with OHLC data`);
     } catch (error) {
       console.error(`ChartManager: Failed to update candlestick for ${ticker}:`, error);
       console.error(`ChartManager: Attempted to update with data:`, candleForChart);

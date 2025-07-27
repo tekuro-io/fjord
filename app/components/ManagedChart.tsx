@@ -28,7 +28,7 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
         let initialData: ChartDataPoint[] | CandleDataPoint[] | undefined = undefined;
         
         if (stockData.price && stockData.timestamp) {
-          // Convert to seconds for lightweight-charts consistency
+          // Convert to seconds for lightweight-charts consistency - ALWAYS divide by 1000 like working version
           const timestampMs = typeof stockData.timestamp === 'string' ? 
             new Date(stockData.timestamp).getTime() : 
             stockData.timestamp;
