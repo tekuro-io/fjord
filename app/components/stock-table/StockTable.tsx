@@ -359,12 +359,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               let timestamp: number;
               if (typeof update.timestamp === 'string') {
                 timestamp = new Date(update.timestamp).getTime();
-              } else if (typeof update.timestamp === 'number') {
-                timestamp = update.timestamp;
-              } else if (update.timestamp instanceof Date) {
-                timestamp = update.timestamp.getTime();
               } else {
-                console.warn("StockTable: Invalid timestamp format:", update.timestamp);
+                console.warn("StockTable: Invalid timestamp format:", update.timestamp, typeof update.timestamp);
                 return;
               }
               
