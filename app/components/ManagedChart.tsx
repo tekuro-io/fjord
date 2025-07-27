@@ -38,10 +38,12 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
       const timeInSeconds = Math.floor(timestamp / 1000);
       
       console.log(`ManagedChart: Updating ${chartType} chart for ${stockData.ticker} with price ${price} at ${timestamp} (${timeInSeconds}s)`);
+      console.log(`ManagedChart: Input timestamp type:`, typeof timestamp, `timeInSeconds type:`, typeof timeInSeconds);
       
       if (chartType === 'candlestick') {
         // 1-minute candlestick aggregation
         const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
+        console.log(`ManagedChart: bucketTime type:`, typeof bucketTime, `value:`, bucketTime);
         
         if (currentCandleStartTime.current !== bucketTime) {
           // Starting a new candle - finalize previous one if exists
@@ -51,8 +53,10 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           }
           
           // Start new candle
+          const candleTimeMs = bucketTime * 1000;
+          console.log(`ManagedChart: Creating candle with time ${candleTimeMs} (type: ${typeof candleTimeMs})`);
           currentCandle.current = {
-            time: bucketTime * 1000, // Chart.tsx expects milliseconds and will convert to seconds
+            time: candleTimeMs, // Chart.tsx expects milliseconds and will convert to seconds
             open: price,
             high: price,
             low: price,
@@ -61,6 +65,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           currentCandleStartTime.current = bucketTime;
           
           console.log(`ManagedChart: Started new candle for ${stockData.ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
+          console.log(`ManagedChart: currentCandle.current.time:`, currentCandle.current.time, `type:`, typeof currentCandle.current.time);
         } else {
           // Update current candle
           if (currentCandle.current) {
@@ -72,6 +77,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
         
         // Always update chart with current candle state
         if (currentCandle.current) {
+          console.log(`ManagedChart: About to send candle to chart:`, currentCandle.current);
           chartRef.current.updateData(currentCandle.current);
         }
       } else {

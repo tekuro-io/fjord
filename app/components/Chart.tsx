@@ -73,13 +73,27 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         const handle = {
             updateData: (point: ChartDataPoint | CandleDataPoint) => {
                 if (seriesRef.current) {
-                    // Ensure time is in seconds for lightweight-charts
-                    const timeInSeconds = (point.time / 1000) as Time;
+                    // Ensure time is in seconds for lightweight-charts - add debugging and robust conversion
+                    console.log(`Chart.tsx updateData: Received point.time:`, point.time, `type:`, typeof point.time);
+                    let timeInSeconds: number;
+                    
+                    if (typeof point.time === 'number') {
+                        // If it's already in seconds (< 1e12), use as-is, otherwise convert from milliseconds
+                        timeInSeconds = point.time > 1e12 ? Math.floor(point.time / 1000) : point.time;
+                    } else if (typeof point.time === 'string') {
+                        timeInSeconds = Math.floor(new Date(point.time).getTime() / 1000);
+                    } else {
+                        console.error(`Chart.tsx: Invalid time format:`, point.time, typeof point.time);
+                        return;
+                    }
+                    
+                    console.log(`Chart.tsx updateData: Converted to timeInSeconds:`, timeInSeconds);
+                    const timeForChart = timeInSeconds as Time;
                     
                     if (chartType === 'candlestick' && 'open' in point) {
                         // Handle candlestick data
                         seriesRef.current.update({
-                            time: timeInSeconds,
+                            time: timeForChart,
                             open: point.open,
                             high: point.high,
                             low: point.low,
@@ -87,7 +101,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                         });
                     } else if (chartType === 'area' && 'value' in point) {
                         // Handle area chart data
-                        seriesRef.current.update({ time: timeInSeconds, value: point.value });
+                        seriesRef.current.update({ time: timeForChart, value: point.value });
                     }
                     
                     // Note: Removed scrollToRealTime() call - auto-scroll is now controlled by shiftVisibleRangeOnNewBar option
