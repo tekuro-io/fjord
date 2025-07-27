@@ -54,7 +54,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           
           // Start new candle
           const candleTimeMs = bucketTime * 1000;
-          console.log(`ManagedChart: Creating candle with time ${candleTimeMs} (type: ${typeof candleTimeMs})`);
+          console.log(`ManagedChart: Creating NEW candle with time ${candleTimeMs} (type: ${typeof candleTimeMs})`);
           currentCandle.current = {
             time: candleTimeMs, // Chart.tsx expects milliseconds and will convert to seconds
             open: price,
@@ -66,19 +66,17 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           
           console.log(`ManagedChart: Started new candle for ${stockData.ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
           console.log(`ManagedChart: currentCandle.current.time:`, currentCandle.current.time, `type:`, typeof currentCandle.current.time);
+          
+          // Only update chart when we start a NEW candle
+          chartRef.current.updateData(currentCandle.current);
         } else {
-          // Update current candle
+          // Update current candle OHLC but DON'T update chart yet
           if (currentCandle.current) {
             currentCandle.current.high = Math.max(currentCandle.current.high, price);
             currentCandle.current.low = Math.min(currentCandle.current.low, price);
             currentCandle.current.close = price;
+            console.log(`ManagedChart: Updated current candle OHLC for ${stockData.ticker} - NOT sending to chart yet`);
           }
-        }
-        
-        // Always update chart with current candle state
-        if (currentCandle.current) {
-          console.log(`ManagedChart: About to send candle to chart:`, currentCandle.current);
-          chartRef.current.updateData(currentCandle.current);
         }
       } else {
         // Area chart - simple point update
