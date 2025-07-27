@@ -158,6 +158,11 @@ export class ChartManager {
       return;
     }
 
+    // Only update charts that actually exist
+    if (!this.charts.has(ticker)) {
+      return; // No chart created for this ticker yet
+    }
+
     const chartType = this.chartTypes.get(ticker);
     console.log(`ChartManager: Updating ${chartType} chart for ${ticker} with price ${price} at ${timestamp}`);
     
