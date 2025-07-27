@@ -43,7 +43,7 @@ const ExpandedRowContent = React.memo(({
   onOpenSentiment
 }: { 
   stockData: StockItem;
-  chartRef: React.RefObject<ChartHandle>;
+  chartRef: React.RefObject<ChartHandle | null>;
   initialChartData: ChartDataPoint[];
   initialCandleData: CandleDataPoint[];
   onOpenSentiment: () => void;
@@ -1010,12 +1010,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   }>>(new Map());
 
   // Chart refs for imperative updates - one per expanded ticker
-  const chartRefs = React.useRef<Map<string, React.RefObject<ChartHandle>>>(new Map());
+  const chartRefs = React.useRef<Map<string, React.RefObject<ChartHandle | null>>>(new Map());
 
   // Function to get or create chart ref for a ticker
   const getChartRef = React.useCallback((ticker: string) => {
     if (!chartRefs.current.has(ticker)) {
-      chartRefs.current.set(ticker, React.createRef<ChartHandle>());
+      chartRefs.current.set(ticker, React.createRef<ChartHandle | null>());
     }
     return chartRefs.current.get(ticker)!;
   }, []);
