@@ -139,7 +139,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, historicalCandles]);
 
   return (
-    <div className={`w-full ${colors.chartBackground} rounded-lg overflow-hidden border ${colors.border}`} style={{ height: '400px' }}>
+    <div className={`w-full ${colors.chartBackground} rounded-lg overflow-hidden border ${colors.border}`} style={{ height: '100%' }}>
       <ChartComponent
         ref={chartRef}
         initialData={initialData}
