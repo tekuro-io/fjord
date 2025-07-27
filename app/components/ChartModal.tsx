@@ -12,6 +12,7 @@ interface ChartModalProps {
   stockData: StockItem;
   chartType?: 'area' | 'candlestick';
   historicalCandles?: CandleDataPoint[];
+  chartRef?: React.RefObject<ManagedChartHandle | null>;
 }
 
 export default function ChartModal({ 
@@ -19,10 +20,11 @@ export default function ChartModal({
   onClose, 
   stockData, 
   chartType = 'candlestick',
-  historicalCandles = []
+  historicalCandles = [],
+  chartRef
 }: ChartModalProps) {
   const { colors } = useTheme();
-  const chartRef = React.useRef<ManagedChartHandle | null>(null);
+  const modalChartRef = React.useRef<ManagedChartHandle | null>(null);
 
   if (!isOpen) return null;
 
@@ -59,7 +61,7 @@ export default function ChartModal({
         <div className="p-6">
           <div style={{ height: '500px' }}>
             <ManagedChart
-              ref={chartRef}
+              ref={chartRef || modalChartRef}
               stockData={stockData}
               chartType={chartType}
               historicalCandles={historicalCandles}

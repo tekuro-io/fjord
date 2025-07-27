@@ -81,17 +81,17 @@ const ExpandedRowContent = React.memo(({
         <div className="flex items-center gap-2">
           <button
             onClick={onOpenChart}
-            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonSecondary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
+            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonSecondary} rounded-md transition-colors duration-200 shadow-sm`}
           >
-            <Maximize2 className="w-4 h-4" />
-            <span className="leading-none">Expand Chart</span>
+            <Maximize2 className="w-4 h-4 flex-shrink-0" />
+            <span className="leading-tight flex items-center">Expand Chart</span>
           </button>
           <button
             onClick={onOpenSentiment}
-            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
+            className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 shadow-sm`}
           >
-            <Brain className="w-4 h-4" />
-            <span className="leading-none">AI Analysis</span>
+            <Brain className="w-4 h-4 flex-shrink-0" />
+            <span className="leading-tight flex items-center">AI Analysis</span>
           </button>
         </div>
       </div>
@@ -157,7 +157,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [sentimentModalOpen, setSentimentModalOpen] = React.useState(false);
   const [sentimentTicker, setSentimentTicker] = React.useState<string>('');
   const [chartModalOpen, setChartModalOpen] = React.useState(false);
-  const [chartModalData, setChartModalData] = React.useState<{ stockData: StockItem; historicalCandles: CandleDataPoint[] } | null>(null);
+  const [chartModalData, setChartModalData] = React.useState<{ stockData: StockItem; historicalCandles: CandleDataPoint[]; chartRef: React.RefObject<ManagedChartHandle | null> } | null>(null);
   const [patternFlashingRows, setPatternFlashingRows] = React.useState<Map<string, 'bullish' | 'bearish'>>(new Map());
   const [expandedPatternAlerts, setExpandedPatternAlerts] = React.useState<Map<string, PatternAlertData>>(new Map());
   
@@ -556,6 +556,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   chartRef.current.updateWithPrice(timestamp, update.price);
                 } catch (chartError) {
                   console.error(`📊 Chart Update Error for ${update.ticker}:`, chartError);
+                }
+              }
+              
+              // Update modal chart if it exists for this ticker
+              const modalChartRef = chartRefs.current.get(`modal_${update.ticker}`);
+              if (modalChartRef?.current) {
+                try {
+                  modalChartRef.current.updateWithPrice(timestamp, update.price);
+                } catch (chartError) {
+                  console.error(`📊 Modal Chart Update Error for ${update.ticker}:`, chartError);
                 }
               }
             } else {
@@ -1203,15 +1213,26 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     setSentimentTicker('');
   }, []);
 
+  // Helper function to get or create a modal chart ref for a ticker
+  const getModalChartRef = React.useCallback((ticker: string): React.RefObject<ManagedChartHandle | null> => {
+    const modalKey = `modal_${ticker}`;
+    if (!chartRefs.current.has(modalKey)) {
+      const newRef = React.createRef<ManagedChartHandle | null>();
+      chartRefs.current.set(modalKey, newRef);
+    }
+    return chartRefs.current.get(modalKey)!;
+  }, []);
+
   // Handler to open chart modal
   const openChartModal = React.useCallback((ticker: string) => {
     const stockData = currentData.find(item => item.ticker === ticker);
     if (stockData) {
       const historicalCandles = getHistoricalCandles(ticker);
-      setChartModalData({ stockData, historicalCandles });
+      const modalChartRef = getModalChartRef(ticker);
+      setChartModalData({ stockData, historicalCandles, chartRef: modalChartRef });
       setChartModalOpen(true);
     }
-  }, [currentData]);
+  }, [currentData, getHistoricalCandles, getModalChartRef]);
 
   const closeChartModal = React.useCallback(() => {
     setChartModalOpen(false);
@@ -1396,6 +1417,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           stockData={chartModalData.stockData}
           chartType="candlestick"
           historicalCandles={chartModalData.historicalCandles}
+          chartRef={chartModalData.chartRef}
         />
       )}
 
