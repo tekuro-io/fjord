@@ -1022,7 +1022,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
         // Determine text color based on theme and background intensity
         let textColor = "text-white";
-        if (theme === 'light') {
+        
+        // Handle neutral values (no background color)
+        if (bg === "bg-transparent") {
+          textColor = theme === 'light' ? colors.textPrimary : "text-white";
+        } else if (theme === 'light') {
           // In light mode, use white text for darker backgrounds (600), dark text for lighter (100-300)
           if ((val > 0.005 && val <= 0.04) || (val < -0.005 && val >= -0.04)) {
             textColor = "text-gray-900"; // Dark text for lighter backgrounds

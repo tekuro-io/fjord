@@ -236,8 +236,8 @@ const lightColors = {
   // Interactive elements
   buttonPrimary: 'bg-blue-600 hover:bg-blue-700',
   buttonPrimaryHover: 'hover:bg-blue-700',
-  buttonSecondary: 'bg-slate-200 hover:bg-slate-300',
-  buttonSecondaryHover: 'hover:bg-slate-300',
+  buttonSecondary: 'bg-slate-600 hover:bg-slate-700',
+  buttonSecondaryHover: 'hover:bg-slate-700',
   
   // Input elements
   inputBackground: 'bg-white',

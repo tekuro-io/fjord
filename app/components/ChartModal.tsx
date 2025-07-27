@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Maximize2 } from 'lucide-react';
+import { Minimize2, Maximize2 } from 'lucide-react';
 import ManagedChart, { type ManagedChartHandle } from './ManagedChart';
 import { useTheme } from './ThemeContext';
 import type { StockItem, CandleDataPoint } from './stock-table/types';
@@ -53,7 +53,7 @@ export default function ChartModal({
             onClick={onClose}
             className={`${colors.textMuted} hover:${colors.textPrimary} transition-colors duration-200 p-1 rounded-md hover:${colors.secondary}`}
           >
-            <X className="w-6 h-6" />
+            <Minimize2 className="w-6 h-6" />
           </button>
         </div>
         
