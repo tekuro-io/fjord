@@ -17,7 +17,7 @@ export default function SentimentModal({ isOpen, onClose, ticker }: SentimentMod
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-gray-600 bg-opacity-20 transition-opacity"
+        className="fixed inset-0 bg-gray-900/20 transition-opacity"
         onClick={onClose}
       />
       
