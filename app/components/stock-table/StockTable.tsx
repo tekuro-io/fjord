@@ -33,6 +33,52 @@ import {
 
 const columnHelper = createColumnHelper<StockItem>();
 
+// Memoized expanded row content to prevent re-renders
+const ExpandedRowContent = React.memo(({ 
+  stockData, 
+  chartData, 
+  candleData 
+}: { 
+  stockData: StockItem;
+  chartData: ChartDataPoint[];
+  candleData: CandleDataPoint[];
+}) => {
+  return (
+    <div className="bg-gray-800 rounded-lg m-2">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
+        {/* Chart Panel - Takes up 2/3 on large screens */}
+        <div className="xl:col-span-2">
+          <div className="bg-gray-700 rounded-lg p-3">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+              <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+              Price Chart - 1 Minute Candles
+            </h3>
+            <LiveChart
+              stockData={stockData}
+              initialChartData={chartData}
+              initialCandleData={candleData}
+              chartType="candlestick"
+            />
+          </div>
+        </div>
+        
+        {/* Sentiment Panel - Takes up 1/3 on large screens */}
+        <div className="xl:col-span-1">
+          <div className="bg-gray-700 rounded-lg p-3 h-full">
+            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
+              <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+              AI Analysis
+            </h3>
+            <div className="overflow-y-auto max-h-96">
+              <Sentiment ticker={stockData.ticker} />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+});
+
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
@@ -943,6 +989,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     }
   }, []);
 
+  // Stable chart data refs to prevent unnecessary re-renders
+  const stableChartDataRef = React.useRef<Map<string, ChartDataPoint[]>>(new Map());
+  const stableCandleDataRef = React.useRef<Map<string, CandleDataPoint[]>>(new Map());
+
+  // Update stable refs when data changes but don't trigger re-renders
+  React.useEffect(() => {
+    stockChartHistory.forEach((data, ticker) => {
+      stableChartDataRef.current.set(ticker, data);
+    });
+  }, [stockChartHistory]);
+
+  React.useEffect(() => {
+    stockCandleHistory.forEach((data, ticker) => {
+      stableCandleDataRef.current.set(ticker, data);
+    });
+  }, [stockCandleHistory]);
+
   // Initialize candle history from existing tick data
   React.useEffect(() => {
     setStockCandleHistory(prevCandleHistory => {
@@ -1045,56 +1108,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     {isExpanded && (
                       <tr>
                         <td colSpan={columns.length} className="p-0 bg-gray-900">
-                          <div className="bg-gray-800 rounded-lg m-2">
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4">
-                              {/* Chart Panel - Takes up 2/3 on large screens */}
-                              <div className="xl:col-span-2">
-                                <div className="bg-gray-700 rounded-lg p-3">
-                                  <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
-                                    <span className="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                                    Price Chart - 1 Minute Candles
-                                  </h3>
-                                  {(() => {
-                                    const ticker = row.original.ticker;
-                                    const chartData = stockChartHistory.get(ticker) || emptyChartData;
-                                    const candleData = stockCandleHistory.get(ticker) || emptyCandleData;
-                                    
-                                    console.log(`🏪 StockTable: Rendering LiveChart for ${ticker}`, {
-                                      stockDataRef: `${row.original}`.substring(0, 30) + '...',
-                                      chartDataRef: chartData === emptyChartData ? 'empty-default' : 'has-data',
-                                      candleDataRef: candleData === emptyCandleData ? 'empty-default' : 'has-data',
-                                      chartDataLength: chartData.length,
-                                      candleDataLength: candleData.length,
-                                      chartDataArrayRef: chartData.toString().substring(0, 20) + '...',
-                                      candleDataArrayRef: candleData.toString().substring(0, 20) + '...'
-                                    });
-                                    
-                                    return (
-                                      <LiveChart
-                                        stockData={row.original}
-                                        initialChartData={chartData}
-                                        initialCandleData={candleData}
-                                        chartType="candlestick"
-                                      />
-                                    );
-                                  })()}
-                                </div>
-                              </div>
-                              
-                              {/* Sentiment Panel - Takes up 1/3 on large screens */}
-                              <div className="xl:col-span-1">
-                                <div className="bg-gray-700 rounded-lg p-3 h-full">
-                                  <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center">
-                                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                                    AI Analysis
-                                  </h3>
-                                  <div className="overflow-y-auto max-h-96">
-                                    <Sentiment ticker={row.original.ticker} />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
+                          <ExpandedRowContent 
+                            stockData={row.original}
+                            chartData={stableChartDataRef.current.get(row.original.ticker) || emptyChartData}
+                            candleData={stableCandleDataRef.current.get(row.original.ticker) || emptyCandleData}
+                          />
                         </td>
                       </tr>
                     )}

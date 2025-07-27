@@ -30,7 +30,7 @@ const processMarkdownText = (text: string): string => {
         .trim();
 };
 
-export default function Sentiment({ ticker }: SentimentProps) {
+const Sentiment = React.memo(function Sentiment({ ticker }: SentimentProps) {
     const [loading, setLoading] = useState<boolean>(true);
     const streamingRef = useRef<"model" | "news" | "ranat" | null>(null);
     const [loadingMessage, setLoadingMessage] = useState<string>("Connecting...");
@@ -143,4 +143,6 @@ export default function Sentiment({ ticker }: SentimentProps) {
         )}
       </div>
     );
-}
+});
+
+export default Sentiment;
