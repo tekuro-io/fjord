@@ -362,7 +362,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return; // Skip further processing for control messages
           } else if (isPatternDetection(parsedData)) {
             // Handle pattern detection messages - route to pattern alert system
-            const ticker = 'ticker' in parsedData ? (parsedData as {ticker: string}).ticker : 'unknown';
+            const ticker = typeof parsedData === 'object' && parsedData !== null && 'ticker' in parsedData ? (parsedData as {ticker: string}).ticker : 'unknown';
             console.log(`🎯 Pattern Detection: Routing pattern alert for ${ticker}`);
             handlePatternAlert(parsedData as PatternAlertData);
             return; // Skip stock processing
