@@ -135,7 +135,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, historicalCandles]);
 
   return (
-    <div className="w-full bg-gray-900 rounded-lg" style={{ height: '400px' }}>
+    <div className="w-full bg-gray-900 rounded-lg overflow-hidden" style={{ height: '400px' }}>
       <ChartComponent
         ref={chartRef}
         initialData={initialData}

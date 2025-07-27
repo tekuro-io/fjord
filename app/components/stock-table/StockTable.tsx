@@ -327,36 +327,21 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           // Parse the incoming data
           const parsedData: unknown = JSON.parse(event.data);
 
-          // Type guard for StockItem - exclude pattern detection messages
-          // const isStockItem = (data: unknown): data is StockItem => {
-          //   return typeof data === 'object' && 
-          //          data !== null && 
-          //          'ticker' in data && 
-          //          typeof (data as StockItem).ticker === 'string' && 
-          //          (data as StockItem).ticker.trim() !== '' &&
-          //          !('pattern' in data) &&           // Exclude pattern detection
-          //          !('alert_level' in data) &&       // Exclude alerts
-          //          !('confidence' in data);          // Exclude pattern confidence
-          // };
-
-          // Type guard for StockItem - exclude pattern detection messages
-          const isStockItem = (data: unknown): data is StockItem => {
-            return typeof data === 'object' && 
-                   data !== null && 
-                   'ticker' in data && 
-                   typeof (data as StockItem).ticker === 'string' && 
-                   (data as StockItem).ticker.trim() !== '' &&
-                   !('pattern' in data) &&           // Exclude pattern detection
-                   !('alert_level' in data) &&       // Exclude alerts
-                   !('confidence' in data);          // Exclude pattern confidence
-          };
-
-          // Type guard for pattern detection messages
+          // Type guard for pattern detection messages (check first - more specific)
           const isPatternDetection = (data: unknown): boolean => {
             return typeof data === 'object' && 
                    data !== null && 
                    (('pattern' in data || 'alert_level' in data || 'confidence' in data) ||
                     ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
+          };
+
+          // Type guard for StockItem - simpler logic since pattern detection is checked first
+          const isStockItem = (data: unknown): data is StockItem => {
+            return typeof data === 'object' && 
+                   data !== null && 
+                   'ticker' in data && 
+                   typeof (data as StockItem).ticker === 'string' && 
+                   (data as StockItem).ticker.trim() !== '';
           };
 
           // Type guard for any message that has a 'type' property AND explicitly does NOT have a 'ticker' property
@@ -381,17 +366,24 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             handlePatternAlert(parsedData as PatternAlertData);
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
-            // Check for pattern detection in arrays
+            // Process arrays: separate pattern detection from stock updates
             const patternDetections = parsedData.filter(isPatternDetection);
+            const stockItems = parsedData.filter(item => !isPatternDetection(item) && isStockItem(item));
+            
+            // Handle any pattern detections found in the array
             if (patternDetections.length > 0) {
               console.log(`🎯 Pattern Detection: Found ${patternDetections.length} pattern alerts in array`);
               patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
             }
-            // Filter array to ensure all elements are StockItem (excluding pattern detection)
-            stockUpdates = parsedData.filter(item => isStockItem(item) && !isPatternDetection(item));
+            
+            // Set stock updates (excluding pattern detections)
+            stockUpdates = stockItems;
           } else if (isStockItem(parsedData)) {
+            // Single stock item (already confirmed not pattern detection above)
             stockUpdates = [parsedData];
           } else {
+            // Unknown message type
+            console.warn("StockTable: Received unknown message type:", parsedData);
             return;
           }
 
