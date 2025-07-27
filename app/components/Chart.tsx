@@ -226,35 +226,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         seriesRef.current = newSeries;
 
 
-        // Set the initial historical data using setData
-        // This runs only once with the initialData prop when the chart is created
-        if (initialData.length > 0) {
-            
-            if (chartType === 'candlestick' && 'open' in initialData[0]) {
-                // Handle candlestick data
-                const candleData = (initialData as CandleDataPoint[]).map(p => ({
-                    time: (p.time / 1000) as Time,
-                    open: p.open,
-                    high: p.high,
-                    low: p.low,
-                    close: p.close
-                }));
-                newSeries.setData(candleData);
-            } else if (chartType === 'area' && 'value' in initialData[0]) {
-                // Handle area chart data
-                const areaData = (initialData as ChartDataPoint[]).map(p => ({
-                    time: (p.time / 1000) as Time,
-                    value: p.value
-                }));
-                newSeries.setData(areaData);
-            }
-            
-            chart.timeScale().fitContent(); // Fit content after setting initial data
-        } else {
-            // If no initial data, explicitly set empty data to ensure the series is initialized
-            newSeries.setData([]);
-            chart.timeScale().fitContent(); // Fit content even for empty data
-        }
+        // ALWAYS initialize with setData() first - this is required before using update()
+        console.log(`📊 Chart.tsx: Initializing ${chartType} series with setData([])`);
+        newSeries.setData([]);
+        chart.timeScale().fitContent();
 
         // Notify parent that the chart is ready
         if (onChartReady) {
