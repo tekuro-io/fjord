@@ -1,6 +1,7 @@
 import React from 'react';
 import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock } from 'lucide-react';
 import MarketStatus from './MarketStatus';
+import { useTheme } from '../../ThemeContext';
 
 interface TableControlsProps {
   globalFilter: string;
@@ -27,16 +28,17 @@ const TableControls: React.FC<TableControlsProps> = ({
   currentTimeET,
   marketStatus,
 }) => {
+  const { colors } = useTheme();
   return (
     <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4">
       <div className="relative flex items-center w-full sm:w-48 mb-4 sm:mb-0">
-        <Search className="absolute left-2 w-4 h-4 text-gray-400" />
+        <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
         <input
           type="text"
           placeholder="Search..."
           value={globalFilter || ''}
           onChange={e => setGlobalFilter(e.target.value)}
-          className="w-full pl-8 pr-2 py-1 bg-gray-900 text-white rounded-md border border-gray-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm"
+          className={`w-full pl-8 pr-2 py-1 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
         />
       </div>
 

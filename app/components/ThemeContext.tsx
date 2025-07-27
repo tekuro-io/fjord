@@ -107,12 +107,20 @@ const darkColors = {
   candleWickUpColor: '#22c55e',
   candleWickDownColor: '#ef4444',
   chartWatermark: 'rgba(8, 242, 246, 0.3)',
+  chartTextColor: '#e5e7eb', // gray-200 for good contrast on dark
   
   // Interactive elements
   buttonPrimary: 'bg-blue-600 hover:bg-blue-500',
   buttonPrimaryHover: 'hover:bg-blue-500',
   buttonSecondary: 'bg-gray-600 hover:bg-gray-500',
   buttonSecondaryHover: 'hover:bg-gray-500',
+  
+  // Input elements
+  inputBackground: 'bg-gray-900',
+  inputBorder: 'border-gray-600',
+  inputFocusBorder: 'focus:border-blue-500',
+  inputText: 'text-white',
+  inputPlaceholder: 'placeholder:text-gray-400',
   
   // Borders & dividers
   border: 'border-gray-600',
@@ -122,14 +130,23 @@ const darkColors = {
   shadowSm: 'shadow-sm shadow-black/20',
   shadowMd: 'shadow-md shadow-black/20',
   shadowLg: 'shadow-lg shadow-black/25',
+  
+  // Multiplier backgrounds for dark mode
+  multiplierBg1: 'bg-teal-900', // >1000
+  multiplierBg2: 'bg-teal-800', // >300  
+  multiplierBg3: 'bg-teal-700', // >40
+  multiplierBg4: 'bg-teal-600', // >10
+  multiplierBg5: 'bg-teal-500', // >7
+  multiplierBg6: 'bg-teal-400', // >4
+  multiplierText: 'text-white', // White text for dark backgrounds
 };
 
 const lightColors = {
   // Background colors & gradients
   primary: 'bg-white',
-  secondary: 'bg-slate-50',
+  secondary: 'bg-slate-100',
   tertiary: 'bg-gray-50',
-  gradient: 'bg-gradient-to-br from-blue-50 via-white to-slate-50',
+  gradient: 'bg-gradient-to-br from-blue-100 via-slate-50 to-blue-50',
   containerGradient: 'bg-gradient-to-b from-white via-blue-50/30 to-slate-100',
   
   // Text colors
@@ -151,8 +168,8 @@ const lightColors = {
   warningBg: 'bg-amber-50',
   
   // Table specific
-  tableHeader: 'bg-slate-100',
-  tableHeaderGradient: 'bg-gradient-to-r from-slate-100 via-blue-50 to-slate-100',
+  tableHeader: 'bg-slate-200',
+  tableHeaderGradient: 'bg-gradient-to-r from-slate-200 via-blue-100 to-slate-200',
   tableRow: 'bg-white',
   tableRowHover: 'hover:bg-blue-50/50',
   tableRowAlternate: 'bg-slate-50/50',
@@ -167,13 +184,21 @@ const lightColors = {
   candleDownColor: '#dc2626', // red-600  
   candleWickUpColor: '#059669',
   candleWickDownColor: '#dc2626',
-  chartWatermark: 'rgba(59, 130, 246, 0.15)', // blue with low opacity
+  chartWatermark: 'rgba(59, 130, 246, 0.6)', // blue with higher opacity for contrast
+  chartTextColor: '#374151', // gray-700 for good contrast on light
   
   // Interactive elements
   buttonPrimary: 'bg-blue-600 hover:bg-blue-700',
   buttonPrimaryHover: 'hover:bg-blue-700',
   buttonSecondary: 'bg-slate-200 hover:bg-slate-300',
   buttonSecondaryHover: 'hover:bg-slate-300',
+  
+  // Input elements
+  inputBackground: 'bg-white',
+  inputBorder: 'border-slate-300',
+  inputFocusBorder: 'focus:border-blue-500',
+  inputText: 'text-slate-900',
+  inputPlaceholder: 'placeholder:text-slate-400',
   
   // Borders & dividers
   border: 'border-slate-200',
@@ -183,6 +208,15 @@ const lightColors = {
   shadowSm: 'shadow-sm shadow-slate-200/60',
   shadowMd: 'shadow-md shadow-slate-300/40',
   shadowLg: 'shadow-lg shadow-slate-400/30',
+  
+  // Multiplier backgrounds for light mode (darker colors for better contrast)
+  multiplierBg1: 'bg-teal-600', // >1000
+  multiplierBg2: 'bg-teal-500', // >300  
+  multiplierBg3: 'bg-teal-400', // >40
+  multiplierBg4: 'bg-teal-300', // >10
+  multiplierBg5: 'bg-teal-200', // >7
+  multiplierBg6: 'bg-teal-100', // >4
+  multiplierText: 'text-teal-900', // Dark text for light backgrounds
 };
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {

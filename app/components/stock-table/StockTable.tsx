@@ -921,8 +921,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             <div className="flex items-center gap-1">
-              <span className="font-semibold text-blue-400 hover:text-blue-300 transition-colors duration-200
-                                     bg-gray-700 px-0.5 py-0.5 rounded-md inline-block text-center">
+              <span className={`font-semibold ${colors.accent} hover:${colors.accentHover} transition-colors duration-200
+                                     ${colors.accentBackground} px-0.5 py-0.5 rounded-md inline-block text-center`}>
                 {ticker}
               </span>
               {movement && (
@@ -1058,15 +1058,15 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         const multiplierValue: number = val;
 
         let bg = "bg-transparent";
-        if (multiplierValue > 1000) bg = "bg-teal-900";
-        else if (multiplierValue > 300) bg = "bg-teal-800";
-        else if (multiplierValue > 40) bg = "bg-teal-700";
-        else if (multiplierValue > 10) bg = "bg-teal-600";
-        else if (multiplierValue > 7) bg = "bg-teal-500";
-        else if (multiplierValue > 4) bg = "bg-teal-400";
+        if (multiplierValue > 1000) bg = colors.multiplierBg1;
+        else if (multiplierValue > 300) bg = colors.multiplierBg2;
+        else if (multiplierValue > 40) bg = colors.multiplierBg3;
+        else if (multiplierValue > 10) bg = colors.multiplierBg4;
+        else if (multiplierValue > 7) bg = colors.multiplierBg5;
+        else if (multiplierValue > 4) bg = colors.multiplierBg6;
 
         return (
-          <span className={`px-2 py-1 rounded-md text-white font-medium ${bg} shadow-sm`}>
+          <span className={`px-2 py-1 rounded-md font-medium ${bg} ${colors.multiplierText} shadow-sm`}>
             {multiplierValue.toFixed(1)}
           </span>
         );

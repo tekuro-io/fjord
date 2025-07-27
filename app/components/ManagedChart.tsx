@@ -146,6 +146,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
         onChartReady={onChartReady}
         colors={{
           backgroundColor: colors.chartBackgroundHex,
+          textColor: colors.chartTextColor,
           upColor: colors.candleUpColor,
           downColor: colors.candleDownColor,
           wickUpColor: colors.candleWickUpColor,
