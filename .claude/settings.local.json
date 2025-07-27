@@ -7,7 +7,8 @@
       "Bash(npm run build:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "WebFetch(domain:tradingview.github.io)"
+      "WebFetch(domain:tradingview.github.io)",
+      "Bash(npx tsc:*)"
     ],
     "deny": []
   }

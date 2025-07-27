@@ -1265,7 +1265,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {/* Pattern Alert Manager */}
       <AlertManager
-        wsUrl={wsUrl}
+        wsUrl={wsUrl || undefined}
         onPatternAlert={handlePatternAlert}
       />
     </div>
