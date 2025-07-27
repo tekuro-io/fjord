@@ -46,11 +46,20 @@ interface ThemeContextType {
     candleWickUpColor: string;
     candleWickDownColor: string;
     chartWatermark: string;
+    chartTextColor: string;
     // Interactive elements
     buttonPrimary: string;
     buttonPrimaryHover: string;
     buttonSecondary: string;
     buttonSecondaryHover: string;
+    
+    // Input elements
+    inputBackground: string;
+    inputBorder: string;
+    inputFocusBorder: string;
+    inputText: string;
+    inputPlaceholder: string;
+    
     // Borders & dividers
     border: string;
     divider: string;
@@ -58,6 +67,15 @@ interface ThemeContextType {
     shadowSm: string;
     shadowMd: string;
     shadowLg: string;
+    
+    // Multiplier backgrounds
+    multiplierBg1: string;
+    multiplierBg2: string;
+    multiplierBg3: string;
+    multiplierBg4: string;
+    multiplierBg5: string;
+    multiplierBg6: string;
+    multiplierText: string;
   };
 }
 

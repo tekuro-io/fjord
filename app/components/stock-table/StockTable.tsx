@@ -79,7 +79,7 @@ const ExpandedRowContent = React.memo(({
           className={`flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white ${useTheme().colors.buttonPrimary} rounded-md transition-colors duration-200 ${useTheme().colors.shadowMd}`}
         >
           <Brain className="w-4 h-4" />
-          <span>AI Analysis</span>
+          <span className="leading-none">AI Analysis</span>
         </button>
       </div>
       <ManagedChart
