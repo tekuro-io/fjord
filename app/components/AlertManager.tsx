@@ -75,6 +75,12 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
   }, [triggerTestAlert, triggerTestBearishAlert]);
 
   const handleNewAlert = React.useCallback((alert: PatternAlertData) => {
+    // Defensive check for alert structure
+    if (!alert.data || !alert.data.ticker || !alert.data.direction) {
+      console.error('🔔 AlertManager: Invalid alert structure:', alert);
+      return;
+    }
+
     const alertWithId = {
       ...alert,
       id: Date.now().toString()
@@ -180,16 +186,19 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
           });
         }
         
-        if (data.topic === "pattern_detection") {
+        // Only process pattern_detection messages with valid data structure
+        if (data.topic === "pattern_detection" && data.data && data.data.ticker) {
           console.log('🚨 NEW PATTERN ALERT:', {
-            ticker: data.data?.ticker,
-            pattern: data.data?.pattern_display_name,
-            direction: data.data?.direction,
-            price: data.data?.price,
-            confidence: data.data?.confidence,
-            alert_level: data.data?.alert_level
+            ticker: data.data.ticker,
+            pattern: data.data.pattern_display_name,
+            direction: data.data.direction,
+            price: data.data.price,
+            confidence: data.data.confidence,
+            alert_level: data.data.alert_level
           });
           handleNewAlert(data);
+        } else if (data.topic === "pattern_detection") {
+          console.warn('🔔 AlertManager: Received pattern_detection message with invalid structure:', data);
         }
       } catch (error) {
         console.error("🔔 AlertManager: Error parsing pattern alert:", error);
