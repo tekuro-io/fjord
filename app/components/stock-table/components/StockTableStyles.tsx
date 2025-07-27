@@ -48,7 +48,7 @@ const StockTableStyles: React.FC = () => {
     }
     
     .expanded-table .expanded-child {
-      margin-top: -4px !important;
+      margin-top: -8px !important;
       transform: translateY(-5px);
     }
     
@@ -73,7 +73,7 @@ const StockTableStyles: React.FC = () => {
 
     .expanded-table .expanded-child .blue-border {
       position: absolute;
-      left: 0px;
+      left: 1px; /* Compensate for 1px X-axis misalignment */
       top: 5px; /* Offset to compensate for translateY(-5px) */
       width: 4px;
       height: calc(100% - 5px);
