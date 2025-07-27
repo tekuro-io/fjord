@@ -291,19 +291,23 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return; // Skip further processing for control messages
           } else if (isPatternDetection(parsedData)) {
             // Handle pattern detection messages - route to pattern alert system
+            console.log(`🎯 Pattern Detection: Routing pattern alert for ${(parsedData as {ticker: string}).ticker}`);
             handlePatternAlert(parsedData as PatternAlertData);
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
             // Check for pattern detection in arrays
             const patternDetections = parsedData.filter(isPatternDetection);
             if (patternDetections.length > 0) {
+              console.log(`🎯 Pattern Detection: Found ${patternDetections.length} pattern alerts in array`);
               patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
             }
-            // Filter array to ensure all elements are StockItem
-            stockUpdates = parsedData.filter(isStockItem);
+            // Filter array to ensure all elements are StockItem (excluding pattern detection)
+            stockUpdates = parsedData.filter(item => isStockItem(item) && !isPatternDetection(item));
           } else if (isStockItem(parsedData)) {
             stockUpdates = [parsedData];
+            console.log(`📈 Stock Update: Processing ${(parsedData as {ticker: string}).ticker}`);
           } else {
+            console.log(`❌ Unknown message type, skipping`);
             return;
           }
 
