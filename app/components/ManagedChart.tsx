@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { chartManager } from './ChartManager';
+import { chartManager, type ChartDataPoint, type CandleDataPoint } from './ChartManager';
 import type { StockItem } from './stock-table';
 
 interface ManagedChartProps {
@@ -25,22 +25,22 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
     const initializeChart = async () => {
       try {
         // Create initial data point from current stock data if available
-        const initialData = [];
+        let initialData: (ChartDataPoint | CandleDataPoint)[] = [];
         if (stockData.price && stockData.timestamp) {
           const timestamp = new Date(stockData.timestamp).getTime();
           if (chartType === 'candlestick') {
-            initialData.push({
+            initialData = [{
               time: timestamp,
               open: stockData.price,
               high: stockData.price,
               low: stockData.price,
               close: stockData.price,
-            });
+            }];
           } else {
-            initialData.push({
+            initialData = [{
               time: timestamp,
               value: stockData.price,
-            });
+            }];
           }
         }
 
@@ -49,7 +49,7 @@ const ManagedChart: React.FC<ManagedChartProps> = ({
           stockData.ticker,
           containerRef.current!,
           chartType,
-          initialData
+          initialData.length > 0 ? initialData : undefined
         );
 
         isInitialized.current = true;

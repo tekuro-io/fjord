@@ -8,7 +8,8 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "WebFetch(domain:tradingview.github.io)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(sed:*)"
     ],
     "deny": []
   }

@@ -21,17 +21,14 @@ import { chartManager } from "../ChartManager";
 import type { PatternAlertData } from "../PatternAlert";
 import { TableHeader, TableControls, OptionsDrawer, StockTableStyles } from "./components";
 import { useMarketStatus } from "./hooks";
-import { StockItem, ChartDataPoint, CandleDataPoint, InfoMessage } from "./types";
+import { StockItem, ChartDataPoint, InfoMessage } from "./types";
 import { 
   DELTA_FLASH_THRESHOLD, 
-  PRICE_FLASH_THRESHOLD, 
-  MAX_CHART_HISTORY_POINTS,
+  PRICE_FLASH_THRESHOLD,
   calculateDelta,
   formatCurrency,
   formatDateTime,
-  formatLargeNumber,
-  aggregateTicksToCandles,
-  addTickToCandles
+  formatLargeNumber
 } from "./utils";
 
 const columnHelper = createColumnHelper<StockItem>();
@@ -360,21 +357,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             if (update.price != null && update.timestamp) {
               const timestamp = new Date(update.timestamp).getTime();
               
-              // Update area chart if it exists
-              const areaPoint: ChartDataPoint = {
+              // Update chart directly via ChartManager
+              const dataPoint: ChartDataPoint = {
                 time: timestamp,
                 value: update.price,
               };
-              chartManager.updateChart(update.ticker, areaPoint);
-              
-              // Update candlestick chart if it exists
-              const tickPoint: ChartDataPoint = {
-                time: timestamp,
-                value: update.price,
-              };
-              // For candlestick, we need to convert tick to candle data
-              // This would need the addTickToCandles logic but operating on the chart directly
-              // For now, let's just update the area chart
+              chartManager.updateChart(update.ticker, dataPoint);
             } else {
               console.warn("StockTable: Skipping chart update for stock with missing price or timestamp:", update);
             }
@@ -414,17 +402,21 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         wsRef.current.close();
         wsRef.current = null;
       }
-      // Cleanup all flash timers on component unmount
-      flashTimers.current.forEach(timerId => clearTimeout(timerId));
-      flashTimers.current.clear();
-      priceFlashTimers.current.forEach(timerId => clearTimeout(timerId));
-      priceFlashTimers.current.clear();
-      // Cleanup movement timers
-      movementTimers.current.forEach(timerId => clearTimeout(timerId));
-      movementTimers.current.clear();
-      // Cleanup recent update timers
-      recentUpdateTimers.current.forEach(timerId => clearTimeout(timerId));
-      recentUpdateTimers.current.clear();
+      // Capture current values of refs to prevent stale closure issues
+      const currentFlashTimers = flashTimers.current;
+      const currentPriceFlashTimers = priceFlashTimers.current;
+      const currentMovementTimers = movementTimers.current;
+      const currentRecentUpdateTimers = recentUpdateTimers.current;
+      
+      // Cleanup all timers
+      currentFlashTimers.forEach(timerId => clearTimeout(timerId));
+      currentFlashTimers.clear();
+      currentPriceFlashTimers.forEach(timerId => clearTimeout(timerId));
+      currentPriceFlashTimers.clear();
+      currentMovementTimers.forEach(timerId => clearTimeout(timerId));
+      currentMovementTimers.clear();
+      currentRecentUpdateTimers.forEach(timerId => clearTimeout(timerId));
+      currentRecentUpdateTimers.clear();
     };
   }, [wsUrl, tickersToSubscribe]); // DEPENDENCY: Re-run this effect when wsUrl or tickersToSubscribe changes
 
