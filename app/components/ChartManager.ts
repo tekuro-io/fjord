@@ -157,8 +157,8 @@ export class ChartManager {
   }
 
   private get1MinuteBucket(timestamp: number): number {
-    // Round down to the nearest minute
-    return Math.floor(timestamp / 60000) * 60000;
+    // Round down to the nearest minute (expects timestamp in seconds)
+    return Math.floor(timestamp / 60) * 60;
   }
 
   updateChartWithPrice(ticker: string, timestamp: number, price: number): void {
@@ -172,17 +172,20 @@ export class ChartManager {
       return; // No chart created for this ticker yet
     }
 
+    // Convert timestamp to seconds if it's in milliseconds (lightweight-charts expects seconds)
+    const timeInSeconds = timestamp > 1e12 ? Math.floor(timestamp / 1000) : timestamp;
+
     const chartType = this.chartTypes.get(ticker);
-    console.log(`ChartManager: Updating ${chartType} chart for ${ticker} with price ${price} at ${timestamp}`);
+    console.log(`ChartManager: Updating ${chartType} chart for ${ticker} with price ${price} at ${timestamp} (${timeInSeconds}s)`);
     
     try {
       if (chartType === 'candlestick') {
-        this.updateCandlestickWithTick(ticker, timestamp, price);
+        this.updateCandlestickWithTick(ticker, timeInSeconds, price);
       } else {
         const series = this.areaSeries.get(ticker);
         if (series) {
           const lineData = {
-            time: timestamp,
+            time: timeInSeconds,
             value: price,
           } as LineData;
           console.log(`ChartManager: Adding line data for ${ticker}:`, lineData);
@@ -230,7 +233,7 @@ export class ChartManager {
         close: price,
       };
       tickerCandles.set(bucketTime, currentCandle);
-      console.log(`ChartManager: Starting new 1-min candle for ${ticker} at ${new Date(bucketTime).toISOString()}`);
+      console.log(`ChartManager: Starting new 1-min candle for ${ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
     } else {
       // Update existing candle
       currentCandle.high = Math.max(currentCandle.high, price);
@@ -247,10 +250,10 @@ export class ChartManager {
       clearTimeout(tickerTimers.get(bucketTime));
     }
     
-    const timeUntilNextBucket = (bucketTime + 60000) - Date.now() + 1000; // 1 second buffer
+    const timeUntilNextBucket = (bucketTime + 60) * 1000 - Date.now() + 1000; // 1 second buffer
     if (timeUntilNextBucket > 0) {
       const timer = setTimeout(() => {
-        console.log(`ChartManager: Finalizing 1-min candle for ${ticker} at ${new Date(bucketTime).toISOString()}`);
+        console.log(`ChartManager: Finalizing 1-min candle for ${ticker} at ${new Date(bucketTime * 1000).toISOString()}`);
         tickerCandles.delete(bucketTime);
         tickerTimers.delete(bucketTime);
         // Auto-fit content periodically

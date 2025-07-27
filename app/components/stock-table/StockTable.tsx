@@ -355,7 +355,24 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           // Update charts directly via ChartManager (no React state updates!)
           stockUpdates.forEach(update => {
             if (update.price != null && update.timestamp) {
-              const timestamp = new Date(update.timestamp).getTime();
+              // Convert timestamp to number (Unix timestamp in milliseconds)
+              let timestamp: number;
+              if (typeof update.timestamp === 'string') {
+                timestamp = new Date(update.timestamp).getTime();
+              } else if (typeof update.timestamp === 'number') {
+                timestamp = update.timestamp;
+              } else if (update.timestamp instanceof Date) {
+                timestamp = update.timestamp.getTime();
+              } else {
+                console.warn("StockTable: Invalid timestamp format:", update.timestamp);
+                return;
+              }
+              
+              // Validate timestamp
+              if (isNaN(timestamp)) {
+                console.warn("StockTable: Invalid timestamp value:", update.timestamp);
+                return;
+              }
               
               // Let ChartManager handle the conversion based on chart type
               chartManager.updateChartWithPrice(update.ticker, timestamp, update.price);
