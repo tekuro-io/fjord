@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock } from 'lucide-react';
+import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock, Sun, Moon } from 'lucide-react';
 import MarketStatus from './MarketStatus';
 import { useTheme } from '../../ThemeContext';
 
@@ -28,7 +28,7 @@ const TableControls: React.FC<TableControlsProps> = ({
   currentTimeET,
   marketStatus,
 }) => {
-  const { colors } = useTheme();
+  const { theme, toggleTheme, colors } = useTheme();
   return (
     <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4 gap-4">
       {/* Left side: Primary controls (Search and Filters) */}
@@ -84,6 +84,15 @@ const TableControls: React.FC<TableControlsProps> = ({
             aria-label={isLocked ? 'Unlock View' : 'Lock View'}
           >
             {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          </button>
+
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center cursor-pointer ${colors.textMuted} hover:${colors.secondary}`}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
       </div>
