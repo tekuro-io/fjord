@@ -52,7 +52,7 @@ const StockTableStyles: React.FC = () => {
     }
     
     .expanded-table .expanded-child {
-      margin-top: -9px !important;
+      margin-top: -13px !important;
       transform: translateY(-5px);
     }
     
@@ -64,6 +64,11 @@ const StockTableStyles: React.FC = () => {
     /* Override table spacing for connected rows */
     .expanded-table tbody .expanded-parent + .expanded-child {
       --border-spacing-y: 0px;
+    }
+
+    /* Force zero spacing between expanded parent and child */
+    .expanded-table .expanded-parent.border + .expanded-child {
+      margin-top: -17px !important;
     }
 
     /* Ensure blue borders align perfectly between parent and child rows */
