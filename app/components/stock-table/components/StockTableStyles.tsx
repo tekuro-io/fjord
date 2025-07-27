@@ -46,6 +46,10 @@ const StockTableStyles: React.FC = () => {
     .expanded-table .expanded-parent {
       margin-bottom: 0 !important;
     }
+
+    .expanded-table .expanded-parent td {
+      padding-bottom: 0 !important;
+    }
     
     .expanded-table .expanded-child {
       margin-top: -9px !important;
