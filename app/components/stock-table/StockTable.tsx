@@ -1364,7 +1364,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         >
                           {/* Blue connector line for first cell when expanded */}
                           {index === 0 && isExpanded && (
-                            <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                            <div className={`absolute left-px top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
