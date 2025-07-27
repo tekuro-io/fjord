@@ -30,13 +30,22 @@ const TableControls: React.FC<TableControlsProps> = ({
 }) => {
   const { colors } = useTheme();
   return (
-    <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4">
-      {/* Far left: Market Status */}
-      <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
+    <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4 gap-4">
+      {/* Left side: Primary controls (Search and Filters) */}
+      <div className="flex items-center gap-4 flex-1">
+        {/* Search bar - Primary function */}
+        <div className="relative flex items-center w-full sm:w-64">
+          <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
+          <input
+            type="text"
+            placeholder="Search stocks..."
+            value={globalFilter || ''}
+            onChange={e => setGlobalFilter(e.target.value)}
+            className={`w-full pl-8 pr-2 py-2 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
+          />
+        </div>
 
-      {/* Right side: Buttons and search bar */}
-      <div className="flex items-center gap-4 mt-4 sm:mt-0">
-        {/* Button group */}
+        {/* Secondary controls - Action buttons */}
         <div className={`flex items-center ${colors.secondary} rounded-lg ${colors.shadowSm} p-1`}>
           <button
             onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
@@ -77,19 +86,10 @@ const TableControls: React.FC<TableControlsProps> = ({
             {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
           </button>
         </div>
-
-        {/* Search bar */}
-        <div className="relative flex items-center w-full sm:w-48">
-          <Search className={`absolute left-2 w-4 h-4 ${colors.textMuted}`} />
-          <input
-            type="text"
-            placeholder="Search..."
-            value={globalFilter || ''}
-            onChange={e => setGlobalFilter(e.target.value)}
-            className={`w-full pl-8 pr-2 py-1 ${colors.inputBackground} ${colors.inputText} ${colors.inputPlaceholder} rounded-md border ${colors.inputBorder} focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 text-sm`}
-          />
-        </div>
       </div>
+
+      {/* Right side: Status information */}
+      <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
     </div>
   );
 };
