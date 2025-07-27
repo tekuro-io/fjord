@@ -222,8 +222,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
             },
             timeScale: {
-                rightOffset: 2,
-                barSpacing: isExpanded ? 8 : 5, // More spacing in expanded view
+                rightOffset: isExpanded ? 10 : 2, // More right padding in expanded view to show more data
+                barSpacing: isExpanded ? 4 : 5, // Tighter spacing in expanded view for more zoomed out initial view
                 borderVisible: isExpanded, // Show border in expanded view
                 visible: true,
                 timeVisible: true,
