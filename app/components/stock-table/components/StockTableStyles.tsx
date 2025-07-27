@@ -43,40 +43,17 @@ const StockTableStyles: React.FC = () => {
     }
 
 
-    /* Remove spacing for expanded rows */
+    /* Div-based expanded rows - seamless connection */
     .expanded-table .expanded-parent {
       margin-bottom: 0 !important;
+      border-bottom-left-radius: 0 !important;
+      border-bottom-right-radius: 0 !important;
     }
     
     .expanded-table .expanded-child {
       margin-top: -4px !important;
-      transform: translateY(-5px);
-    }
-    
-    .expanded-table .expanded-child td {
-      border-top: none !important;
-      padding-top: 0 !important;
-    }
-    
-    /* Override table spacing for connected rows */
-    .expanded-table tbody .expanded-parent + .expanded-child {
-      --border-spacing-y: 0px;
-    }
-    /* Ensure blue borders align perfectly between parent and child rows */
-    .expanded-table .expanded-parent .blue-border {
-      position: absolute;
-      left: 1px; /* Move parent 1px right to align with child */
-      top: 0;
-      width: 4px;
-      height: 100%;
-    }
-
-    .expanded-table .expanded-child .blue-border {
-      position: absolute;
-      left: 0px; /* Match parent border position */
-      top: 0px; /* Connect seamlessly with parent border */
-      width: 4px;
-      height: 100%;
+      border-top-left-radius: 0 !important;
+      border-top-right-radius: 0 !important;
     }
 
     /* Pattern alert animations */

@@ -1303,17 +1303,17 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {/* Table Container with horizontal overflow */}
       <div className="overflow-x-auto px-0 sm:px-6 pb-6">
-        <table className={`w-full table-auto text-sm ${colors.textSecondary} font-sans border-separate border-spacing-y-1 border-spacing-x-0 shadow-lg expanded-table`}>
-          <thead className={colors.tableHeaderGradient}>
+        <div className={`w-full text-sm ${colors.textSecondary} font-sans shadow-lg expanded-table`}>
+          {/* Header Row */}
+          <div className={`${colors.tableHeaderGradient} h-12`}>
             {table.getHeaderGroups().map((headerGroup) => (
-              <tr key={headerGroup.id} className="h-12">
+              <div key={headerGroup.id} className="flex">
                 {headerGroup.headers.map((header) => (
-                  <th
+                  <div
                     key={header.id}
-                    colSpan={header.colSpan}
                     className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider ${colors.textSecondary} ${
                       header.column.getCanSort() ? `cursor-pointer select-none hover:${colors.secondary} transition-colors duration-200` : ""
-                    } ${getHeaderClasses(header.id)}`}
+                    } ${getHeaderClasses(header.id)} flex-1`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center gap-1">
@@ -1323,23 +1323,22 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                          header.column.getIsSorted() === "desc" ? <ArrowDown className="w-4 h-4" /> : null}
                       </span>
                     </div>
-                  </th>
+                  </div>
                 ))}
-              </tr>
+              </div>
             ))}
-          </thead>
-          <tbody className={colors.primary}>
+          </div>
+          {/* Data Rows Container */}
+          <div className={colors.primary}>
             {/* Slice the rows here to display only the top N */}
             {table.getRowModel().rows.slice(0, numStocksToShow).length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className={`text-center py-8 ${colors.textMuted}`}>
-                  <div className="flex flex-col items-center justify-center">
-                    <Frown className={`w-12 h-12 mb-4 ${colors.textMuted}`} />
-                    <p className={`text-lg font-semibold ${colors.textSecondary}`}>No one but us chickens here.</p>
-                    <p className={`text-sm ${colors.textMuted}`}>Try adjusting your filters or search terms.</p>
-                  </div>
-                </td>
-              </tr>
+              <div className={`text-center py-8 ${colors.textMuted}`}>
+                <div className="flex flex-col items-center justify-center">
+                  <Frown className={`w-12 h-12 mb-4 ${colors.textMuted}`} />
+                  <p className={`text-lg font-semibold ${colors.textSecondary}`}>No one but us chickens here.</p>
+                  <p className={`text-sm ${colors.textMuted}`}>Try adjusting your filters or search terms.</p>
+                </div>
+              </div>
             ) : (
               table.getRowModel().rows.slice(0, numStocksToShow).map((row) => {
                 const isExpanded = expandedRows.has(row.id);
@@ -1348,11 +1347,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 
                 return (
                   <React.Fragment key={row.id}>
-                    <tr
+                    <div
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                      className={`h-14 transition-colors duration-200 cursor-pointer ${
+                      className={`h-14 transition-colors duration-200 cursor-pointer flex mb-1 ${
                         isExpanded 
-                          ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
+                          ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border} border-l-4 ${colors.accent.replace('text-', 'border-')}` 
                           : `${colors.tableRow} ${colors.tableRowHover} rounded-lg ${colors.shadowSm} border ${colors.border}`
                       } ${
                         patternFlash ? `pattern-flash-${patternFlash}` : ''
@@ -1360,40 +1359,32 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       onClick={() => toggleRowExpansion(row.id)}
                     >
                       {row.getVisibleCells().map((cell, index) => (
-                        <td
+                        <div
                           key={cell.id}
-                          className={`px-0.5 py-2 align-middle relative ${getCellClasses(cell.column.id)}`}
+                          className={`px-0.5 py-2 align-middle flex-1 ${getCellClasses(cell.column.id)}`}
                         >
-                          {/* Blue connector line for first cell when expanded */}
-                          {index === 0 && isExpanded && (
-                            <div className={`blue-border ${colors.accent.replace('text-', 'bg-')}`}></div>
-                          )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
+                        </div>
                       ))}
-                    </tr>
+                    </div>
                     {isExpanded && (
-                      <tr className="expanded-child">
-                        <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border-l border-r border-b ${colors.border}`}>
-                          {/* Blue connector line */}
-                          <div className={`blue-border ${colors.accent.replace('text-', 'bg-')}`}></div>
-                          <ExpandedRowContent 
-                            stockData={row.original}
-                            onOpenSentiment={() => openSentimentModal(row.original.ticker)}
-                            onOpenChart={() => openChartModal(row.original.ticker)}
-                            patternAlert={patternAlert}
-                            chartRef={getChartRef(row.original.ticker)}
-                            historicalCandles={getHistoricalCandles(row.original.ticker)}
-                          />
-                        </td>
-                      </tr>
+                      <div className={`expanded-child p-0 ${colors.expandedRowGradient} border-l-4 ${colors.accent.replace('text-', 'border-')} border-r border-b ${colors.border} -mt-1`}>
+                        <ExpandedRowContent 
+                          stockData={row.original}
+                          onOpenSentiment={() => openSentimentModal(row.original.ticker)}
+                          onOpenChart={() => openChartModal(row.original.ticker)}
+                          patternAlert={patternAlert}
+                          chartRef={getChartRef(row.original.ticker)}
+                          historicalCandles={getHistoricalCandles(row.original.ticker)}
+                        />
+                      </div>
                     )}
                   </React.Fragment>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </div>
+        </div>
       </div>
 
       {newStocksAlert.length > 0 && (
