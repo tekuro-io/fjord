@@ -41,6 +41,26 @@ const StockTableStyles: React.FC = () => {
     .movement-indicator {
       animation: movement-bounce 0.6s ease-out;
     }
+
+    /* Remove spacing for expanded rows */
+    .expanded-table .expanded-parent {
+      margin-bottom: 0 !important;
+    }
+    
+    .expanded-table .expanded-child {
+      margin-top: -4px !important;
+      transform: translateY(-4px);
+    }
+    
+    .expanded-table .expanded-child td {
+      border-top: none !important;
+      padding-top: 0 !important;
+    }
+    
+    /* Override table spacing for connected rows */
+    .expanded-table tbody .expanded-parent + .expanded-child {
+      --border-spacing-y: 0px;
+    }
   `, []);
 
   return <style>{stockTableStyles}</style>;
