@@ -79,6 +79,8 @@ const ExpandedRowContent = React.memo(({
   );
 });
 
+ExpandedRowContent.displayName = 'ExpandedRowContent';
+
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
