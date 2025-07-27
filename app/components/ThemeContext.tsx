@@ -37,6 +37,7 @@ interface ThemeContextType {
     tableRowAlternate: string;
     expandedRow: string;
     expandedRowGradient: string;
+    expandedParentRow: string;
     // Chart specific
     chartBackground: string;
     chartBackgroundHex: string;
@@ -129,6 +130,7 @@ const darkColors = {
   tableRowAlternate: 'bg-gray-800/50',
   expandedRow: 'bg-gray-700',
   expandedRowGradient: 'bg-gray-700',
+  expandedParentRow: 'bg-gray-800',
   
   // Chart specific  
   chartBackground: 'bg-gray-900',
@@ -221,6 +223,7 @@ const lightColors = {
   tableRowAlternate: 'bg-slate-50/50',
   expandedRow: 'bg-slate-50',
   expandedRowGradient: 'bg-slate-50',
+  expandedParentRow: 'bg-slate-100',
   
   // Chart specific  
   chartBackground: 'bg-white',

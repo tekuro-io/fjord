@@ -26,7 +26,7 @@ export default function SentimentModal({ isOpen, onClose, ticker }: SentimentMod
       {/* Modal */}
       <div className={`relative ${colors.primary} rounded-lg ${colors.shadowLg} mx-4 w-full max-w-4xl max-h-[90vh] overflow-hidden border ${colors.border}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${colors.divider}`}>
+        <div className={`flex items-center justify-between p-2 border-b ${colors.divider}`}>
           <div className="flex items-center gap-3">
             <Brain className={`w-6 h-6 ${colors.success}`} />
             <h2 className={`text-xl font-semibold ${colors.textPrimary}`}>

@@ -1352,7 +1352,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
                       className={`h-14 transition-colors duration-200 cursor-pointer ${
                         isExpanded 
-                          ? `${colors.expandedRowGradient} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
+                          ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
                           : `${colors.tableRow} ${colors.tableRowHover} rounded-lg ${colors.shadowSm} border ${colors.border}`
                       } ${
                         patternFlash ? `pattern-flash-${patternFlash}` : ''
@@ -1366,7 +1366,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                         >
                           {/* Blue connector line for first cell when expanded */}
                           {index === 0 && isExpanded && (
-                            <div className={`absolute left-px top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                            <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           )}
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -1374,9 +1374,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     </tr>
                     {isExpanded && (
                       <tr className="expanded-child">
-                        <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border-l border-r border-b ${colors.border}`}>
+                        <td colSpan={columns.length} className={`p-0 ${colors.expandedRowGradient} relative border ${colors.border}`}>
                           {/* Blue connector line */}
-                          <div className={`absolute left-0.5 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                          <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
                           <ExpandedRowContent 
                             stockData={row.original}
                             onOpenSentiment={() => openSentimentModal(row.original.ticker)}

@@ -39,7 +39,7 @@ export default function ChartModal({
       {/* Modal */}
       <div className={`relative ${colors.primary} rounded-lg ${colors.shadowLg} mx-4 w-full max-w-7xl max-h-[95vh] overflow-hidden border ${colors.border}`}>
         {/* Header */}
-        <div className={`flex items-center justify-between p-6 border-b ${colors.divider}`}>
+        <div className={`flex items-center justify-between p-2 border-b ${colors.divider}`}>
           <div className="flex items-center gap-3">
             <Maximize2 className={`w-6 h-6 ${colors.accent}`} />
             <h2 className={`text-xl font-semibold ${colors.textPrimary}`}>
