@@ -130,9 +130,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                         seriesRef.current.setData(areaData);
                     }
                     
-                    if (data.length > 0) {
-                        chartRef.current?.timeScale().fitContent(); // Fit content after setting initial data
-                    }
+                    // Note: Removed fitContent() call to preserve user navigation preferences
                 } else {
                 }
             },
