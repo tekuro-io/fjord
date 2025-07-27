@@ -42,48 +42,50 @@ const TableControls: React.FC<TableControlsProps> = ({
         />
       </div>
 
-      <div className={`flex items-center ${colors.secondary} rounded-lg ${colors.shadowSm} p-1 mb-4 sm:mb-0`}>
-        <button
-          onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
-          className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            showOptionsDrawer
-              ? `${colors.accent.replace('text-', 'bg-')} text-white`
-              : `${colors.textMuted} hover:${colors.secondary}`
-          }`}
-          title={showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}
-          aria-label={showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}
-        >
-          <SlidersHorizontal className={`w-4 h-4 transition-transform duration-300 ${showOptionsDrawer ? 'rotate-90' : ''}`} />
-        </button>
+      <div className="flex items-center gap-4">
+        <div className={`flex items-center ${colors.secondary} rounded-lg ${colors.shadowSm} p-1`}>
+          <button
+            onClick={() => setShowOptionsDrawer(!showOptionsDrawer)}
+            className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center cursor-pointer ${
+              showOptionsDrawer
+                ? `${colors.accent.replace('text-', 'bg-')} text-white`
+                : `${colors.textMuted} hover:${colors.secondary}`
+            }`}
+            title={showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}
+            aria-label={showOptionsDrawer ? 'Hide Filters' : 'Show Filters'}
+          >
+            <SlidersHorizontal className={`w-4 h-4 transition-transform duration-300 ${showOptionsDrawer ? 'rotate-90' : ''}`} />
+          </button>
 
-        <button
-          onClick={toggleAlert}
-          className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            isAlertActive
-              ? 'bg-red-500 text-white'
-              : `${colors.textMuted} hover:${colors.secondary}`
-          }`}
-          title={isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}
-          aria-label={isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}
-        >
-          {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-        </button>
+          <button
+            onClick={toggleAlert}
+            className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center cursor-pointer ${
+              isAlertActive
+                ? 'bg-red-500 text-white'
+                : `${colors.textMuted} hover:${colors.secondary}`
+            }`}
+            title={isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}
+            aria-label={isAlertActive ? 'Deactivate Alert' : 'Activate Alert'}
+          >
+            {isAlertActive ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+          </button>
 
-        <button
-          onClick={toggleLock}
-          className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-            isLocked
-              ? 'bg-blue-500 text-white'
-              : `${colors.textMuted} hover:${colors.secondary}`
-          }`}
-          title={isLocked ? 'Unlock View' : 'Lock View'}
-          aria-label={isLocked ? 'Unlock View' : 'Lock View'}
-        >
-          {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-        </button>
+          <button
+            onClick={toggleLock}
+            className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center cursor-pointer ${
+              isLocked
+                ? 'bg-blue-500 text-white'
+                : `${colors.textMuted} hover:${colors.secondary}`
+            }`}
+            title={isLocked ? 'Unlock View' : 'Lock View'}
+            aria-label={isLocked ? 'Unlock View' : 'Lock View'}
+          >
+            {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
       </div>
-
-      <MarketStatus currentTimeET={currentTimeET} marketStatus={marketStatus} />
     </div>
   );
 };

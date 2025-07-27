@@ -192,8 +192,8 @@ const lightColors = {
   primary: 'bg-white',
   secondary: 'bg-slate-100',
   tertiary: 'bg-gray-50',
-  gradient: 'bg-gradient-to-br from-blue-200 via-slate-100 to-blue-300',
-  containerGradient: 'bg-gradient-to-b from-slate-50 via-blue-100/50 to-slate-200',
+  gradient: 'bg-gradient-to-br from-slate-300 via-slate-100 to-slate-400',
+  containerGradient: 'bg-gradient-to-b from-slate-50 via-slate-200/50 to-slate-200',
   
   // Text colors
   textPrimary: 'text-slate-900',
@@ -215,12 +215,12 @@ const lightColors = {
   
   // Table specific
   tableHeader: 'bg-slate-200',
-  tableHeaderGradient: 'bg-gradient-to-r from-blue-200 via-slate-100 to-blue-200',
+  tableHeaderGradient: 'bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300',
   tableRow: 'bg-white',
-  tableRowHover: 'hover:bg-blue-50/50',
+  tableRowHover: 'hover:bg-slate-100/50',
   tableRowAlternate: 'bg-slate-50/50',
   expandedRow: 'bg-slate-50',
-  expandedRowGradient: 'bg-gradient-to-r from-blue-100 via-slate-100 to-blue-100',
+  expandedRowGradient: 'bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200',
   
   // Chart specific  
   chartBackground: 'bg-white',
