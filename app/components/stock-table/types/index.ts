@@ -23,6 +23,7 @@ export interface CandleDataPoint {
   high: number;
   low: number;
   close: number;
+  volume?: number; // Optional volume data for enhanced charts
 }
 
 export interface InfoMessage {

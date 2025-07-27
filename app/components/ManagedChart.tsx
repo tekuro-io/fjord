@@ -12,6 +12,7 @@ interface ManagedChartProps {
   chartType?: 'area' | 'candlestick';
   onChartReady?: () => void;
   historicalCandles?: CandleDataPoint[]; // Add optional historical data
+  isExpanded?: boolean; // Whether this is an expanded chart with enhanced features
 }
 
 // Define the shape of the ref handle that this component will expose to its parent
@@ -24,7 +25,8 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
   stockData, 
   chartType = 'candlestick',
   onChartReady,
-  historicalCandles = [] // Default to empty array if no historical data
+  historicalCandles = [], // Default to empty array if no historical data
+  isExpanded = false
 }, ref) => {
   const chartRef = useRef<ChartHandle>(null);
   const { colors } = useTheme();
@@ -144,6 +146,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
         chartType={chartType}
         watermarkText={stockData.ticker}
         onChartReady={onChartReady}
+        isExpanded={isExpanded}
         colors={{
           backgroundColor: colors.chartBackgroundHex,
           textColor: colors.chartTextColor,

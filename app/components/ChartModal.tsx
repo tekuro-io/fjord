@@ -37,7 +37,7 @@ export default function ChartModal({
       />
       
       {/* Modal */}
-      <div className={`relative ${colors.primary} rounded-lg ${colors.shadowLg} mx-4 w-full max-w-6xl max-h-[90vh] overflow-hidden border ${colors.border}`}>
+      <div className={`relative ${colors.primary} rounded-lg ${colors.shadowLg} mx-4 w-full max-w-7xl max-h-[95vh] overflow-hidden border ${colors.border}`}>
         {/* Header */}
         <div className={`flex items-center justify-between p-6 border-b ${colors.divider}`}>
           <div className="flex items-center gap-3">
@@ -45,9 +45,6 @@ export default function ChartModal({
             <h2 className={`text-xl font-semibold ${colors.textPrimary}`}>
               {stockData.ticker} - Price Chart
             </h2>
-            <span className={`text-sm ${colors.textMuted}`}>
-              Current: ${stockData.price?.toFixed(2) || 'N/A'}
-            </span>
           </div>
           <button
             onClick={onClose}
@@ -59,12 +56,13 @@ export default function ChartModal({
         
         {/* Chart Content */}
         <div className="p-6">
-          <div style={{ height: '500px' }}>
+          <div style={{ height: '800px' }}>
             <ManagedChart
               ref={chartRef || modalChartRef}
               stockData={stockData}
               chartType={chartType}
               historicalCandles={historicalCandles}
+              isExpanded={true}
             />
           </div>
         </div>

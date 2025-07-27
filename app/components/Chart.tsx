@@ -1,6 +1,6 @@
 'use client';
 
-import { AreaSeries, CandlestickSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, createTextWatermark } from 'lightweight-charts';
+import { AreaSeries, CandlestickSeries, HistogramSeries, createChart, ColorType, IChartApi, ISeriesApi, Time, createTextWatermark } from 'lightweight-charts';
 import React, { useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
 
 // Import ChartDataPoint and CandleDataPoint from StockTable to ensure consistency across components
@@ -31,12 +31,14 @@ interface ChartComponentProps {
     watermarkText?: string;
     watermarkTextColor?: string;
     onChartReady?: () => void; // Callback to notify parent when chart is ready
+    isExpanded?: boolean; // Whether this is an expanded chart with enhanced features
 }
 
 // Define the shape of the ref handle that this component will expose to its parent
 export interface ChartHandle {
     updateData: (point: ChartDataPoint | CandleDataPoint) => void; // Method to add a single new data point
     setData: (data: ChartDataPoint[] | CandleDataPoint[]) => void;   // Method to set/reset all data (e.g., initial load)
+    updateWithPrice: (timestamp: number, price: number) => void; // Method for simple price updates without volume
 }
 
 // Wrap the component with forwardRef to allow parent components to get a ref to it
@@ -61,12 +63,14 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         watermarkText = 'BOOP',
         watermarkTextColor = 'rgba(59, 130, 246, 0.15)',
         onChartReady,
+        isExpanded = false,
     } = props;
 
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
     const chartRef = useRef<IChartApi | null>(null);
     const seriesRef = useRef<ISeriesApi<'Area'> | ISeriesApi<'Candlestick'> | null>(null);
+    const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
     const initializedWithData = useRef<boolean>(false);
 
     // useImperativeHandle: Expose updateData and setData methods to the parent via ref
@@ -123,6 +127,16 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                             close: p.close
                         }));
                         seriesRef.current.setData(candleData);
+                        
+                        // Set volume data if available and we have a volume series
+                        if (volumeSeriesRef.current && data.length > 0 && 'volume' in data[0] && data[0].volume !== undefined) {
+                            const volumeData = (data as CandleDataPoint[]).map(p => ({
+                                time: (p.time / 1000) as Time,
+                                value: p.volume || 0,
+                                color: p.close >= p.open ? '#26a69a' : '#ef5350', // Green for up, red for down
+                            }));
+                            volumeSeriesRef.current.setData(volumeData);
+                        }
                     } else if (chartType === 'area' && data.length > 0 && 'value' in data[0]) {
                         // Handle area chart data
                         const areaData = (data as ChartDataPoint[]).map(p => ({
@@ -134,6 +148,28 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     
                     // Note: Removed fitContent() call to preserve user navigation preferences
                 } else {
+                }
+            },
+            updateWithPrice: (timestamp: number, price: number) => {
+                if (seriesRef.current) {
+                    // Ensure time is in seconds for lightweight-charts
+                    const timeInSeconds = timestamp > 1e12 ? Math.floor(timestamp / 1000) : timestamp;
+                    const timeForChart = timeInSeconds as Time;
+                    
+                    if (chartType === 'candlestick') {
+                        // Create a simple candlestick with same OHLC values for price updates
+                        const candleData = {
+                            time: timeForChart,
+                            open: price,
+                            high: price,
+                            low: price,
+                            close: price
+                        };
+                        seriesRef.current.update(candleData);
+                    } else if (chartType === 'area') {
+                        // Handle area chart data
+                        seriesRef.current.update({ time: timeForChart, value: price });
+                    }
                 }
             },
         };
@@ -158,28 +194,46 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             grid: {
                 vertLines: {
                     color: vertLinesColor,
-                    visible: false,
+                    visible: isExpanded, // Show vertical grid lines only in expanded view
                 },
                 horzLines: {
                     color: horzLinesColor,
                     visible: true,
                 },
             },
+            crosshair: {
+                mode: isExpanded ? 1 : 0, // Enable crosshair only in expanded view (1 = normal, 0 = hidden)
+                vertLine: {
+                    visible: isExpanded,
+                    labelVisible: isExpanded,
+                    color: textColor,
+                    width: 1,
+                    style: 0, // Solid line
+                },
+                horzLine: {
+                    visible: isExpanded,
+                    labelVisible: isExpanded,
+                    color: textColor,
+                    width: 1,
+                    style: 0, // Solid line
+                },
+            },
             timeScale: {
                 rightOffset: 2,
-                barSpacing: 5,
-                borderVisible: false,
+                barSpacing: isExpanded ? 8 : 5, // More spacing in expanded view
+                borderVisible: isExpanded, // Show border in expanded view
                 visible: true,
                 timeVisible: true,
-                secondsVisible: true,
+                secondsVisible: isExpanded, // Show seconds only in expanded view
                 lockVisibleTimeRangeOnResize: true,
                 rightBarStaysOnScroll: true,
                 minBarSpacing: 0.5,
-                shiftVisibleRangeOnNewBar: false, // Disable auto-scroll on new data - allows user interaction
+                shiftVisibleRangeOnNewBar: true, // Auto-scroll when viewing latest data
             },
             rightPriceScale: {
                 autoScale: true,
-                borderVisible: false,
+                borderVisible: isExpanded, // Show price scale border in expanded view
+                visible: true,
             },
         });
 
@@ -221,6 +275,27 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         
         seriesRef.current = newSeries;
 
+        // Add volume series for expanded charts
+        if (isExpanded && chartType === 'candlestick') {
+            const volumeSeries = chart.addSeries(HistogramSeries, {
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '', // Set as an overlay by setting to empty string
+            });
+            
+            // Set scale margins for the volume series to appear at the bottom
+            chart.priceScale('').applyOptions({
+                scaleMargins: {
+                    top: 0.7, // Leave most of the space for the main series
+                    bottom: 0,
+                },
+            });
+            
+            volumeSeriesRef.current = volumeSeries;
+        }
+
 
         // Initialize with historical data if available, otherwise empty
         if (initialData.length > 0) {
@@ -235,6 +310,17 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     close: point.close
                 }));
                 newSeries.setData(processedData);
+                
+                // Initialize volume data if available and we have a volume series
+                if (volumeSeriesRef.current && initialData.length > 0 && 'volume' in initialData[0] && initialData[0].volume !== undefined) {
+                    const volumeData = (initialData as CandleDataPoint[]).map(point => ({
+                        time: (typeof point.time === 'number' && point.time > 1e12 ? 
+                               Math.floor(point.time / 1000) : point.time) as Time,
+                        value: point.volume || 0,
+                        color: point.close >= point.open ? '#26a69a' : '#ef5350', // Green for up, red for down
+                    }));
+                    volumeSeriesRef.current.setData(volumeData);
+                }
             } else if (chartType === 'area' && 'value' in initialData[0]) {
                 const processedData = (initialData as ChartDataPoint[]).map(point => ({
                     time: (typeof point.time === 'number' && point.time > 1e12 ? 
@@ -274,6 +360,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 chartRef.current.remove();
                 chartRef.current = null;
                 seriesRef.current = null;
+                volumeSeriesRef.current = null;
             }
         };
     }, [
@@ -285,6 +372,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         watermarkTextColor,
         lineColor, areaTopColor, areaBottomColor,
         upColor, downColor, wickUpColor, wickDownColor,
+        isExpanded, // Include isExpanded to recreate chart when switching between modes
         // Removed initialData from dependencies to prevent chart recreation on data updates
         onChartReady // Add onChartReady to dependencies for stability
     ]); // Dependencies for chart initialization
