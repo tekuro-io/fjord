@@ -92,13 +92,6 @@ ExpandedRowContent.displayName = 'ExpandedRowContent';
 
 
 export default function StockTable({ data: initialData }: { data: StockItem[] }) {
-  // LOG ALL DATA ENTERING THE TABLE
-  console.log(`🎯 StockTable: Received ${initialData.length} items as props`);
-  initialData.forEach((item, index) => {
-    if (index < 5) { // Log first 5 items
-      console.log(`🎯 StockTable prop ${index + 1}: ${item.ticker} - price: ${item.price}, prev_price: ${item.prev_price}, volume: ${item.volume}`);
-    }
-  });
 
   const [currentData, setCurrentData] = React.useState<StockItem[]>(initialData);
 
@@ -257,13 +250,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       ws.onmessage = (event) => {
         try {
-          // LOG ALL WEBSOCKET MESSAGES
-          console.log(`🌐 WebSocket: Received message of length ${event.data.length}`);
-          console.log(`🌐 WebSocket raw data:`, event.data.substring(0, 500) + (event.data.length > 500 ? '...' : ''));
-          
           // Parse the incoming data
           const parsedData: unknown = JSON.parse(event.data);
-          console.log(`🌐 WebSocket: Parsed data type:`, typeof parsedData, Array.isArray(parsedData) ? `array of ${parsedData.length} items` : 'object');
 
           // Type guard for StockItem - exclude pattern detection messages
           const isStockItem = (data: unknown): data is StockItem => {
@@ -303,27 +291,19 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             return; // Skip further processing for control messages
           } else if (isPatternDetection(parsedData)) {
             // Handle pattern detection messages - route to pattern alert system
-            console.log(`🎯 Pattern Detection: Received pattern alert for`, (parsedData as any).ticker);
             handlePatternAlert(parsedData as PatternAlertData);
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
             // Check for pattern detection in arrays
             const patternDetections = parsedData.filter(isPatternDetection);
             if (patternDetections.length > 0) {
-              console.log(`🎯 Pattern Detection: Received ${patternDetections.length} pattern alerts from array`);
               patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
             }
             // Filter array to ensure all elements are StockItem
             stockUpdates = parsedData.filter(isStockItem);
-            console.log(`🌐 WebSocket: Processing ${stockUpdates.length} stock updates from array:`, stockUpdates.map(s => `${s.ticker}(${s.price})`).join(', '));
-            if (stockUpdates.length !== parsedData.length) {
-                console.warn("StockTable: Some items in the received array were not valid StockItems.");
-            }
           } else if (isStockItem(parsedData)) {
             stockUpdates = [parsedData];
-            console.log(`🌐 WebSocket: Processing single stock update: ${parsedData.ticker}(${parsedData.price})`);
           } else {
-            console.warn("StockTable: Received unknown or invalid message format, skipping:", parsedData);
             return;
           }
 
@@ -461,6 +441,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               // Update chart via ref if the ticker has an expanded chart
               const chartRef = chartRefs.current.get(update.ticker);
               if (chartRef?.current) {
+                console.log(`📊 Sending tick to chart: ${update.ticker} price=${update.price} timestamp=${timestamp}`);
                 chartRef.current.updateWithPrice(timestamp, update.price);
               }
             } else {

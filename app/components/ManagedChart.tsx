@@ -61,6 +61,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           
           // Update chart with all completed candles + new current candle
           const allCandles = [...completedCandles.current, currentCandle.current];
+          console.log(`📊 NEW CANDLE: ${stockData.ticker} sending ${allCandles.length} candles, NEW: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
           chartRef.current.setData(allCandles);
         } else {
           // Update current candle - keep same timestamp, update OHLC
@@ -76,6 +77,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
             
             // Update chart with all completed candles + updated current candle
             const allCandles = [...completedCandles.current, currentCandle.current];
+            console.log(`📊 UPDATE CANDLE: ${stockData.ticker} sending ${allCandles.length} candles, CURRENT: time=${new Date(currentCandle.current.time).toISOString()}, O=${currentCandle.current.open}, H=${currentCandle.current.high}, L=${currentCandle.current.low}, C=${currentCandle.current.close}`);
             chartRef.current.setData(allCandles);
           }
         }
