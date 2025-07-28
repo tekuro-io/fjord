@@ -165,7 +165,15 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
 
   // Subscribe to pattern alerts using existing WebSocket connection
   useEffect(() => {
+    console.log('🔔 DEBUG: AlertManager useEffect triggered', {
+      wsConnection: !!wsConnection,
+      readyState: wsConnection?.readyState,
+      OPEN: WebSocket.OPEN,
+      subscribed: subscribed.current
+    });
+    
     if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+      console.log('🔔 DEBUG: AlertManager - WebSocket not ready, setting subscribed to false');
       subscribed.current = false;
       return;
     }
