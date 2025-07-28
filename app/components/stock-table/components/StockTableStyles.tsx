@@ -43,7 +43,11 @@ const StockTableStyles: React.FC = () => {
     }
 
 
-    /* Div-based expanded rows - seamless connection */
+    /* Div-based rows with controlled spacing */
+    .expanded-table > div > div:not(:last-child) {
+      margin-bottom: 4px;
+    }
+
     .expanded-table .expanded-parent {
       margin-bottom: 0 !important;
       border-bottom-left-radius: 0 !important;

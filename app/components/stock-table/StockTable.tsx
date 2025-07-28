@@ -1329,7 +1329,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             ))}
           </div>
           {/* Data Rows Container */}
-          <div className={colors.primary}>
+          <div>
             {/* Slice the rows here to display only the top N */}
             {table.getRowModel().rows.slice(0, numStocksToShow).length === 0 ? (
               <div className={`text-center py-8 ${colors.textMuted}`}>
@@ -1349,7 +1349,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <React.Fragment key={row.id}>
                     <div
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                      className={`h-14 transition-colors duration-200 cursor-pointer flex items-center mb-1 relative ${
+                      className={`h-14 transition-colors duration-200 cursor-pointer flex items-center relative ${
                         isExpanded 
                           ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
                           : `${colors.tableRow} ${colors.tableRowHover} rounded-lg ${colors.shadowSm} border ${colors.border}`

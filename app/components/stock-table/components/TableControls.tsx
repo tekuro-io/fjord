@@ -83,7 +83,7 @@ const TableControls: React.FC<TableControlsProps> = ({
             title={isLocked ? 'Unlock View' : 'Lock View'}
             aria-label={isLocked ? 'Unlock View' : 'Lock View'}
           >
-            {isLocked ? <Unlock className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            {isLocked ? <Lock className="w-4 h-4" /> : <Unlock className="w-4 h-4" />}
           </button>
 
           <button
