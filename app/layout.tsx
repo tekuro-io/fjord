@@ -18,7 +18,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Fjord",
     description: "Taste the Glacier",
-    url: "https://fjord.tekuro.io/fjord.png", // must be full URL
+    url: "https://fjord.tekuro.io",
+    images: [
+      {
+        url: "https://fjord.tekuro.io/stock.png",
+        alt: "Fjord - Taste the Glacier"
+      },
+    ],
     siteName: "Fjord",
     type: "website",
     locale: "en_US",
