@@ -430,7 +430,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               // Wrap flat structure in proper format
               alertData = {
                 topic: "pattern_detection",
-                data: parsedData as any
+                data: parsedData as PatternAlertData['data']
               };
             }
             
