@@ -18,10 +18,10 @@ const ClientPageWrapper: React.FC<ClientPageWrapperProps> = ({ children }) => {
   return (
     <>
       {/* Sidebar Component - Comment this section to disable */}
-      <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
+      {/* <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} /> */}
       
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${sidebarOpen ? 'lg:ml-72' : ''}`}>
+      <div>
         {children}
       </div>
     </>
