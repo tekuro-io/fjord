@@ -100,7 +100,9 @@ const AlertManager = React.forwardRef<{ handleNewAlert: (alert: PatternAlertData
       return newAlerts;
     });
     
-    // Play different sounds based on alert direction
+    // Play different sounds based on alert direction (client-side only)
+    if (typeof window === 'undefined') return;
+    
     try {
       const audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
       

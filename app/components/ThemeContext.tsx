@@ -284,19 +284,29 @@ const lightColors = {
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('dark');
+  const [isClient, setIsClient] = useState(false);
 
-  // Load theme from localStorage on mount
+  // Detect client-side rendering
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Load theme from localStorage on mount (client-side only)
+  useEffect(() => {
+    if (!isClient) return;
+    
     const savedTheme = localStorage.getItem('theme') as Theme;
     if (savedTheme) {
       setTheme(savedTheme);
     }
-  }, []);
+  }, [isClient]);
 
-  // Save theme to localStorage when it changes
+  // Save theme to localStorage when it changes (client-side only)
   useEffect(() => {
+    if (!isClient) return;
+    
     localStorage.setItem('theme', theme);
-  }, [theme]);
+  }, [theme, isClient]);
 
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');

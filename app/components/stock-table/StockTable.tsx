@@ -1357,14 +1357,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       console.log(`🚨 DEBUG: ${ticker} is not expanded, only showing row flash`);
     }
     
-    // Stop row flashing after 30 seconds (3x longer duration)
+    // Stop row flashing after 9 seconds
     setTimeout(() => {
       setPatternFlashingRows(prev => {
         const newMap = new Map(prev);
         newMap.delete(ticker);
         return newMap;
       });
-    }, 30000);
+    }, 9000);
     
     // IMPORTANT: Also trigger the AlertManager popup and sound
     console.log('🚨 DEBUG: About to call AlertManager handleNewAlert directly');
