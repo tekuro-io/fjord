@@ -176,9 +176,12 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
         type: "subscribe",
         topic: "pattern_detection"
       };
+      console.log('🔔 DEBUG: AlertManager sending subscription:', subscribeMessage);
       wsConnection.send(JSON.stringify(subscribeMessage));
       subscribed.current = true;
       console.log('🔔 AlertManager: Subscribed to pattern alerts');
+    } else {
+      console.log('🔔 DEBUG: AlertManager already subscribed to pattern_detection');
     }
 
     // Note: Message handling is now done by StockTable component

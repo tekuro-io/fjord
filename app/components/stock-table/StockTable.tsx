@@ -387,9 +387,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             // This handles 'info' messages, 'ack_subscribe' messages, and any other control messages
             const controlMsg = parsedData as InfoMessage; // Cast for easier access to properties
             if (controlMsg.type === 'ack_subscribe') {
-                // Subscription acknowledged
+                console.log('📡 DEBUG: Subscription acknowledged:', controlMsg);
+                // Check if this is pattern_detection subscription
+                if ('topic' in controlMsg && controlMsg.topic === 'pattern_detection') {
+                  console.log('✅ DEBUG: pattern_detection subscription confirmed!');
+                }
             } else {
-                // Other control message received
+                console.log('📡 DEBUG: Other control message received:', controlMsg);
             }
             return; // Skip further processing for control messages
           } else if (isPatternDetection(parsedData)) {
