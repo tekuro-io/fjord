@@ -363,27 +363,22 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
           // Type guard for pattern detection messages (check first - more specific)
           const isPatternDetection = (data: unknown): boolean => {
-            // DEBUG: Log every check
-            console.log('🔍 DEBUG: Checking if message is pattern detection:', {
-              data,
-              isObject: typeof data === 'object' && data !== null,
-              hasPattern: typeof data === 'object' && data !== null && 'pattern' in data,
-              hasAlertLevel: typeof data === 'object' && data !== null && 'alert_level' in data,
-              hasConfidence: typeof data === 'object' && data !== null && 'confidence' in data,
-              hasTopic: typeof data === 'object' && data !== null && 'topic' in data,
-              topicValue: typeof data === 'object' && data !== null && 'topic' in data ? (data as { topic: string }).topic : 'none'
-            });
+            // Only log if it has pattern-related fields
+            const hasPatternFields = typeof data === 'object' && data !== null && 
+              ('pattern' in data || 'alert_level' in data || 'confidence' in data || 
+               ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
+            
+            if (hasPatternFields) {
+              console.log('🔍 DEBUG: Potential pattern detection message:', data);
+            }
             
             const result = typeof data === 'object' && 
                    data !== null && 
                    (('pattern' in data || 'alert_level' in data || 'confidence' in data) ||
                     ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
             
-            // DEBUG: Log pattern detection check
             if (result) {
               console.log('✅ StockTable: Message identified as pattern detection:', data);
-            } else {
-              console.log('❌ StockTable: Message NOT identified as pattern detection');
             }
             return result;
           };
