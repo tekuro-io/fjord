@@ -1393,7 +1393,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     key={header.id}
                     className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider ${colors.textSecondary} ${
                       header.column.getCanSort() ? `cursor-pointer select-none hover:${colors.secondary} transition-colors duration-200` : ""
-                    } ${getHeaderClasses(header.id)} flex-1 flex items-center justify-center h-full`}
+                    } ${getHeaderClasses(header.id)} flex-1 flex items-center h-full`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center gap-1">
