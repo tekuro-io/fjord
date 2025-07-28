@@ -1307,13 +1307,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           {/* Header Row */}
           <div className={`${colors.tableHeaderGradient} h-12`}>
             {table.getHeaderGroups().map((headerGroup) => (
-              <div key={headerGroup.id} className="flex">
+              <div key={headerGroup.id} className="flex items-center">
                 {headerGroup.headers.map((header) => (
                   <div
                     key={header.id}
                     className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider ${colors.textSecondary} ${
                       header.column.getCanSort() ? `cursor-pointer select-none hover:${colors.secondary} transition-colors duration-200` : ""
-                    } ${getHeaderClasses(header.id)} flex-1`}
+                    } ${getHeaderClasses(header.id)} flex-1 flex items-center`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center gap-1">
@@ -1349,7 +1349,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                   <React.Fragment key={row.id}>
                     <div
                       title={`First seen: ${formatDateTime(row.original.first_seen)}`}
-                      className={`h-14 transition-colors duration-200 cursor-pointer flex mb-1 relative ${
+                      className={`h-14 transition-colors duration-200 cursor-pointer flex items-center mb-1 relative ${
                         isExpanded 
                           ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border}` 
                           : `${colors.tableRow} ${colors.tableRowHover} rounded-lg ${colors.shadowSm} border ${colors.border}`
@@ -1365,7 +1365,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                       {row.getVisibleCells().map((cell, index) => (
                         <div
                           key={cell.id}
-                          className={`px-0.5 py-2 align-middle flex-1 ${getCellClasses(cell.column.id)}`}
+                          className={`px-0.5 py-2 flex items-center flex-1 ${getCellClasses(cell.column.id)}`}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </div>
@@ -1373,8 +1373,8 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     </div>
                     {isExpanded && (
                       <div className={`expanded-child p-0 ${colors.expandedRowGradient} border ${colors.border} -mt-1 relative`}>
-                        {/* Blue border continuation */}
-                        <div className={`absolute left-0 top-0 w-1 h-full ${colors.accent.replace('text-', 'bg-')}`}></div>
+                        {/* Blue border continuation - offset to connect seamlessly */}
+                        <div className={`absolute left-0 -top-1 w-1 ${colors.accent.replace('text-', 'bg-')}`} style={{height: 'calc(100% + 4px)'}}></div>
                         <ExpandedRowContent 
                           stockData={row.original}
                           onOpenSentiment={() => openSentimentModal(row.original.ticker)}
