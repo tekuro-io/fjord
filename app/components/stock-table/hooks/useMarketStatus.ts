@@ -6,6 +6,9 @@ export const useMarketStatus = () => {
   const [isClient, setIsClient] = React.useState(false);
 
   const getMarketStatus = React.useCallback(() => {
+    // Only run on client side
+    if (typeof window === 'undefined') return 'Market Status Loading...';
+    
     const now = new Date();
     try {
       const etFormatter = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour: 'numeric', minute: 'numeric', hourCycle: 'h23' });

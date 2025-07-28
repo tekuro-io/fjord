@@ -21,6 +21,8 @@ export const formatCurrency = (val: number | null): string => {
 
 export const formatDateTime = (isoString?: string): string => {
   if (!isoString) return "Unknown";
+  if (typeof window === 'undefined') return "Loading...";
+  
   try {
     const date = new Date(isoString);
     return date.toLocaleString('en-US', {

@@ -74,11 +74,11 @@ const StockTableStyles: React.FC = () => {
     }
 
     .pattern-flash-bullish {
-      animation: pattern-flash-bullish 1s ease-in-out 9;
+      animation: pattern-flash-bullish 1s ease-in-out 12;
     }
 
     .pattern-flash-bearish {
-      animation: pattern-flash-bearish 1s ease-in-out 9;
+      animation: pattern-flash-bearish 1s ease-in-out 12;
     }
 
     /* Pattern alert box animation */

@@ -348,7 +348,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           topic: "pattern_detection"
         };
         ws.send(JSON.stringify(patternSubscribeMessage));
-        console.log('🔔 StockTable: Subscribed to pattern_detection topic');
       };
 
       ws.onmessage = (event) => {
@@ -356,44 +355,13 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           // Parse the incoming data
           const parsedData: unknown = JSON.parse(event.data);
 
-          // DEBUG: Log all incoming WebSocket messages
-          console.log('🔍 StockTable WebSocket Message Received:', {
-            raw: event.data,
-            parsed: parsedData,
-            type: typeof parsedData,
-            isArray: Array.isArray(parsedData)
-          });
-
-          // DEBUG: Check if this looks like a pattern detection message at all
-          if (typeof parsedData === 'object' && parsedData !== null) {
-            const obj = parsedData as Record<string, unknown>;
-            if ('pattern' in obj || 'confidence' in obj || 'alert_level' in obj || 
-                ('topic' in obj && obj.topic === 'pattern_detection') ||
-                ('ticker' in obj && ('pattern' in obj || 'is_bullish' in obj))) {
-              console.log('🚨 POTENTIAL PATTERN MESSAGE DETECTED:', parsedData);
-            }
-          }
 
           // Type guard for pattern detection messages (check first - more specific)
           const isPatternDetection = (data: unknown): boolean => {
-            // Only log if it has pattern-related fields
-            const hasPatternFields = typeof data === 'object' && data !== null && 
-              ('pattern' in data || 'alert_level' in data || 'confidence' in data || 
-               ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
-            
-            if (hasPatternFields) {
-              console.log('🔍 DEBUG: Potential pattern detection message:', data);
-            }
-            
-            const result = typeof data === 'object' && 
+            return typeof data === 'object' && 
                    data !== null && 
                    (('pattern' in data || 'alert_level' in data || 'confidence' in data) ||
                     ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
-            
-            if (result) {
-              console.log('✅ StockTable: Message identified as pattern detection:', data);
-            }
-            return result;
           };
 
           // Type guard for StockItem - simpler logic since pattern detection is checked first
@@ -416,13 +384,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             // This handles 'info' messages, 'ack_subscribe' messages, and any other control messages
             const controlMsg = parsedData as InfoMessage; // Cast for easier access to properties
             if (controlMsg.type === 'ack_subscribe') {
-                console.log('📡 DEBUG: Subscription acknowledged:', controlMsg);
-                // Check if this is pattern_detection subscription
-                if ('topic' in controlMsg && controlMsg.topic === 'pattern_detection') {
-                  console.log('✅ DEBUG: pattern_detection subscription confirmed!');
-                }
+                // Subscription acknowledged
             } else {
-                console.log('📡 DEBUG: Other control message received:', controlMsg);
+                // Other control message received
             }
             return; // Skip further processing for control messages
           } else if (isPatternDetection(parsedData)) {
@@ -439,8 +403,6 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 }
               }
             }
-            console.log(`🎯 Pattern Detection: Routing pattern alert for ${ticker}`);
-            console.log('🔍 DEBUG: Full pattern detection data:', JSON.stringify(parsedData, null, 2));
             
             // Ensure the alert has the correct structure for handlers
             let alertData: PatternAlertData;
@@ -455,16 +417,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
               };
             }
             
-            console.log('🔍 DEBUG: About to call handlePatternAlert with:', alertData);
-            console.log('🔍 DEBUG: alertData structure check:', {
-              hasData: 'data' in alertData,
-              hasTicker: alertData.data?.ticker,
-              hasDirection: alertData.data?.direction,
-              fullAlertData: alertData
-            });
-            console.log('🔍 DEBUG: Calling StockTable handlePatternAlert...');
             handlePatternAlert(alertData);
-            console.log('🔍 DEBUG: StockTable handlePatternAlert finished');
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
             // Process arrays: separate pattern detection from stock updates
@@ -472,10 +425,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             const stockItems = parsedData.filter(item => !isPatternDetection(item) && isStockItem(item));
             
             // Handle any pattern detections found in the array
-            if (patternDetections.length > 0) {
-              console.log(`🎯 Pattern Detection: Found ${patternDetections.length} pattern alerts in array`);
-              patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
-            }
+            patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
             
             // Set stock updates (excluding pattern detections)
             stockUpdates = stockItems;
@@ -1318,31 +1268,19 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
   // Handler for pattern alerts
   const handlePatternAlert = React.useCallback((alert: PatternAlertData) => {
-    console.log('🚨 DEBUG: handlePatternAlert called with:', alert);
-    console.log('🚨 DEBUG: alert.data:', alert.data);
-    console.log('🚨 DEBUG: alert.data.ticker:', alert.data?.ticker);
-    console.log('🚨 DEBUG: alert.data.direction:', alert.data?.direction);
-    
     if (!alert.data || !alert.data.ticker || !alert.data.direction) {
-      console.error('🚨 ERROR: Invalid pattern alert structure:', alert);
+      console.error('Invalid pattern alert structure:', alert);
       return;
     }
     
     const ticker = alert.data.ticker;
     const direction = alert.data.direction;
     
-    console.log(`🚨 DEBUG: Processing pattern alert for ${ticker} with direction ${direction}`);
-    
     // Flash the row background
-    setPatternFlashingRows(prev => {
-      const newMap = new Map(prev).set(ticker, direction);
-      console.log('🚨 DEBUG: Updated patternFlashingRows:', Array.from(newMap.entries()));
-      return newMap;
-    });
+    setPatternFlashingRows(prev => new Map(prev).set(ticker, direction));
     
     // Show alert in expanded row if it's expanded
     if (expandedRows.has(ticker)) {
-      console.log(`🚨 DEBUG: ${ticker} is expanded, showing alert in expanded row`);
       setExpandedPatternAlerts(prev => new Map(prev).set(ticker, alert));
       
       // Auto-hide expanded alert after 8 seconds
@@ -1353,27 +1291,20 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           return newMap;
         });
       }, 8000);
-    } else {
-      console.log(`🚨 DEBUG: ${ticker} is not expanded, only showing row flash`);
     }
     
-    // Stop row flashing after 9 seconds
+    // Stop row flashing after 12 seconds
     setTimeout(() => {
       setPatternFlashingRows(prev => {
         const newMap = new Map(prev);
         newMap.delete(ticker);
         return newMap;
       });
-    }, 9000);
+    }, 12000);
     
-    // IMPORTANT: Also trigger the AlertManager popup and sound
-    console.log('🚨 DEBUG: About to call AlertManager handleNewAlert directly');
+    // Also trigger the AlertManager popup and sound
     if (alertManagerRef.current) {
-      console.log('🚨 DEBUG: Calling AlertManager handleNewAlert with alert:', alert);
       alertManagerRef.current.handleNewAlert(alert);
-      console.log('🚨 DEBUG: AlertManager handleNewAlert finished');
-    } else {
-      console.log('🚨 ERROR: AlertManager ref is null!');
     }
   }, [expandedRows]);
 
@@ -1410,6 +1341,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             '--pattern-flash-bullish-color': theme === 'light' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)',
             '--pattern-flash-bearish-color': theme === 'light' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.3)'
           } as React.CSSProperties}
+          suppressHydrationWarning={true}
         >
           {/* Header Row */}
           <div className={`${colors.tableHeaderGradient} h-12 mb-2`}>
@@ -1455,7 +1387,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                 return (
                   <React.Fragment key={row.id}>
                     <div
-                      title={`First seen: ${formatDateTime(row.original.first_seen)}`}
+                      title={typeof window !== 'undefined' ? `First seen: ${formatDateTime(row.original.first_seen)}` : undefined}
                       className={`h-14 transition-colors duration-200 cursor-pointer flex items-center relative ${
                         isExpanded 
                           ? `${colors.expandedParentRow} ${colors.tableRowHover} expanded-parent border ${colors.border}` 

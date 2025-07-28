@@ -77,28 +77,18 @@ const AlertManager = React.forwardRef<{ handleNewAlert: (alert: PatternAlertData
   }, [triggerTestAlert, triggerTestBearishAlert]);
 
   const handleNewAlert = React.useCallback((alert: PatternAlertData) => {
-    console.log('🔔 DEBUG: AlertManager handleNewAlert called with:', alert);
-    console.log('🔔 DEBUG: AlertManager received pattern alert - RAW STRUCTURE:', JSON.stringify(alert, null, 2));
-    
     // Defensive check for alert structure
     if (!alert.data || !alert.data.ticker || !alert.data.direction) {
-      console.error('🔔 AlertManager: Invalid alert structure:', alert);
+      console.error('AlertManager: Invalid alert structure:', alert);
       return;
     }
-
-    console.log('🔔 DEBUG: AlertManager processing valid alert for:', alert.data.ticker);
 
     const alertWithId = {
       ...alert,
       id: `alert-${++alertIdCounter.current}`
     };
     
-    console.log('🔔 DEBUG: AlertManager adding alert to state:', alertWithId.id);
-    setAlerts(prev => {
-      const newAlerts = [...prev, alertWithId];
-      console.log('🔔 DEBUG: AlertManager new alerts array length:', newAlerts.length);
-      return newAlerts;
-    });
+    setAlerts(prev => [...prev, alertWithId]);
     
     // Play different sounds based on alert direction (client-side only)
     if (typeof window === 'undefined') return;
