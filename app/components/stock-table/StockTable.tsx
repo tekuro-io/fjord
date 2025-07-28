@@ -420,8 +420,22 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             }
             console.log(`🎯 Pattern Detection: Routing pattern alert for ${ticker}`);
             console.log('🔍 DEBUG: Full pattern detection data:', JSON.stringify(parsedData, null, 2));
-            console.log('🔍 DEBUG: About to call handlePatternAlert with:', parsedData);
-            handlePatternAlert(parsedData as PatternAlertData);
+            
+            // Ensure the alert has the correct structure for handlers
+            let alertData: PatternAlertData;
+            if (typeof parsedData === 'object' && parsedData !== null && 'topic' in parsedData && 'data' in parsedData) {
+              // Already has correct structure
+              alertData = parsedData as PatternAlertData;
+            } else {
+              // Wrap flat structure in proper format
+              alertData = {
+                topic: "pattern_detection",
+                data: parsedData as any
+              };
+            }
+            
+            console.log('🔍 DEBUG: About to call handlePatternAlert with:', alertData);
+            handlePatternAlert(alertData);
             console.log('🔍 DEBUG: handlePatternAlert called successfully');
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
