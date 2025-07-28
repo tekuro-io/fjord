@@ -1089,7 +1089,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       header: () => (
         <div className="flex items-center gap-1">
           <BarChart2 className="w-4 h-4 text-gray-400" />
-          <span>MA10 Volume</span>
+          <span>MAV10</span>
         </div>
       ),
       cell: (info) => formatLargeNumber(info.getValue() as number | null),
