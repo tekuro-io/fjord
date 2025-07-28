@@ -96,6 +96,12 @@ const AlertManager = React.forwardRef<{ handleNewAlert: (alert: PatternAlertData
     try {
       const audioContext = new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
       
+      // Check if AudioContext is suspended due to autoplay policy
+      if (audioContext.state === 'suspended') {
+        console.log('Audio notifications require user interaction to play');
+        return;
+      }
+      
       if (alert.data.is_bullish) {
         // Bullish: Pleasant ascending chime (C-E-G major chord)
         const playChime = async () => {
