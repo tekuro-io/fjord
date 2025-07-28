@@ -338,6 +338,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
           };
           ws.send(JSON.stringify(subscribeMessage));
         });
+        
+        // Subscribe to pattern detection alerts
+        const patternSubscribeMessage = {
+          type: "subscribe",
+          topic: "pattern_detection"
+        };
+        ws.send(JSON.stringify(patternSubscribeMessage));
+        console.log('🔔 StockTable: Subscribed to pattern_detection topic');
       };
 
       ws.onmessage = (event) => {

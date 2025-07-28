@@ -163,39 +163,10 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     }, 10000);
   }, [onPatternAlert]);
 
-  // Subscribe to pattern alerts using existing WebSocket connection
-  useEffect(() => {
-    console.log('🔔 DEBUG: AlertManager useEffect triggered', {
-      wsConnection: !!wsConnection,
-      readyState: wsConnection?.readyState,
-      OPEN: WebSocket.OPEN,
-      subscribed: subscribed.current
-    });
-    
-    if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
-      console.log('🔔 DEBUG: AlertManager - WebSocket not ready, setting subscribed to false');
-      subscribed.current = false;
-      return;
-    }
-
-    // Subscribe to pattern detection topic if not already subscribed
-    if (!subscribed.current) {
-      const subscribeMessage = {
-        type: "subscribe",
-        topic: "pattern_detection"
-      };
-      console.log('🔔 DEBUG: AlertManager sending subscription:', subscribeMessage);
-      wsConnection.send(JSON.stringify(subscribeMessage));
-      subscribed.current = true;
-      console.log('🔔 AlertManager: Subscribed to pattern alerts');
-    } else {
-      console.log('🔔 DEBUG: AlertManager already subscribed to pattern_detection');
-    }
-
-    // Note: Message handling is now done by StockTable component
-    // which calls onPatternAlert callback when pattern detection messages are received
-    // This prevents duplicate message handling and the associated errors
-  }, [wsConnection]);
+  // Note: Subscription to pattern_detection is now handled by StockTable component
+  // in the ws.onopen handler alongside stock subscriptions for better timing and reliability.
+  // Message handling is also done by StockTable which calls onPatternAlert callback
+  // when pattern detection messages are received.
 
   const dismissAlert = (id: string) => {
     setAlerts(prev => prev.filter(alert => alert.id !== id));
