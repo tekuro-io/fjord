@@ -17,14 +17,14 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     const testAlert: PatternAlertData = {
       topic: "pattern_detection",
       data: {
-        ticker: "NVDA",
+        ticker: "SNAP",
         pattern: "bullish_reversal",
         pattern_display_name: "Bullish Reversal",
-        price: 132.50,
+        price: 1.853398835896824,
         timestamp: new Date().toISOString(),
         confidence: 0.75,
         alert_level: "medium",
-        message: "Bullish Reversal detected for NVDA at $132.50 (75% confidence)",
+        message: "Bullish Reversal detected for SNAP at $1.85 (75% confidence)",
         is_bullish: true,
         is_bearish: false,
         direction: "bullish",
@@ -172,49 +172,10 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
       console.log('🔔 AlertManager: Subscribed to pattern alerts');
     }
 
-    // Add message listener for pattern alerts
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Log any activity on pattern-related topics
-        if (data.topic && data.topic.includes('pattern')) {
-          console.log('📡 PATTERN TOPIC ACTIVITY:', {
-            topic: data.topic,
-            type: data.type,
-            data: data
-          });
-        }
-        
-        // Only process actual pattern_detection alert messages
-        if (data.topic === "pattern_detection") {
-          if (data.type === "ack_subscribe") {
-            console.log('🔔 AlertManager: Successfully subscribed to pattern alerts');
-          } else if (data.data && data.data.ticker) {
-            console.log('🚨 NEW PATTERN ALERT:', {
-              ticker: data.data.ticker,
-              pattern: data.data.pattern_display_name,
-              direction: data.data.direction,
-              price: data.data.price,
-              confidence: data.data.confidence,
-              alert_level: data.data.alert_level
-            });
-            handleNewAlert(data);
-          } else {
-            console.warn('🔔 AlertManager: Received pattern_detection message with unexpected structure:', data);
-          }
-        }
-      } catch (error) {
-        console.error("🔔 AlertManager: Error parsing pattern alert:", error);
-      }
-    };
-
-    wsConnection.addEventListener('message', handleMessage);
-
-    return () => {
-      wsConnection.removeEventListener('message', handleMessage);
-    };
-  }, [wsConnection, handleNewAlert]);
+    // Note: Message handling is now done by StockTable component
+    // which calls onPatternAlert callback when pattern detection messages are received
+    // This prevents duplicate message handling and the associated errors
+  }, [wsConnection]);
 
   const dismissAlert = (id: string) => {
     setAlerts(prev => prev.filter(alert => alert.id !== id));
