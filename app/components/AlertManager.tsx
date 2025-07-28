@@ -75,18 +75,27 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
   }, [triggerTestAlert, triggerTestBearishAlert]);
 
   const handleNewAlert = React.useCallback((alert: PatternAlertData) => {
+    console.log('🔔 DEBUG: AlertManager handleNewAlert called with:', alert);
+    
     // Defensive check for alert structure
     if (!alert.data || !alert.data.ticker || !alert.data.direction) {
       console.error('🔔 AlertManager: Invalid alert structure:', alert);
       return;
     }
 
+    console.log('🔔 DEBUG: AlertManager processing valid alert for:', alert.data.ticker);
+
     const alertWithId = {
       ...alert,
       id: Date.now().toString()
     };
     
-    setAlerts(prev => [...prev, alertWithId]);
+    console.log('🔔 DEBUG: AlertManager adding alert to state:', alertWithId.id);
+    setAlerts(prev => {
+      const newAlerts = [...prev, alertWithId];
+      console.log('🔔 DEBUG: AlertManager new alerts array length:', newAlerts.length);
+      return newAlerts;
+    });
     
     // Play different sounds based on alert direction
     try {
