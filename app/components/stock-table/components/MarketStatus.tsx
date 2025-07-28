@@ -10,7 +10,7 @@ interface MarketStatusProps {
 const MarketStatus: React.FC<MarketStatusProps> = ({ currentTimeET, marketStatus }) => {
   const { colors } = useTheme();
   return (
-    <div className="flex flex-col items-start text-left space-y-1">
+    <div className="flex flex-col items-center text-center space-y-1">
       <div className="flex items-center">
         <Clock className={`w-4 h-4 ${colors.textMuted} mr-2`} />
         <span className={`${colors.textSecondary} text-sm font-medium`}>{currentTimeET} ET</span>
