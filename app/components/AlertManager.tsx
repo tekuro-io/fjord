@@ -8,7 +8,8 @@ interface AlertManagerProps {
   onPatternAlert?: (alert: PatternAlertData) => void;
 }
 
-export default function AlertManager({ wsConnection, onPatternAlert }: AlertManagerProps) {
+const AlertManager = React.forwardRef<{ handleNewAlert: (alert: PatternAlertData) => void }, AlertManagerProps>(
+  ({ wsConnection, onPatternAlert }, ref) => {
   const [alerts, setAlerts] = useState<(PatternAlertData & { id: string })[]>([]);
   const subscribed = React.useRef<boolean>(false);
 
@@ -164,6 +165,11 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
     }, 10000);
   }, [onPatternAlert]);
 
+  // Expose handleNewAlert via ref
+  React.useImperativeHandle(ref, () => ({
+    handleNewAlert
+  }), [handleNewAlert]);
+
   // Note: Subscription to pattern_detection is now handled by StockTable component
   // in the ws.onopen handler alongside stock subscriptions for better timing and reliability.
   // Message handling is also done by StockTable which calls onPatternAlert callback
@@ -184,4 +190,8 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
       ))}
     </div>
   );
-}
+});
+
+AlertManager.displayName = 'AlertManager';
+
+export default AlertManager;

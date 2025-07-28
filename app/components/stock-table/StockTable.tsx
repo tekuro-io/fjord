@@ -163,6 +163,9 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
   const [patternFlashingRows, setPatternFlashingRows] = React.useState<Map<string, 'bullish' | 'bearish'>>(new Map());
   const [expandedPatternAlerts, setExpandedPatternAlerts] = React.useState<Map<string, PatternAlertData>>(new Map());
   
+  // AlertManager ref to call its methods directly
+  const alertManagerRef = React.useRef<{ handleNewAlert: (alert: PatternAlertData) => void } | null>(null);
+  
   // Background candle collection system for all tickers
   const backgroundCandles = React.useRef<Map<string, CandleDataPoint[]>>(new Map());
   const backgroundCurrentCandles = React.useRef<Map<string, CandleDataPoint>>(new Map());
@@ -456,10 +459,12 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             console.log('🔍 DEBUG: alertData structure check:', {
               hasData: 'data' in alertData,
               hasTicker: alertData.data?.ticker,
-              hasDirection: alertData.data?.direction
+              hasDirection: alertData.data?.direction,
+              fullAlertData: alertData
             });
+            console.log('🔍 DEBUG: Calling StockTable handlePatternAlert...');
             handlePatternAlert(alertData);
-            console.log('🔍 DEBUG: handlePatternAlert called successfully');
+            console.log('🔍 DEBUG: StockTable handlePatternAlert finished');
             return; // Skip stock processing
           } else if (Array.isArray(parsedData)) {
             // Process arrays: separate pattern detection from stock updates
@@ -1360,6 +1365,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         return newMap;
       });
     }, 10000);
+    
+    // IMPORTANT: Also trigger the AlertManager popup and sound
+    console.log('🚨 DEBUG: About to call AlertManager handleNewAlert directly');
+    if (alertManagerRef.current) {
+      console.log('🚨 DEBUG: Calling AlertManager handleNewAlert with alert:', alert);
+      alertManagerRef.current.handleNewAlert(alert);
+      console.log('🚨 DEBUG: AlertManager handleNewAlert finished');
+    } else {
+      console.log('🚨 ERROR: AlertManager ref is null!');
+    }
   }, [expandedRows]);
 
   return (
@@ -1388,7 +1403,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {/* Table Container with horizontal overflow */}
       <div className="overflow-x-auto px-0 sm:px-6 pb-6">
-        <div className={`w-full text-sm ${colors.textSecondary} font-sans shadow-lg expanded-table`}>
+        <div 
+          className={`w-full text-sm ${colors.textSecondary} font-sans shadow-lg expanded-table`}
+          style={{
+            '--row-bg-color': theme === 'light' ? 'rgb(255 255 255)' : 'rgb(31 41 55)',
+            '--pattern-flash-bullish-color': theme === 'light' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)',
+            '--pattern-flash-bearish-color': theme === 'light' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.3)'
+          } as React.CSSProperties}
+        >
           {/* Header Row */}
           <div className={`${colors.tableHeaderGradient} h-12 mb-2`}>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -1401,7 +1423,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
                     } ${getHeaderClasses(header.id)} flex-1 flex items-center h-full`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 h-full justify-center w-full">
                       {flexRender(header.column.columnDef.header, header.getContext())}
                       <span className="text-sm text-blue-400 w-4 inline-block text-center">
                         {header.column.getIsSorted() === "asc" ? <ArrowUp className="w-4 h-4" /> :
@@ -1511,8 +1533,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
 
       {/* Pattern Alert Manager */}
       <AlertManager
+        ref={alertManagerRef}
         wsConnection={wsRef.current}
-        onPatternAlert={handlePatternAlert}
+        onPatternAlert={() => {
+          // This is not used anymore since we call AlertManager directly
+        }}
       />
     </div>
   );

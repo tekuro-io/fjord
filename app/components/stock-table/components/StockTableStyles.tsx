@@ -62,15 +62,15 @@ const StockTableStyles: React.FC = () => {
 
     /* Pattern alert animations */
     @keyframes pattern-flash-bullish {
-      0% { background-color: rgb(31 41 55); } /* gray-800 */
-      50% { background-color: rgba(34, 197, 94, 0.3); } /* green flash */
-      100% { background-color: rgb(31 41 55); }
+      0% { background-color: var(--row-bg-color); }
+      50% { background-color: var(--pattern-flash-bullish-color); }
+      100% { background-color: var(--row-bg-color); }
     }
 
     @keyframes pattern-flash-bearish {
-      0% { background-color: rgb(31 41 55); } /* gray-800 */
-      50% { background-color: rgba(239, 68, 68, 0.3); } /* red flash */
-      100% { background-color: rgb(31 41 55); }
+      0% { background-color: var(--row-bg-color); }
+      50% { background-color: var(--pattern-flash-bearish-color); }
+      100% { background-color: var(--row-bg-color); }
     }
 
     .pattern-flash-bullish {
