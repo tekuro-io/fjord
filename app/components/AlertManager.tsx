@@ -76,6 +76,7 @@ export default function AlertManager({ wsConnection, onPatternAlert }: AlertMana
 
   const handleNewAlert = React.useCallback((alert: PatternAlertData) => {
     console.log('🔔 DEBUG: AlertManager handleNewAlert called with:', alert);
+    console.log('🔔 DEBUG: AlertManager received pattern alert - RAW STRUCTURE:', JSON.stringify(alert, null, 2));
     
     // Defensive check for alert structure
     if (!alert.data || !alert.data.ticker || !alert.data.direction) {

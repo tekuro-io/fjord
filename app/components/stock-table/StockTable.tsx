@@ -453,6 +453,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             }
             
             console.log('🔍 DEBUG: About to call handlePatternAlert with:', alertData);
+            console.log('🔍 DEBUG: alertData structure check:', {
+              hasData: 'data' in alertData,
+              hasTicker: alertData.data?.ticker,
+              hasDirection: alertData.data?.direction
+            });
             handlePatternAlert(alertData);
             console.log('🔍 DEBUG: handlePatternAlert called successfully');
             return; // Skip stock processing
