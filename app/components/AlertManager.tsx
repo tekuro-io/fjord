@@ -12,6 +12,7 @@ const AlertManager = React.forwardRef<{ handleNewAlert: (alert: PatternAlertData
   ({ wsConnection, onPatternAlert }, ref) => {
   const [alerts, setAlerts] = useState<(PatternAlertData & { id: string })[]>([]);
   const subscribed = React.useRef<boolean>(false);
+  const alertIdCounter = React.useRef<number>(0);
 
   // Function to manually trigger a test bullish alert
   const triggerTestAlert = React.useCallback(() => {
@@ -89,7 +90,7 @@ const AlertManager = React.forwardRef<{ handleNewAlert: (alert: PatternAlertData
 
     const alertWithId = {
       ...alert,
-      id: Date.now().toString()
+      id: `alert-${++alertIdCounter.current}`
     };
     
     console.log('🔔 DEBUG: AlertManager adding alert to state:', alertWithId.id);

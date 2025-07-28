@@ -1015,7 +1015,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         
         return (
           <div className="flex items-center gap-2">
-            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200">
+            <button className="text-gray-400 hover:text-blue-400 transition-colors duration-200 ml-2">
               {expandedRows.has(info.row.id) ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             </button>
             <div className="flex items-center gap-1">
@@ -1357,14 +1357,14 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       console.log(`🚨 DEBUG: ${ticker} is not expanded, only showing row flash`);
     }
     
-    // Stop row flashing after 10 seconds (same as alert duration)
+    // Stop row flashing after 30 seconds (3x longer duration)
     setTimeout(() => {
       setPatternFlashingRows(prev => {
         const newMap = new Map(prev);
         newMap.delete(ticker);
         return newMap;
       });
-    }, 10000);
+    }, 30000);
     
     // IMPORTANT: Also trigger the AlertManager popup and sound
     console.log('🚨 DEBUG: About to call AlertManager handleNewAlert directly');

@@ -14,7 +14,8 @@
       "Bash(curl:*)",
       "Bash(npm run typecheck:*)",
       "Bash(npm run:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:react.dev)"
     ],
     "deny": []
   }

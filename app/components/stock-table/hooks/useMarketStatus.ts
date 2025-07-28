@@ -3,6 +3,7 @@ import React from 'react';
 export const useMarketStatus = () => {
   const [currentTimeET, setCurrentTimeET] = React.useState('');
   const [marketStatus, setMarketStatus] = React.useState('');
+  const [isClient, setIsClient] = React.useState(false);
 
   const getMarketStatus = React.useCallback(() => {
     const now = new Date();
@@ -38,7 +39,15 @@ export const useMarketStatus = () => {
     }
   }, []);
 
+  // Effect to detect client-side rendering
   React.useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  React.useEffect(() => {
+    // Only run clock updates on the client side
+    if (!isClient) return;
+
     const updateClock = () => {
       const now = new Date();
       const options: Intl.DateTimeFormatOptions = {
@@ -55,7 +64,7 @@ export const useMarketStatus = () => {
     updateClock();
     const intervalId = setInterval(updateClock, 1000);
     return () => clearInterval(intervalId);
-  }, [getMarketStatus]);
+  }, [getMarketStatus, isClient]);
 
   return { currentTimeET, marketStatus };
 };
