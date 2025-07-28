@@ -361,6 +361,16 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
             isArray: Array.isArray(parsedData)
           });
 
+          // DEBUG: Check if this looks like a pattern detection message at all
+          if (typeof parsedData === 'object' && parsedData !== null) {
+            const obj = parsedData as Record<string, unknown>;
+            if ('pattern' in obj || 'confidence' in obj || 'alert_level' in obj || 
+                ('topic' in obj && obj.topic === 'pattern_detection') ||
+                ('ticker' in obj && ('pattern' in obj || 'is_bullish' in obj))) {
+              console.log('🚨 POTENTIAL PATTERN MESSAGE DETECTED:', parsedData);
+            }
+          }
+
           // Type guard for pattern detection messages (check first - more specific)
           const isPatternDetection = (data: unknown): boolean => {
             // Only log if it has pattern-related fields
@@ -1375,15 +1385,15 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
       <div className="overflow-x-auto px-0 sm:px-6 pb-6">
         <div className={`w-full text-sm ${colors.textSecondary} font-sans shadow-lg expanded-table`}>
           {/* Header Row */}
-          <div className={`${colors.tableHeaderGradient} h-12`}>
+          <div className={`${colors.tableHeaderGradient} h-12 mb-2`}>
             {table.getHeaderGroups().map((headerGroup) => (
-              <div key={headerGroup.id} className="flex items-center">
+              <div key={headerGroup.id} className="flex items-center h-full">
                 {headerGroup.headers.map((header) => (
                   <div
                     key={header.id}
                     className={`px-0.5 py-2 text-left text-xs font-medium uppercase tracking-wider ${colors.textSecondary} ${
                       header.column.getCanSort() ? `cursor-pointer select-none hover:${colors.secondary} transition-colors duration-200` : ""
-                    } ${getHeaderClasses(header.id)} flex-1 flex items-center`}
+                    } ${getHeaderClasses(header.id)} flex-1 flex items-center justify-center h-full`}
                     onClick={header.column.getToggleSortingHandler()}
                   >
                     <div className="flex items-center gap-1">
