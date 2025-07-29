@@ -1266,6 +1266,11 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
     setChartModalData(null);
   }, []);
 
+  // Function to get top 4 tickers from current sorted table data
+  const getTop4Tickers = React.useCallback((): string[] => {
+    return table.getRowModel().rows.slice(0, 4).map(row => row.original.ticker);
+  }, [table]);
+
   // Handler for pattern alerts
   const handlePatternAlert = React.useCallback((alert: PatternAlertData) => {
     if (!alert.data || !alert.data.ticker || !alert.data.direction) {
@@ -1323,6 +1328,7 @@ export default function StockTable({ data: initialData }: { data: StockItem[] })
         toggleLock={toggleLock}
         currentTimeET={currentTimeET}
         marketStatus={marketStatus}
+        getTop4Tickers={getTop4Tickers}
       />
       <OptionsDrawer
         showOptionsDrawer={showOptionsDrawer}
