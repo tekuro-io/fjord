@@ -1,15 +1,14 @@
 import { Suspense } from 'react';
-import { StockTableLoader } from './components/stock-table';
-import Image from 'next/image'
-import Link from 'next/link'
-import Spinner from './components/ui/Spinner';
-import { CommitLink } from './components/CommitLink';
-import TradingViewWrapper from './components/TradingViewWrapper';
-import { ThemeProvider } from './components/ThemeContext';
-import { ThemeWrapper } from './components/ThemeWrapper';
-import ClientPageWrapper from './components/ClientPageWrapper';
+import Image from 'next/image';
+import Link from 'next/link';
+import Spinner from '../components/ui/Spinner';
+import { CommitLink } from '../components/CommitLink';
+import { ThemeProvider } from '../components/ThemeContext';
+import { ThemeWrapper } from '../components/ThemeWrapper';
+import ClientPageWrapper from '../components/ClientPageWrapper';
+import MultiChartContainer from '../components/MultiChartContainer';
 
-export default async function HomePage() {
+export default async function MultiChartPage() {
     return (
         <ThemeProvider>
             <ThemeWrapper>
@@ -26,17 +25,16 @@ export default async function HomePage() {
                         </h1>
                         <div className="mt-4 flex justify-center gap-4">
                             <Link 
-                                href="/multichart?s=2x2&t=qqq,tsmc,avgo,nvda" 
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
+                                href="/" 
+                                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
                             >
-                                📈 Multi-Chart View
+                                ← Back to Table View
                             </Link>
                         </div>
                     </div>
 
-                    <TradingViewWrapper />
                     <Suspense fallback={<Spinner />}>
-                        <StockTableLoader />
+                        <MultiChartContainer />
                     </Suspense>
                     <footer className="w-full pt-8 py-3 text-center text-sm text-gray-400 font-sans tracking-wide mt-8">
                         <CommitLink />
