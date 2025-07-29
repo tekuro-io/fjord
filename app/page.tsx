@@ -24,14 +24,6 @@ export default async function HomePage() {
                                 className='inline-block mr-3 my-2'
                             />
                         </h1>
-                        <div className="mt-4 flex justify-center gap-4">
-                            <Link 
-                                href="/multichart?s=2x2&t=qqq,tsmc,avgo,nvda" 
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
-                            >
-                                📈 Multi-Chart View
-                            </Link>
-                        </div>
                     </div>
 
                     <TradingViewWrapper />
