@@ -52,6 +52,7 @@ export default function MultiChartContainer() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   const wsEffectActiveRef = useRef<string | null>(null); // Track which effect is currently active
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track reconnection timeout
   
   // Chart state tracking
   const chartStockData = useRef<Map<string, StockItem>>(new Map());
@@ -182,10 +183,23 @@ export default function MultiChartContainer() {
     
     if (!wsUrl || debouncedActiveTickers.length === 0 || isDragging.current) {
       // Close WebSocket if no active tickers or during drag operations
-      if (wsRef.current && debouncedActiveTickers.length === 0) {
-        console.log(`🔌 WS Effect ${effectId}: Closing WebSocket (no tickers)`);
-        wsRef.current.close();
-        wsRef.current = null;
+      if (debouncedActiveTickers.length === 0) {
+        console.log(`🔌 WS Effect ${effectId}: No tickers - cleaning up all connections`);
+        
+        // Clear any pending reconnection timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+          console.log(`🔌 WS Effect ${effectId}: Cleared reconnection timeout`);
+        }
+        
+        // Close WebSocket
+        if (wsRef.current) {
+          wsRef.current.close();
+          wsRef.current = null;
+        }
+        
+        // Reset connection state
         setConnectionStatus('disconnected');
         wsEffectActiveRef.current = null;
       }
@@ -266,13 +280,14 @@ export default function MultiChartContainer() {
         // Only reconnect if we still have active tickers and not during drag operations
         if (debouncedActiveTickers.length > 0 && !isDragging.current) {
           console.log(`🔄 WS Effect ${effectId}: Scheduling reconnection in 5s`);
-          setTimeout(() => {
-            if (!isDragging.current && debouncedActiveTickers.length > 0) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            if (!isDragging.current && debouncedActiveTickers.length > 0 && wsEffectActiveRef.current === effectId) {
               console.log(`🔄 WS Effect ${effectId}: Attempting reconnection`);
               connectWebSocket();
             } else {
-              console.log(`🔄 WS Effect ${effectId}: Skipping reconnection - dragging:${isDragging.current} tickers:${debouncedActiveTickers.length}`);
+              console.log(`🔄 WS Effect ${effectId}: Skipping reconnection - dragging:${isDragging.current} tickers:${debouncedActiveTickers.length} activeEffect:${wsEffectActiveRef.current}`);
             }
+            reconnectTimeoutRef.current = null;
           }, 5000);
         } else {
           console.log(`🔄 WS Effect ${effectId}: No reconnection needed - dragging:${isDragging.current} tickers:${debouncedActiveTickers.length}`);
@@ -293,6 +308,13 @@ export default function MultiChartContainer() {
       console.log(`🧹 WS Effect ${effectId}: Cleanup - closing WebSocket, activeEffect: ${wsEffectActiveRef.current}`);
       // Only cleanup if this effect is still the active one
       if (wsEffectActiveRef.current === effectId) {
+        // Clear any pending reconnection timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+          console.log(`🧹 WS Effect ${effectId}: Cleared reconnection timeout during cleanup`);
+        }
+        
         if (wsRef.current) {
           wsRef.current.close();
           wsRef.current = null;
