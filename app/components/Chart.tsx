@@ -222,8 +222,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
             },
             timeScale: {
-                rightOffset: isExpanded ? 5 : 3, // Less right padding for better space usage
-                barSpacing: isExpanded ? 8 : 10, // Wider bars for better candlestick visibility  
+                rightOffset: isExpanded ? 5 : 2, // Minimal right padding to prevent scrolling off screen
+                barSpacing: isExpanded ? 8 : 6, // Tighter bar spacing for multichart view
                 borderVisible: isExpanded, // Show border in expanded view
                 visible: true,
                 timeVisible: true,
@@ -232,6 +232,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 rightBarStaysOnScroll: false, // Don't auto-scroll to keep data from sliding off
                 minBarSpacing: 0.5,
                 shiftVisibleRangeOnNewBar: false, // Don't auto-scroll - build from left to right
+                fixLeftEdge: true, // Keep left edge fixed to prevent horizontal scrolling
             },
             rightPriceScale: {
                 autoScale: true,
@@ -345,10 +346,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         } else {
             // No initial data - start with empty series
             newSeries.setData([]);
-            // Set initial range to start from left (logical position 0)
+            // Set initial range to start from left (logical position 0) with proper containment
             chart.timeScale().setVisibleLogicalRange({
-                from: 0,
-                to: 20  // Show space for ~20 candles initially
+                from: -2,  // Small negative buffer to ensure left alignment
+                to: isExpanded ? 20 : 15  // Reasonable space for candles without overflowing
             });
         }
         // Don't call fitContent() here - let individual charts set their own view ranges
@@ -409,17 +410,25 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     close: point.close
                 }));
                 seriesRef.current.setData(processedData);
-                // For candlestick charts, start from far left and build to the right
+                // For candlestick charts, show a consistent view that fits well in the container
                 if (chartRef.current && processedData.length > 0) {
-                    // Always start from the first candle and show a reasonable amount
-                    const maxVisibleBars = isExpanded ? 50 : 30; // Show more bars for better context
-                    const visibleBars = Math.min(processedData.length + 10, maxVisibleBars); // Add buffer for new data
+                    // Calculate how many bars to show based on chart expansion state
+                    const maxVisibleBars = isExpanded ? 50 : 25; // Reasonable number of bars for multichart view
                     
-                    // Set range to start from first data point (far left)
-                    chartRef.current.timeScale().setVisibleRange({
-                        from: processedData[0].time,
-                        to: processedData[Math.min(visibleBars - 1, processedData.length - 1)].time,
-                    });
+                    if (processedData.length <= maxVisibleBars) {
+                        // If we have fewer bars than max, show all with some padding
+                        chartRef.current.timeScale().setVisibleRange({
+                            from: processedData[0].time,
+                            to: processedData[processedData.length - 1].time,
+                        });
+                    } else {
+                        // If we have more bars than max, show the most recent ones
+                        const startIndex = Math.max(0, processedData.length - maxVisibleBars);
+                        chartRef.current.timeScale().setVisibleRange({
+                            from: processedData[startIndex].time,
+                            to: processedData[processedData.length - 1].time,
+                        });
+                    }
                 }
             } else if (chartType === 'area' && 'value' in initialData[0]) {
                 const processedData = (initialData as ChartDataPoint[]).map(point => ({
