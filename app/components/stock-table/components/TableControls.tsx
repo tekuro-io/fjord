@@ -1,7 +1,10 @@
+'use client';
+
 import React from 'react';
 import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock, Sun, Moon, Grid2x2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import MarketStatus from './MarketStatus';
+import CustomChartsDropdown from './CustomChartsDropdown';
 import { useTheme } from '../../ThemeContext';
 
 interface TableControlsProps {
@@ -117,6 +120,9 @@ const TableControls: React.FC<TableControlsProps> = ({
         >
           <Grid2x2 className="w-4 h-4" />
         </button>
+
+        {/* Custom Charts Dropdown */}
+        <CustomChartsDropdown className="ml-3" />
       </div>
 
       {/* Right side: Status information */}

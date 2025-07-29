@@ -3,3 +3,4 @@ export { default as TableControls } from './TableControls';
 export { default as OptionsDrawer } from './OptionsDrawer';
 export { default as MarketStatus } from './MarketStatus';
 export { default as StockTableStyles } from './StockTableStyles';
+export { default as CustomChartsDropdown } from './CustomChartsDropdown';

@@ -24,8 +24,12 @@ const LAYOUT_CONFIGS: Record<string, LayoutConfig> = {
   '1x1': { cols: 1, rows: 1 },
   '1x2': { cols: 1, rows: 2 },
   '1x3': { cols: 1, rows: 3 },
-  '1x4': { cols: 1, rows: 4 },
+  '2x1': { cols: 2, rows: 1 },
   '2x2': { cols: 2, rows: 2 },
+  '2x3': { cols: 2, rows: 3 },
+  '3x1': { cols: 3, rows: 1 },
+  '3x2': { cols: 3, rows: 2 },
+  '3x3': { cols: 3, rows: 3 },
 };
 
 export default function MultiChartContainer() {
@@ -523,7 +527,7 @@ export default function MultiChartContainer() {
                               'repeat(3, minmax(0, 1fr))';
   
   return (
-    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-1 sm:mx-2 w-full max-w-none relative border ${colors.border} p-2 sm:p-3`}>
+    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-auto max-w-screen-lg relative border ${colors.border} p-2 sm:p-3`}>
       {/* Header */}
       <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center relative`}>
         <div className="flex items-center gap-4">
