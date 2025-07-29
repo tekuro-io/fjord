@@ -386,13 +386,13 @@ export default function MultiChartContainer() {
     setDraggedChart(null);
   }, [draggedChart]);
   
-  // Calculate chart dimensions based on layout - optimized for better aspect ratios
-  // Accounts for: ThemeWrapper padding (32px), page header (60px), multichart header (60px), footer (40px), gaps
-  // Prioritize wider aspect ratios for better chart readability
-  const chartHeight = layout.rows === 1 ? 'min(calc(100vh - 120px), 60vh)' : 
-                     layout.rows === 2 ? 'calc((100vh - 140px) / 2.2)' :
-                     layout.rows === 3 ? 'calc((100vh - 160px) / 3.5)' :
-                     'calc((100vh - 180px) / 5)';
+  // Calculate chart dimensions based on layout - use more vertical space
+  // Accounts for: ThemeWrapper padding (16px), page header (40px), multichart header (80px), minimal footer (20px), gaps
+  // More aggressive use of available vertical space
+  const chartHeight = layout.rows === 1 ? 'calc(100vh - 160px)' : 
+                     layout.rows === 2 ? 'calc((100vh - 180px) / 2)' :
+                     layout.rows === 3 ? 'calc((100vh - 200px) / 3)' :
+                     'calc((100vh - 220px) / 4)';
   
   // Responsive grid columns - stack on mobile for better usability
   const gridTemplateColumns = layout.cols === 1 ? '1fr' : 

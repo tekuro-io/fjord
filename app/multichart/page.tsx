@@ -35,7 +35,7 @@ export default async function MultiChartPage() {
                     <Suspense fallback={<Spinner />}>
                         <MultiChartContainer />
                     </Suspense>
-                    <footer className="w-full pt-4 py-2 text-center text-xs text-gray-400 font-sans tracking-wide mt-4">
+                    <footer className="w-full pt-2 py-1 text-center text-xs text-gray-400 font-sans tracking-wide mt-2">
                         <CommitLink />
                     </footer>
                 </ClientPageWrapper>

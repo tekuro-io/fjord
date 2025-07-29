@@ -222,8 +222,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
             },
             timeScale: {
-                rightOffset: isExpanded ? 10 : 2, // More right padding in expanded view to show more data
-                barSpacing: isExpanded ? 4 : 5, // Tighter spacing in expanded view for more zoomed out initial view
+                rightOffset: isExpanded ? 5 : 3, // Less right padding for better space usage
+                barSpacing: isExpanded ? 8 : 10, // Wider bars for better candlestick visibility  
                 borderVisible: isExpanded, // Show border in expanded view
                 visible: true,
                 timeVisible: true,
@@ -237,6 +237,11 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 autoScale: true,
                 borderVisible: isExpanded, // Show price scale border in expanded view
                 visible: true,
+                scaleMargins: {
+                    top: 0.1,     // 10% margin at top for better visibility
+                    bottom: 0.1,  // 10% margin at bottom for better visibility
+                },
+                entireTextOnly: false, // Allow partial price labels for better space usage
             },
         });
 
@@ -266,6 +271,11 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 wickUpColor,
                 wickDownColor,
                 borderVisible: false,
+                priceFormat: {
+                    type: 'price',
+                    precision: 2,
+                    minMove: 0.01,
+                },
             });
         } else {
             newSeries = chart.addSeries(AreaSeries, {
@@ -394,7 +404,19 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     close: point.close
                 }));
                 seriesRef.current.setData(processedData);
-                chartRef.current?.timeScale().fitContent(); // Only fit content for initial data load
+                // For candlestick charts, set better initial visible range
+                if (chartRef.current && processedData.length > 0) {
+                    const visibleBars = Math.min(processedData.length, isExpanded ? 100 : 50);
+                    const fromIndex = Math.max(0, processedData.length - visibleBars);
+                    if (fromIndex < processedData.length - 1) {
+                        chartRef.current.timeScale().setVisibleRange({
+                            from: processedData[fromIndex].time,
+                            to: processedData[processedData.length - 1].time,
+                        });
+                    } else {
+                        chartRef.current.timeScale().fitContent();
+                    }
+                }
             } else if (chartType === 'area' && 'value' in initialData[0]) {
                 const processedData = (initialData as ChartDataPoint[]).map(point => ({
                     time: (typeof point.time === 'number' && point.time > 1e12 ? 
