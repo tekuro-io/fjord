@@ -128,9 +128,19 @@ export default function MultiChartContainer() {
     return charts.map(chart => chart.ticker).filter(Boolean) as string[];
   }, [charts]);
   
-  // WebSocket connection (only when there are active tickers)
+  // Debounced version of active tickers to prevent rapid WebSocket reconnections during drag operations
+  const [debouncedActiveTickers, setDebouncedActiveTickers] = useState<string[]>([]);
   useEffect(() => {
-    if (!wsUrl || activeTickers.length === 0) {
+    const timer = setTimeout(() => {
+      setDebouncedActiveTickers(activeTickers);
+    }, 300); // 300ms debounce
+    
+    return () => clearTimeout(timer);
+  }, [activeTickers]);
+  
+  // WebSocket connection (only when there are debounced active tickers)
+  useEffect(() => {
+    if (!wsUrl || debouncedActiveTickers.length === 0) {
       // Close WebSocket if no active tickers
       if (wsRef.current) {
         wsRef.current.close();
@@ -206,7 +216,7 @@ export default function MultiChartContainer() {
         console.log('MultiChart: WebSocket disconnected');
         setConnectionStatus('disconnected');
         // Only reconnect if we still have active tickers
-        if (activeTickers.length > 0) {
+        if (debouncedActiveTickers.length > 0) {
           setTimeout(connectWebSocket, 5000);
         }
       };
@@ -226,16 +236,16 @@ export default function MultiChartContainer() {
         wsRef.current = null;
       }
     };
-  }, [wsUrl, activeTickers]);
+  }, [wsUrl, debouncedActiveTickers]);
   
   // Handle ticker subscriptions separately
   useEffect(() => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     
-    console.log('MultiChart: Subscribing to tickers:', activeTickers);
+    console.log('MultiChart: Subscribing to tickers:', debouncedActiveTickers);
     
     // Subscribe to all active tickers
-    activeTickers.forEach(ticker => {
+    debouncedActiveTickers.forEach(ticker => {
       const subscribeMessage = {
         type: "subscribe",
         topic: `stock:${ticker.toUpperCase()}`
@@ -243,7 +253,7 @@ export default function MultiChartContainer() {
       wsRef.current!.send(JSON.stringify(subscribeMessage));
       console.log(`MultiChart: Subscribed to ${ticker}`);
     });
-  }, [activeTickers, connectionStatus]); // Subscribe when tickers change or connection is established
+  }, [debouncedActiveTickers, connectionStatus]); // Subscribe when tickers change or connection is established
   
   // Handle ticker input change
   const handleTickerChange = useCallback((chartId: string, newTicker: string) => {
@@ -439,11 +449,11 @@ export default function MultiChartContainer() {
           {/* Connection Status */}
           <div className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${
-              activeTickers.length === 0 ? 'bg-gray-500' : 
+              debouncedActiveTickers.length === 0 ? 'bg-gray-500' : 
               connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'
             }`}></div>
             <span className={`text-sm ${colors.textSecondary}`}>
-              {activeTickers.length === 0 ? 'No Active Charts' :
+              {debouncedActiveTickers.length === 0 ? 'No Active Charts' :
                connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
             </span>
           </div>
