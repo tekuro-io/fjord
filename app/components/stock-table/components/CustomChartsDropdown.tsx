@@ -41,8 +41,8 @@ const CustomChartsDropdown: React.FC<CustomChartsDropdownProps> = ({ className =
   };
 
   const renderGridSelector = () => {
-    const maxCols = 3;
-    const maxRows = 3;
+    const maxCols = 4;
+    const maxRows = 4;
     const cells = [];
 
     for (let row = 1; row <= maxRows; row++) {
@@ -66,7 +66,7 @@ const CustomChartsDropdown: React.FC<CustomChartsDropdownProps> = ({ className =
 
     return (
       <div className="flex justify-center">
-        <div className="grid grid-cols-3 gap-1 p-3">
+        <div className="grid grid-cols-4 gap-1 p-3">
           {cells}
         </div>
       </div>

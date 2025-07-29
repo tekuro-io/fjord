@@ -26,12 +26,19 @@ const LAYOUT_CONFIGS: Record<string, LayoutConfig> = {
   '1x1': { cols: 1, rows: 1 },
   '1x2': { cols: 1, rows: 2 },
   '1x3': { cols: 1, rows: 3 },
+  '1x4': { cols: 1, rows: 4 },
   '2x1': { cols: 2, rows: 1 },
   '2x2': { cols: 2, rows: 2 },
   '2x3': { cols: 2, rows: 3 },
+  '2x4': { cols: 2, rows: 4 },
   '3x1': { cols: 3, rows: 1 },
   '3x2': { cols: 3, rows: 2 },
   '3x3': { cols: 3, rows: 3 },
+  '3x4': { cols: 3, rows: 4 },
+  '4x1': { cols: 4, rows: 1 },
+  '4x2': { cols: 4, rows: 2 },
+  '4x3': { cols: 4, rows: 3 },
+  '4x4': { cols: 4, rows: 4 },
 };
 
 export default function MultiChartContainer() {
@@ -521,12 +528,13 @@ export default function MultiChartContainer() {
   const chartHeight = layout.rows === 1 ? 'calc(100vh - 130px)' : 
                      layout.rows === 2 ? 'calc((100vh - 140px) / 2)' :
                      layout.rows === 3 ? 'calc((100vh - 150px) / 3)' :
-                     'calc((100vh - 160px) / 4)';
+                     `calc((100vh - 160px) / ${layout.rows})`;
   
   // Responsive grid columns - stack on mobile for better usability
   const gridTemplateColumns = layout.cols === 1 ? '1fr' : 
                               layout.cols === 2 ? 'repeat(2, minmax(0, 1fr))' : 
-                              'repeat(3, minmax(0, 1fr))';
+                              layout.cols === 3 ? 'repeat(3, minmax(0, 1fr))' :
+                              'repeat(4, minmax(0, 1fr))';
   
   return (
     <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-1 sm:mx-2 w-full max-w-none relative border ${colors.border} p-2 sm:p-3`}>

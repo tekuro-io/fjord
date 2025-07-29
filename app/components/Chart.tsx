@@ -229,9 +229,9 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 timeVisible: true,
                 secondsVisible: isExpanded, // Show seconds only in expanded view
                 lockVisibleTimeRangeOnResize: true,
-                rightBarStaysOnScroll: true,
+                rightBarStaysOnScroll: false, // Don't auto-scroll to keep data from sliding off
                 minBarSpacing: 0.5,
-                shiftVisibleRangeOnNewBar: true, // Auto-scroll when viewing latest data
+                shiftVisibleRangeOnNewBar: false, // Don't auto-scroll - build from left to right
             },
             rightPriceScale: {
                 autoScale: true,
@@ -345,10 +345,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         } else {
             // No initial data - start with empty series
             newSeries.setData([]);
-            // Set a default narrow view for empty charts
+            // Set initial range to start from left (logical position 0)
             chart.timeScale().setVisibleLogicalRange({
-                from: -2,
-                to: 2
+                from: 0,
+                to: 20  // Show space for ~20 candles initially
             });
         }
         // Don't call fitContent() here - let individual charts set their own view ranges
@@ -409,24 +409,17 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     close: point.close
                 }));
                 seriesRef.current.setData(processedData);
-                // For candlestick charts, set consistent limited initial view
+                // For candlestick charts, start from far left and build to the right
                 if (chartRef.current && processedData.length > 0) {
-                    // Show only the last few bars initially to match post-swap appearance
-                    const visibleBars = Math.min(processedData.length, isExpanded ? 10 : 5);
-                    const fromIndex = Math.max(0, processedData.length - visibleBars);
-                    if (fromIndex < processedData.length - 1) {
-                        chartRef.current.timeScale().setVisibleRange({
-                            from: processedData[fromIndex].time,
-                            to: processedData[processedData.length - 1].time,
-                        });
-                    } else {
-                        // Even for single data points, set a narrow view
-                        const barSpacing = 10; // Consistent with Chart creation barSpacing
-                        chartRef.current.timeScale().setVisibleLogicalRange({
-                            from: -2,
-                            to: 2
-                        });
-                    }
+                    // Always start from the first candle and show a reasonable amount
+                    const maxVisibleBars = isExpanded ? 50 : 30; // Show more bars for better context
+                    const visibleBars = Math.min(processedData.length + 10, maxVisibleBars); // Add buffer for new data
+                    
+                    // Set range to start from first data point (far left)
+                    chartRef.current.timeScale().setVisibleRange({
+                        from: processedData[0].time,
+                        to: processedData[Math.min(visibleBars - 1, processedData.length - 1)].time,
+                    });
                 }
             } else if (chartType === 'area' && 'value' in initialData[0]) {
                 const processedData = (initialData as ChartDataPoint[]).map(point => ({
