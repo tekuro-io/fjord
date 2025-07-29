@@ -18,6 +18,7 @@ interface ManagedChartProps {
 // Define the shape of the ref handle that this component will expose to its parent
 export interface ManagedChartHandle {
   updateWithPrice: (timestamp: number, price: number) => void;
+  updateTickerAndData: (newTicker: string, newHistoricalCandles: CandleDataPoint[]) => void;
 }
 
 // Use forwardRef to allow StockTable to get a ref to this component
@@ -50,7 +51,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
     }
   }, [historicalCandles, stockData.ticker]);
 
-  // Expose updateWithPrice method to parent via ref
+  // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
     updateWithPrice: (timestamp: number, price: number) => {
       if (!chartRef.current) return;
@@ -102,6 +103,32 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
           value: price,
         };
         chartRef.current.updateData(areaPoint);
+      }
+    },
+    
+    updateTickerAndData: (newTicker: string, newHistoricalCandles: CandleDataPoint[]) => {
+      if (!chartRef.current) return;
+      
+      // Reset internal candle tracking
+      completedCandles.current = [];
+      currentCandle.current = null;
+      currentCandleStartTime.current = null;
+      
+      // If we have historical data, initialize tracking from it
+      if (newHistoricalCandles.length > 0) {
+        const lastCandle = newHistoricalCandles[newHistoricalCandles.length - 1];
+        const timeInSeconds = Math.floor(lastCandle.time / 1000);
+        const bucketTime = Math.floor(timeInSeconds / 60) * 60;
+        
+        // Set the current candle tracking to match the last historical candle
+        currentCandle.current = { ...lastCandle };
+        currentCandleStartTime.current = bucketTime;
+        
+        // Update the chart with the new historical data
+        chartRef.current.setData(newHistoricalCandles);
+      } else {
+        // No historical data - clear the chart
+        chartRef.current.setData([]);
       }
     }
   }));

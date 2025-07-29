@@ -356,27 +356,41 @@ export default function MultiChartContainer() {
             ? chartCandleData.current.get(targetChart.ticker.toUpperCase()) || []
             : [];
           
-          // Swap the tickers and their associated historical data
+          // Swap just the tickers and historical data, preserving chart refs
           const draggedTicker = draggedChart.ticker;
           const targetTicker = targetChart.ticker;
           
-          // Update charts with swapped tickers and preserved historical data
+          // Use the chart refs to directly update ticker and data without re-creation
+          if (draggedChart.chartRef.current && targetChart.chartRef.current) {
+            // Directly update the chart data via the exposed methods
+            draggedChart.chartRef.current.updateTickerAndData(
+              targetTicker || '', 
+              targetCandles
+            );
+            targetChart.chartRef.current.updateTickerAndData(
+              draggedTicker || '', 
+              draggedCandles
+            );
+          }
+          
+          // Update the chart configurations with swapped tickers
+          // KEEP the existing chart refs to avoid re-creation
           newCharts[draggedIndex] = {
             ...draggedChart,
             ticker: targetTicker,
             historicalCandles: targetCandles,
-            chartRef: React.createRef<ManagedChartHandle | null>()
+            // Keep existing chartRef - chart instance preserved
           };
           
           newCharts[targetIndex] = {
             ...targetChart,
             ticker: draggedTicker,
             historicalCandles: draggedCandles,
-            chartRef: React.createRef<ManagedChartHandle | null>()
+            // Keep existing chartRef - chart instance preserved
           };
           
-          // The ManagedChart components will re-initialize with the correct tickers and historical data
-          // The WebSocket subscription effect will handle re-subscribing
+          // Charts are updated directly via refs - no component re-creation
+          // WebSocket subscriptions remain intact
         }
         
         return newCharts;
