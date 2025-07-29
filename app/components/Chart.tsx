@@ -345,8 +345,13 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         } else {
             // No initial data - start with empty series
             newSeries.setData([]);
+            // Set a default narrow view for empty charts
+            chart.timeScale().setVisibleLogicalRange({
+                from: -2,
+                to: 2
+            });
         }
-        chart.timeScale().fitContent();
+        // Don't call fitContent() here - let individual charts set their own view ranges
 
         // Notify parent that the chart is ready
         if (onChartReady) {
@@ -404,9 +409,10 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                     close: point.close
                 }));
                 seriesRef.current.setData(processedData);
-                // For candlestick charts, set better initial visible range
+                // For candlestick charts, set consistent limited initial view
                 if (chartRef.current && processedData.length > 0) {
-                    const visibleBars = Math.min(processedData.length, isExpanded ? 100 : 50);
+                    // Show only the last few bars initially to match post-swap appearance
+                    const visibleBars = Math.min(processedData.length, isExpanded ? 10 : 5);
                     const fromIndex = Math.max(0, processedData.length - visibleBars);
                     if (fromIndex < processedData.length - 1) {
                         chartRef.current.timeScale().setVisibleRange({
@@ -414,7 +420,12 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                             to: processedData[processedData.length - 1].time,
                         });
                     } else {
-                        chartRef.current.timeScale().fitContent();
+                        // Even for single data points, set a narrow view
+                        const barSpacing = 10; // Consistent with Chart creation barSpacing
+                        chartRef.current.timeScale().setVisibleLogicalRange({
+                            from: -2,
+                            to: 2
+                        });
                     }
                 }
             } else if (chartType === 'area' && 'value' in initialData[0]) {

@@ -1,5 +1,6 @@
 import React from 'react';
-import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock, Sun, Moon } from 'lucide-react';
+import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock, Sun, Moon, BarChart3 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import MarketStatus from './MarketStatus';
 import { useTheme } from '../../ThemeContext';
 
@@ -14,6 +15,7 @@ interface TableControlsProps {
   toggleLock: () => void;
   currentTimeET: string;
   marketStatus: string;
+  getTop4Tickers: () => string[]; // Function to get top 4 tickers from sorted table
 }
 
 const TableControls: React.FC<TableControlsProps> = ({
@@ -27,8 +29,18 @@ const TableControls: React.FC<TableControlsProps> = ({
   toggleLock,
   currentTimeET,
   marketStatus,
+  getTop4Tickers,
 }) => {
   const { theme, toggleTheme, colors } = useTheme();
+  const router = useRouter();
+
+  const handleMultiChartTop4 = () => {
+    const top4Tickers = getTop4Tickers();
+    if (top4Tickers.length > 0) {
+      const tickerParam = top4Tickers.join(',');
+      router.push(`/multichart?s=2x2&t=${tickerParam}`);
+    }
+  };
   return (
     <div className="p-6 flex flex-col sm:flex-row justify-between items-center pb-4 gap-4">
       {/* Left side: Primary controls (Search and Filters) */}
@@ -95,6 +107,17 @@ const TableControls: React.FC<TableControlsProps> = ({
             {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
+
+        {/* Multi-Chart Top 4 Button */}
+        <button
+          onClick={handleMultiChartTop4}
+          className={`ml-3 px-3 py-2 ${colors.buttonPrimary} text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 text-sm font-medium hover:opacity-90`}
+          title="Open top 4 stocks in multi-chart view"
+          aria-label="Open top 4 stocks in multi-chart view"
+        >
+          <BarChart3 className="w-4 h-4" />
+          Multi-Chart Top 4
+        </button>
       </div>
 
       {/* Right side: Status information */}
