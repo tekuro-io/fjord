@@ -128,9 +128,17 @@ export default function MultiChartContainer() {
     return charts.map(chart => chart.ticker).filter(Boolean) as string[];
   }, [charts]);
   
-  // WebSocket connection (separate from ticker subscriptions)
+  // WebSocket connection (only when there are active tickers)
   useEffect(() => {
-    if (!wsUrl) return;
+    if (!wsUrl || activeTickers.length === 0) {
+      // Close WebSocket if no active tickers
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+        setConnectionStatus('disconnected');
+      }
+      return;
+    }
     
     const connectWebSocket = () => {
       if (wsRef.current) {
@@ -197,7 +205,10 @@ export default function MultiChartContainer() {
       ws.onclose = () => {
         console.log('MultiChart: WebSocket disconnected');
         setConnectionStatus('disconnected');
-        setTimeout(connectWebSocket, 5000);
+        // Only reconnect if we still have active tickers
+        if (activeTickers.length > 0) {
+          setTimeout(connectWebSocket, 5000);
+        }
       };
       
       ws.onerror = (error) => {
@@ -215,7 +226,7 @@ export default function MultiChartContainer() {
         wsRef.current = null;
       }
     };
-  }, [wsUrl, charts]);
+  }, [wsUrl, activeTickers]);
   
   // Handle ticker subscriptions separately
   useEffect(() => {
@@ -427,9 +438,13 @@ export default function MultiChartContainer() {
         <div className="flex items-center gap-3">
           {/* Connection Status */}
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <div className={`w-2 h-2 rounded-full ${
+              activeTickers.length === 0 ? 'bg-gray-500' : 
+              connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'
+            }`}></div>
             <span className={`text-sm ${colors.textSecondary}`}>
-              {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+              {activeTickers.length === 0 ? 'No Active Charts' :
+               connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
             </span>
           </div>
           
@@ -534,15 +549,26 @@ function ChartContainer({
           ? 'border-blue-500 border-dashed shadow-lg transform scale-[1.02]' 
           : colors.border
       }`}
-      draggable={!!chart.ticker}
-      onDragStart={() => onDragStart(chart.id)}
       onDragOver={(e) => onDragOver(e, chart.id)}
       onDragLeave={onDragLeave}
       onDrop={(e) => onDrop(e, chart.id)}
     >
       {/* Title Bar */}
-      <div className={`${colors.tableHeaderGradient} p-3 rounded-t-lg flex justify-between items-center cursor-move`}>
-        <div className="flex items-center gap-2">
+      <div className={`${colors.tableHeaderGradient} p-3 rounded-t-lg flex justify-between items-center`}>
+        <div 
+          className="flex items-center gap-3 cursor-move"
+          draggable={true}
+          onDragStart={(e) => {
+            e.stopPropagation();
+            onDragStart(chart.id);
+          }}
+          title="Drag to reorder charts"
+        >
+          {/* Drag Handle */}
+          <div className="text-xs text-gray-500 hover:text-gray-400 transition-colors">
+            ⋮⋮
+          </div>
+          {/* Chart Title */}
           {chart.ticker ? (
             <span className={`font-bold ${colors.accent} text-lg`}>
               {chart.ticker}
@@ -553,24 +579,21 @@ function ChartContainer({
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {chart.ticker && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onCloseChart(chart.id);
-              }}
-              className={`p-1 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-red-500 hover:text-white ${colors.textMuted}`}
-              title="Close chart"
-              aria-label="Close chart"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-          <div className="text-xs text-gray-500">
-            ⋮⋮
-          </div>
-        </div>
+        
+        {/* Close Button (far right) */}
+        {chart.ticker && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCloseChart(chart.id);
+            }}
+            className={`p-1 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-red-500 hover:text-white ${colors.textMuted}`}
+            title="Close chart"
+            aria-label="Close chart"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
       </div>
       
       {/* Chart Content */}
