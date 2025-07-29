@@ -222,17 +222,18 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
             },
             timeScale: {
-                rightOffset: isExpanded ? 5 : 2, // Minimal right padding to prevent scrolling off screen
-                barSpacing: isExpanded ? 8 : 6, // Tighter bar spacing for multichart view
+                rightOffset: isExpanded ? 5 : 1, // Very minimal right padding for multichart view
+                barSpacing: isExpanded ? 8 : 4, // Much tighter bar spacing for multichart view  
                 borderVisible: isExpanded, // Show border in expanded view
                 visible: true,
-                timeVisible: true,
+                timeVisible: isExpanded, // Only show time labels in expanded view
                 secondsVisible: isExpanded, // Show seconds only in expanded view
                 lockVisibleTimeRangeOnResize: true,
                 rightBarStaysOnScroll: false, // Don't auto-scroll to keep data from sliding off
                 minBarSpacing: 0.5,
                 shiftVisibleRangeOnNewBar: false, // Don't auto-scroll - build from left to right
                 fixLeftEdge: true, // Keep left edge fixed to prevent horizontal scrolling
+                fixRightEdge: !isExpanded, // Fix right edge for multichart view to prevent overflow
             },
             rightPriceScale: {
                 autoScale: true,
@@ -348,8 +349,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             newSeries.setData([]);
             // Set initial range to start from left (logical position 0) with proper containment
             chart.timeScale().setVisibleLogicalRange({
-                from: -2,  // Small negative buffer to ensure left alignment
-                to: isExpanded ? 20 : 15  // Reasonable space for candles without overflowing
+                from: -1,  // Minimal negative buffer to ensure left alignment
+                to: isExpanded ? 20 : 12  // Conservative space for multichart view to prevent overflow
             });
         }
         // Don't call fitContent() here - let individual charts set their own view ranges
@@ -413,7 +414,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 // For candlestick charts, show a consistent view that fits well in the container
                 if (chartRef.current && processedData.length > 0) {
                     // Calculate how many bars to show based on chart expansion state
-                    const maxVisibleBars = isExpanded ? 50 : 25; // Reasonable number of bars for multichart view
+                    const maxVisibleBars = isExpanded ? 50 : 20; // Fewer bars for multichart view to prevent overflow
                     
                     if (processedData.length <= maxVisibleBars) {
                         // If we have fewer bars than max, show all with some padding

@@ -735,7 +735,7 @@ function ChartContainer({
       {/* Chart Content */}
       <div className="p-2 w-full overflow-hidden" style={{ height: 'calc(100% - 60px)', maxWidth: '100%' }}>
         {chart.ticker ? (
-          <div className="w-full h-full overflow-hidden">
+          <div className="w-full h-full overflow-hidden" style={{ maxWidth: '100%', maxHeight: '100%' }}>
             <ManagedChart
               ref={chart.chartRef}
               stockData={{
@@ -752,7 +752,7 @@ function ChartContainer({
               }}
               chartType="candlestick"
               historicalCandles={chart.historicalCandles}
-              isExpanded={true}
+              isExpanded={false}
             />
           </div>
         ) : (
