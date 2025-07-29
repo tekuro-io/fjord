@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTheme } from './ThemeContext';
 import { ChartComponent } from './Chart';
@@ -11,9 +11,6 @@ interface ChartConfig {
   id: string;
   ticker: string | null;
   chartRef: React.RefObject<ChartHandle | null>;
-  historicalCandles: CandleDataPoint[];
-  currentCandle: CandleDataPoint | null;
-  currentCandleStartTime: number | null;
 }
 
 interface LayoutConfig {
@@ -51,6 +48,11 @@ export default function MultiChartContainer() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   
+  // Background candle collection system for all tickers (like StockTable)
+  const backgroundCandles = useRef<Map<string, CandleDataPoint[]>>(new Map());
+  const backgroundCurrentCandles = useRef<Map<string, CandleDataPoint>>(new Map());
+  const backgroundCandleStartTimes = useRef<Map<string, number>>(new Map());
+  
   // Initialize charts
   useEffect(() => {
     const newCharts: ChartConfig[] = [];
@@ -58,10 +60,7 @@ export default function MultiChartContainer() {
       newCharts.push({
         id: `chart-${i}`,
         ticker: initialTickers[i] || null,
-        chartRef: React.createRef<ChartHandle>(),
-        historicalCandles: [],
-        currentCandle: null,
-        currentCandleStartTime: null,
+        chartRef: React.createRef<ChartHandle | null>(),
       });
     }
     setCharts(newCharts);
@@ -86,7 +85,80 @@ export default function MultiChartContainer() {
     fetchWsUrl();
   }, []);
   
-  // WebSocket connection
+  // Background candle collection for all tickers (independent of chart visibility) - copied from StockTable
+  const collectBackgroundCandle = useCallback((ticker: string, timestamp: number, price: number) => {
+    // Convert timestamp to seconds for lightweight-charts consistency
+    const timeInSeconds = Math.floor(timestamp / 1000);
+    const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
+    
+    // Get or initialize ticker data
+    if (!backgroundCandles.current.has(ticker)) {
+      backgroundCandles.current.set(ticker, []);
+    }
+    
+    const tickerCandles = backgroundCandles.current.get(ticker)!;
+    const currentCandle = backgroundCurrentCandles.current.get(ticker);
+    const currentStartTime = backgroundCandleStartTimes.current.get(ticker);
+    
+    if (currentStartTime !== bucketTime) {
+      // Starting a new minute - finalize previous candle and start new one
+      if (currentCandle && currentStartTime !== undefined) {
+        // Add completed candle to history
+        tickerCandles.push(currentCandle);
+        
+        // Keep only last 100 candles
+        if (tickerCandles.length > 100) {
+          tickerCandles.shift();
+        }
+      }
+      
+      // Start new current candle
+      const newCandle: CandleDataPoint = {
+        time: bucketTime * 1000, // Store in milliseconds for consistency
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      };
+      
+      backgroundCurrentCandles.current.set(ticker, newCandle);
+      backgroundCandleStartTimes.current.set(ticker, bucketTime);
+    } else {
+      // Update current candle - keep same timestamp, update OHLC
+      if (currentCandle) {
+        const updatedCandle: CandleDataPoint = {
+          time: currentCandle.time,
+          open: currentCandle.open,
+          close: price,
+          low: Math.min(currentCandle.low, price),
+          high: Math.max(currentCandle.high, price),
+        };
+        
+        backgroundCurrentCandles.current.set(ticker, updatedCandle);
+      }
+    }
+  }, []);
+  
+  // Helper function to get historical candles for a ticker (for chart initialization)
+  const getHistoricalCandles = useCallback((ticker: string): CandleDataPoint[] => {
+    const historicalCandles = backgroundCandles.current.get(ticker) || [];
+    const currentCandle = backgroundCurrentCandles.current.get(ticker);
+    
+    // Combine historical + current candle
+    const allCandles = [...historicalCandles];
+    if (currentCandle) {
+      allCandles.push(currentCandle);
+    }
+    
+    return allCandles;
+  }, []);
+  
+  // Get active tickers from charts
+  const activeTickers = useMemo(() => {
+    return charts.map(chart => chart.ticker).filter(Boolean) as string[];
+  }, [charts]);
+  
+  // WebSocket connection (separate from ticker subscriptions)
   useEffect(() => {
     if (!wsUrl) return;
     
@@ -100,49 +172,36 @@ export default function MultiChartContainer() {
       wsRef.current = ws;
       
       ws.onopen = () => {
+        console.log('MultiChart: WebSocket connected');
         setConnectionStatus('connected');
-        
-        // Subscribe to all active tickers
-        charts.forEach(chart => {
-          if (chart.ticker) {
-            const subscribeMessage = {
-              type: "subscribe",
-              topic: `stock:${chart.ticker.toUpperCase()}`
-            };
-            ws.send(JSON.stringify(subscribeMessage));
-          }
-        });
       };
       
       ws.onmessage = (event) => {
         try {
           const parsedData = JSON.parse(event.data);
           
-          // Handle stock updates
-          if (parsedData.ticker && parsedData.price && parsedData.timestamp) {
+          // Handle stock updates (same logic as StockTable)
+          if (parsedData.ticker && parsedData.price != null && parsedData.timestamp) {
             const ticker = parsedData.ticker.toUpperCase();
             const price = parsedData.price;
             const timestamp = typeof parsedData.timestamp === 'string' 
               ? new Date(parsedData.timestamp).getTime() 
               : parsedData.timestamp;
             
-            // Update charts for this ticker
+            // ALWAYS collect background candles for ALL tickers (regardless of chart visibility)
+            collectBackgroundCandle(ticker, timestamp, price);
+            
+            // Update all charts that match this ticker
             setCharts(prevCharts => 
               prevCharts.map(chart => {
-                if (chart.ticker?.toUpperCase() === ticker) {
-                  const updatedChart = { ...chart };
-                  
-                  // Collect background candle data
-                  collectBackgroundCandle(updatedChart, timestamp, price);
-                  
-                  // Update chart via ref
-                  if (chart.chartRef.current) {
+                if (chart.ticker?.toUpperCase() === ticker && chart.chartRef.current) {
+                  try {
                     chart.chartRef.current.updateWithPrice(timestamp, price);
+                  } catch (chartError) {
+                    console.error(`📊 MultiChart Update Error for ${ticker}:`, chartError);
                   }
-                  
-                  return updatedChart;
                 }
-                return chart;
+                return chart; // No need to modify chart object
               })
             );
           }
@@ -152,6 +211,7 @@ export default function MultiChartContainer() {
       };
       
       ws.onclose = () => {
+        console.log('MultiChart: WebSocket disconnected');
         setConnectionStatus('disconnected');
         setTimeout(connectWebSocket, 5000);
       };
@@ -171,46 +231,24 @@ export default function MultiChartContainer() {
         wsRef.current = null;
       }
     };
-  }, [wsUrl, charts]);
+  }, [wsUrl, collectBackgroundCandle]);
   
-  // Background candle collection function
-  const collectBackgroundCandle = useCallback((chart: ChartConfig, timestamp: number, price: number) => {
-    const timeInSeconds = Math.floor(timestamp / 1000);
-    const bucketTime = Math.floor(timeInSeconds / 60) * 60;
+  // Handle ticker subscriptions separately
+  useEffect(() => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
     
-    if (chart.currentCandleStartTime !== bucketTime) {
-      // Starting a new minute - finalize previous candle
-      if (chart.currentCandle && chart.currentCandleStartTime !== null) {
-        chart.historicalCandles.push(chart.currentCandle);
-        
-        // Keep only last 100 candles
-        if (chart.historicalCandles.length > 100) {
-          chart.historicalCandles.shift();
-        }
-      }
-      
-      // Start new current candle
-      chart.currentCandle = {
-        time: bucketTime * 1000,
-        open: price,
-        high: price,
-        low: price,
-        close: price,
+    console.log('MultiChart: Subscribing to tickers:', activeTickers);
+    
+    // Subscribe to all active tickers
+    activeTickers.forEach(ticker => {
+      const subscribeMessage = {
+        type: "subscribe",
+        topic: `stock:${ticker.toUpperCase()}`
       };
-      chart.currentCandleStartTime = bucketTime;
-    } else {
-      // Update current candle
-      if (chart.currentCandle) {
-        chart.currentCandle = {
-          time: chart.currentCandle.time,
-          open: chart.currentCandle.open,
-          close: price,
-          low: Math.min(chart.currentCandle.low, price),
-          high: Math.max(chart.currentCandle.high, price),
-        };
-      }
-    }
-  }, []);
+      wsRef.current!.send(JSON.stringify(subscribeMessage));
+      console.log(`MultiChart: Subscribed to ${ticker}`);
+    });
+  }, [activeTickers, connectionStatus]); // Subscribe when tickers change or connection is established
   
   // Handle ticker input change
   const handleTickerChange = useCallback((chartId: string, newTicker: string) => {
@@ -231,10 +269,15 @@ export default function MultiChartContainer() {
           const updatedChart = {
             ...chart,
             ticker: ticker || null,
-            historicalCandles: [],
-            currentCandle: null,
-            currentCandleStartTime: null,
           };
+          
+          // Initialize chart with historical data if we have it
+          if (ticker && chart.chartRef.current) {
+            const historicalData = getHistoricalCandles(ticker);
+            if (historicalData.length > 0) {
+              chart.chartRef.current.setData(historicalData);
+            }
+          }
           
           // Subscribe to new ticker
           if (ticker && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -250,7 +293,7 @@ export default function MultiChartContainer() {
         return chart;
       })
     );
-  }, []);
+  }, [getHistoricalCandles]);
   
   // Drag and drop handlers
   const handleDragStart = useCallback((chartId: string) => {
@@ -277,36 +320,21 @@ export default function MultiChartContainer() {
         const targetIndex = newCharts.findIndex(chart => chart.id === targetChartId);
         
         if (draggedIndex !== -1 && targetIndex !== -1) {
-          // Swap the tickers and chart data
+          // Swap the tickers
           const draggedTicker = newCharts[draggedIndex].ticker;
-          const draggedHistoricalCandles = newCharts[draggedIndex].historicalCandles;
-          const draggedCurrentCandle = newCharts[draggedIndex].currentCandle;
-          const draggedCurrentCandleStartTime = newCharts[draggedIndex].currentCandleStartTime;
+          const targetTicker = newCharts[targetIndex].ticker;
           
-          newCharts[draggedIndex].ticker = newCharts[targetIndex].ticker;
-          newCharts[draggedIndex].historicalCandles = newCharts[targetIndex].historicalCandles;
-          newCharts[draggedIndex].currentCandle = newCharts[targetIndex].currentCandle;
-          newCharts[draggedIndex].currentCandleStartTime = newCharts[targetIndex].currentCandleStartTime;
-          
+          newCharts[draggedIndex].ticker = targetTicker;
           newCharts[targetIndex].ticker = draggedTicker;
-          newCharts[targetIndex].historicalCandles = draggedHistoricalCandles;
-          newCharts[targetIndex].currentCandle = draggedCurrentCandle;
-          newCharts[targetIndex].currentCandleStartTime = draggedCurrentCandleStartTime;
           
-          // Reset chart data for both charts
-          if (newCharts[draggedIndex].chartRef.current) {
-            const historicalData = [...newCharts[draggedIndex].historicalCandles];
-            if (newCharts[draggedIndex].currentCandle) {
-              historicalData.push(newCharts[draggedIndex].currentCandle);
-            }
+          // Update chart data for both charts with their historical data
+          if (newCharts[draggedIndex].chartRef.current && newCharts[draggedIndex].ticker) {
+            const historicalData = getHistoricalCandles(newCharts[draggedIndex].ticker);
             newCharts[draggedIndex].chartRef.current.setData(historicalData);
           }
           
-          if (newCharts[targetIndex].chartRef.current) {
-            const historicalData = [...newCharts[targetIndex].historicalCandles];
-            if (newCharts[targetIndex].currentCandle) {
-              historicalData.push(newCharts[targetIndex].currentCandle);
-            }
+          if (newCharts[targetIndex].chartRef.current && newCharts[targetIndex].ticker) {
+            const historicalData = getHistoricalCandles(newCharts[targetIndex].ticker);
             newCharts[targetIndex].chartRef.current.setData(historicalData);
           }
         }
@@ -316,7 +344,7 @@ export default function MultiChartContainer() {
     }
     
     setDraggedChart(null);
-  }, [draggedChart]);
+  }, [draggedChart, getHistoricalCandles]);
   
   // Calculate chart dimensions based on layout
   const chartHeight = layout.rows === 1 ? 'calc(100vh - 200px)' : 
@@ -366,6 +394,7 @@ export default function MultiChartContainer() {
             onDrop={handleDrop}
             isDraggedOver={dragOverChart === chart.id}
             colors={colors}
+            getHistoricalCandles={getHistoricalCandles}
           />
         ))}
       </div>
@@ -383,6 +412,7 @@ interface ChartContainerProps {
   onDrop: (e: React.DragEvent, chartId: string) => void;
   isDraggedOver: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
+  getHistoricalCandles: (ticker: string) => CandleDataPoint[];
 }
 
 function ChartContainer({
@@ -394,7 +424,8 @@ function ChartContainer({
   onDragLeave,
   onDrop,
   isDraggedOver,
-  colors
+  colors,
+  getHistoricalCandles
 }: ChartContainerProps) {
   const [tickerInput, setTickerInput] = useState('');
   
@@ -406,13 +437,11 @@ function ChartContainer({
     }
   };
   
-  const getInitialData = () => {
-    const allCandles = [...chart.historicalCandles];
-    if (chart.currentCandle) {
-      allCandles.push(chart.currentCandle);
-    }
-    return allCandles;
-  };
+  const getChartHistoricalData = useCallback(() => {
+    if (!chart.ticker) return [];
+    // Use the parent's getHistoricalCandles function
+    return getHistoricalCandles(chart.ticker);
+  }, [chart.ticker, getHistoricalCandles]);
   
   return (
     <div
@@ -451,7 +480,7 @@ function ChartContainer({
         {chart.ticker ? (
           <ChartComponent
             ref={chart.chartRef}
-            initialData={getInitialData()}
+            initialData={getChartHistoricalData()}
             chartType="candlestick"
             watermarkText={chart.ticker}
             isExpanded={true}
