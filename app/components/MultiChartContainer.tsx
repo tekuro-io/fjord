@@ -527,7 +527,7 @@ export default function MultiChartContainer() {
                               'repeat(3, minmax(0, 1fr))';
   
   return (
-    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-auto max-w-screen-lg relative border ${colors.border} p-2 sm:p-3`}>
+    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-1 sm:mx-2 w-full max-w-none relative border ${colors.border} p-2 sm:p-3`}>
       {/* Header */}
       <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center relative`}>
         <div className="flex items-center gap-4">

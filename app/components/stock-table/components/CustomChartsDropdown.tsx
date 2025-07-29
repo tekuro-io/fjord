@@ -65,8 +65,10 @@ const CustomChartsDropdown: React.FC<CustomChartsDropdownProps> = ({ className =
     }
 
     return (
-      <div className="grid grid-cols-3 gap-1 p-3">
-        {cells}
+      <div className="flex justify-center">
+        <div className="grid grid-cols-3 gap-1 p-3">
+          {cells}
+        </div>
       </div>
     );
   };

@@ -254,9 +254,9 @@ const lightColors = {
   divider: 'border-slate-300',
   
   // Shadows
-  shadowSm: 'shadow-sm shadow-slate-200/60',
-  shadowMd: 'shadow-md shadow-slate-300/40',
-  shadowLg: 'shadow-lg shadow-slate-400/30',
+  shadowSm: 'shadow-sm shadow-slate-300/50',
+  shadowMd: 'shadow-md shadow-slate-400/45',
+  shadowLg: 'shadow-lg shadow-slate-500/40',
   
   // Multiplier backgrounds for light mode (darker colors for better contrast)
   multiplierBg1: 'bg-teal-600', // >1000

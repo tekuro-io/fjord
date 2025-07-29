@@ -4,7 +4,6 @@ import React from 'react';
 import { Search, SlidersHorizontal, Bell, BellRing, Lock, Unlock, Sun, Moon, Grid2x2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import MarketStatus from './MarketStatus';
-import CustomChartsDropdown from './CustomChartsDropdown';
 import { useTheme } from '../../ThemeContext';
 
 interface TableControlsProps {
@@ -114,15 +113,13 @@ const TableControls: React.FC<TableControlsProps> = ({
         {/* Multi-Chart Top 4 Button */}
         <button
           onClick={handleMultiChartTop4}
-          className={`ml-3 p-2 ${colors.buttonPrimary} text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center hover:opacity-90`}
+          className={`ml-3 px-3 py-2 ${colors.buttonPrimary} text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center gap-2 text-sm font-medium hover:opacity-90`}
           title="Open top 4 stocks in 2x2 multi-chart view"
           aria-label="Open top 4 stocks in 2x2 multi-chart view"
         >
           <Grid2x2 className="w-4 h-4" />
+          Top 4
         </button>
-
-        {/* Custom Charts Dropdown */}
-        <CustomChartsDropdown className="ml-3" />
       </div>
 
       {/* Right side: Status information */}
