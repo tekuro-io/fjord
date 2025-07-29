@@ -357,7 +357,7 @@ export default function MultiChartContainer() {
                               '1fr 1fr 1fr';
   
   return (
-    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-auto max-w-full relative border ${colors.border} p-4`}>
+    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-auto w-full max-w-screen-2xl relative border ${colors.border} p-2 sm:p-4`}>
       {/* Header */}
       <div className={`${colors.tableHeaderGradient} rounded-lg p-4 mb-4 flex justify-between items-center`}>
         <div className="flex items-center gap-4">
@@ -376,10 +376,11 @@ export default function MultiChartContainer() {
       
       {/* Charts Grid */}
       <div 
-        className="grid gap-4"
+        className="grid gap-2 sm:gap-4 w-full overflow-hidden"
         style={{ 
           gridTemplateColumns,
-          gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`
+          gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
+          maxWidth: '100%'
         }}
       >
         {charts.map((chart) => (
@@ -445,12 +446,12 @@ function ChartContainer({
   
   return (
     <div
-      className={`${colors.chartBackground} rounded-lg border-2 transition-all duration-200 ${
+      className={`${colors.chartBackground} rounded-lg border-2 transition-all duration-200 w-full overflow-hidden ${
         isDraggedOver 
           ? 'border-blue-500 border-dashed shadow-lg transform scale-[1.02]' 
           : colors.border
       }`}
-      style={{ height }}
+      style={{ height, maxWidth: '100%' }}
       draggable={!!chart.ticker}
       onDragStart={() => onDragStart(chart.id)}
       onDragOver={(e) => onDragOver(e, chart.id)}
@@ -476,26 +477,28 @@ function ChartContainer({
       </div>
       
       {/* Chart Content */}
-      <div className="p-2" style={{ height: 'calc(100% - 60px)' }}>
+      <div className="p-2 w-full overflow-hidden" style={{ height: 'calc(100% - 60px)', maxWidth: '100%' }}>
         {chart.ticker ? (
-          <ChartComponent
-            ref={chart.chartRef}
-            initialData={getChartHistoricalData()}
-            chartType="candlestick"
-            watermarkText={chart.ticker}
-            isExpanded={true}
-            colors={{
-              backgroundColor: colors.chartBackgroundHex,
-              textColor: colors.chartTextColor,
-              upColor: colors.candleUpColor,
-              downColor: colors.candleDownColor,
-              wickUpColor: colors.candleWickUpColor,
-              wickDownColor: colors.candleWickDownColor,
-              vertLinesColor: colors.gridLines,
-              horzLinesColor: colors.gridLines,
-              watermarkTextColor: colors.chartWatermark,
-            }}
-          />
+          <div className="w-full h-full overflow-hidden">
+            <ChartComponent
+              ref={chart.chartRef}
+              initialData={getChartHistoricalData()}
+              chartType="candlestick"
+              watermarkText={chart.ticker}
+              isExpanded={true}
+              colors={{
+                backgroundColor: colors.chartBackgroundHex,
+                textColor: colors.chartTextColor,
+                upColor: colors.candleUpColor,
+                downColor: colors.candleDownColor,
+                wickUpColor: colors.candleWickUpColor,
+                wickDownColor: colors.candleWickDownColor,
+                vertLinesColor: colors.gridLines,
+                horzLinesColor: colors.gridLines,
+                watermarkTextColor: colors.chartWatermark,
+              }}
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
