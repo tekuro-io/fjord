@@ -44,6 +44,9 @@ export default function MultiChartContainer() {
   const [draggedChart, setDraggedChart] = useState<string | null>(null);
   const [dragOverChart, setDragOverChart] = useState<string | null>(null);
   
+  // Track if we're currently in a drag operation to prevent WebSocket reconnections
+  const isDragging = useRef(false);
+  
   // WebSocket connection state
   const [wsUrl, setWsUrl] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
@@ -131,8 +134,15 @@ export default function MultiChartContainer() {
   // Debounced version of active tickers to prevent rapid WebSocket reconnections during drag operations
   const [debouncedActiveTickers, setDebouncedActiveTickers] = useState<string[]>([]);
   useEffect(() => {
+    // Don't update debounced tickers during drag operations
+    if (isDragging.current) {
+      return;
+    }
+    
     const timer = setTimeout(() => {
-      setDebouncedActiveTickers(activeTickers);
+      if (!isDragging.current) {
+        setDebouncedActiveTickers(activeTickers);
+      }
     }, 300); // 300ms debounce
     
     return () => clearTimeout(timer);
@@ -140,9 +150,9 @@ export default function MultiChartContainer() {
   
   // WebSocket connection (only when there are debounced active tickers)
   useEffect(() => {
-    if (!wsUrl || debouncedActiveTickers.length === 0) {
-      // Close WebSocket if no active tickers
-      if (wsRef.current) {
+    if (!wsUrl || debouncedActiveTickers.length === 0 || isDragging.current) {
+      // Close WebSocket if no active tickers or during drag operations
+      if (wsRef.current && debouncedActiveTickers.length === 0) {
         wsRef.current.close();
         wsRef.current = null;
         setConnectionStatus('disconnected');
@@ -215,15 +225,20 @@ export default function MultiChartContainer() {
       ws.onclose = () => {
         console.log('MultiChart: WebSocket disconnected');
         setConnectionStatus('disconnected');
-        // Only reconnect if we still have active tickers
-        if (debouncedActiveTickers.length > 0) {
-          setTimeout(connectWebSocket, 5000);
+        // Only reconnect if we still have active tickers and not during drag operations
+        if (debouncedActiveTickers.length > 0 && !isDragging.current) {
+          setTimeout(() => {
+            if (!isDragging.current && debouncedActiveTickers.length > 0) {
+              connectWebSocket();
+            }
+          }, 5000);
         }
       };
       
       ws.onerror = (error) => {
         console.error('MultiChart: WebSocket error:', error);
         setConnectionStatus('disconnected');
+        // Don't immediately reconnect on error to avoid spam
         ws.close();
       };
     };
@@ -342,6 +357,7 @@ export default function MultiChartContainer() {
   
   // Drag and drop handlers
   const handleDragStart = useCallback((chartId: string) => {
+    isDragging.current = true;
     setDraggedChart(chartId);
   }, []);
   
@@ -381,18 +397,9 @@ export default function MultiChartContainer() {
           const draggedTicker = draggedChart.ticker;
           const targetTicker = targetChart.ticker;
           
-          // Use the chart refs to directly update ticker and data without re-creation
-          if (draggedChart.chartRef.current && targetChart.chartRef.current) {
-            // Directly update the chart data via the exposed methods
-            draggedChart.chartRef.current.updateTickerAndData(
-              targetTicker || '', 
-              targetCandles
-            );
-            targetChart.chartRef.current.updateTickerAndData(
-              draggedTicker || '', 
-              draggedCandles
-            );
-          }
+          // DON'T update chart data directly during drag - this causes jarring reloads
+          // The charts will get the correct data via WebSocket updates based on their new tickers
+          // The ManagedChart components will handle the ticker prop changes gracefully
           
           // Update the chart configurations with swapped tickers
           // KEEP the existing chart refs to avoid re-creation
@@ -419,6 +426,12 @@ export default function MultiChartContainer() {
     }
     
     setDraggedChart(null);
+    // End drag operation after a brief delay to allow state updates to settle
+    setTimeout(() => {
+      isDragging.current = false;
+      // Force update debounced tickers immediately after drag ends
+      setDebouncedActiveTickers(activeTickers);
+    }, 100);
   }, [draggedChart]);
   
   // Calculate chart dimensions based on layout - use more vertical space
@@ -564,16 +577,16 @@ function ChartContainer({
       onDrop={(e) => onDrop(e, chart.id)}
     >
       {/* Title Bar */}
-      <div className={`${colors.tableHeaderGradient} p-3 rounded-t-lg flex justify-between items-center`}>
-        <div 
-          className="flex items-center gap-3 cursor-move"
-          draggable={true}
-          onDragStart={(e) => {
-            e.stopPropagation();
-            onDragStart(chart.id);
-          }}
-          title="Drag to reorder charts"
-        >
+      <div 
+        className={`${colors.tableHeaderGradient} p-3 rounded-t-lg flex justify-between items-center cursor-move`}
+        draggable={true}
+        onDragStart={(e) => {
+          e.stopPropagation();
+          onDragStart(chart.id);
+        }}
+        title="Drag to reorder charts"
+      >
+        <div className="flex items-center gap-3">
           {/* Drag Handle */}
           <div className="text-xs text-gray-500 hover:text-gray-400 transition-colors">
             ⋮⋮
@@ -596,6 +609,10 @@ function ChartContainer({
             onClick={(e) => {
               e.stopPropagation();
               onCloseChart(chart.id);
+            }}
+            onDragStart={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
             }}
             className={`p-1 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-red-500 hover:text-white ${colors.textMuted}`}
             title="Close chart"
