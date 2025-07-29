@@ -163,7 +163,7 @@ const ManagedChart = forwardRef<ManagedChartHandle, ManagedChartProps>(({
         value: stockData.price,
       }] as ChartDataPoint[];
     }
-  }, [stockData.ticker, stockData.price, stockData.timestamp, chartType, historicalCandles]);
+  }, [stockData.price, stockData.timestamp, chartType, historicalCandles]); // Removed stockData.ticker from dependencies to prevent re-initialization on drag
 
   return (
     <div className={`w-full ${colors.chartBackground} rounded-lg overflow-hidden border ${colors.border}`} style={{ height: '100%' }}>

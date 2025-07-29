@@ -37,7 +37,7 @@ export default function MultiChartContainer() {
   
   const layout = LAYOUT_CONFIGS[layoutParam] || LAYOUT_CONFIGS['1x1'];
   const totalCharts = layout.cols * layout.rows;
-  const initialTickers = tickersParam ? tickersParam.split(',').filter(t => t.trim()) : [];
+  const initialTickers = tickersParam ? tickersParam.split(',').filter(t => t.trim()).map(t => t.trim().toUpperCase()) : [];
   
   // State for chart configurations
   const [charts, setCharts] = useState<ChartConfig[]>([]);
@@ -134,34 +134,50 @@ export default function MultiChartContainer() {
   // Debounced version of active tickers to prevent rapid WebSocket reconnections during drag operations
   const [debouncedActiveTickers, setDebouncedActiveTickers] = useState<string[]>([]);
   useEffect(() => {
+    console.log(`⏱️ Debounce: activeTickers changed to:`, activeTickers, 'isDragging:', isDragging.current);
+    
     // Don't update debounced tickers during drag operations
     if (isDragging.current) {
+      console.log(`⏱️ Debounce: Skipping update due to drag operation`);
       return;
     }
     
     const timer = setTimeout(() => {
       if (!isDragging.current) {
+        console.log(`⏱️ Debounce: Updating debouncedActiveTickers to:`, activeTickers);
         setDebouncedActiveTickers(activeTickers);
+      } else {
+        console.log(`⏱️ Debounce: Skipping delayed update due to drag operation`);
       }
     }, 300); // 300ms debounce
     
-    return () => clearTimeout(timer);
+    return () => {
+      console.log(`⏱️ Debounce: Clearing timeout`);
+      clearTimeout(timer);
+    };
   }, [activeTickers]);
   
   // WebSocket connection (only when there are debounced active tickers)
   useEffect(() => {
+    const effectId = Math.random().toString(36).substr(2, 9);
+    console.log(`🔌 WS Effect ${effectId}: Running with tickers:`, debouncedActiveTickers, 'isDragging:', isDragging.current);
+    
     if (!wsUrl || debouncedActiveTickers.length === 0 || isDragging.current) {
       // Close WebSocket if no active tickers or during drag operations
       if (wsRef.current && debouncedActiveTickers.length === 0) {
+        console.log(`🔌 WS Effect ${effectId}: Closing WebSocket (no tickers)`);
         wsRef.current.close();
         wsRef.current = null;
         setConnectionStatus('disconnected');
       }
+      console.log(`🔌 WS Effect ${effectId}: Skipping connection`);
       return;
     }
     
     const connectWebSocket = () => {
+      console.log(`🔌 WS Effect ${effectId}: Creating WebSocket connection`);
       if (wsRef.current) {
+        console.log(`🔌 WS Effect ${effectId}: Closing existing WebSocket`);
         wsRef.current.close();
         wsRef.current = null;
       }
@@ -170,7 +186,7 @@ export default function MultiChartContainer() {
       wsRef.current = ws;
       
       ws.onopen = () => {
-        console.log('MultiChart: WebSocket connected');
+        console.log(`✅ WS Effect ${effectId}: WebSocket connected`);
         setConnectionStatus('connected');
       };
       
@@ -223,20 +239,26 @@ export default function MultiChartContainer() {
       };
       
       ws.onclose = () => {
-        console.log('MultiChart: WebSocket disconnected');
+        console.log(`❌ WS Effect ${effectId}: WebSocket disconnected`);
         setConnectionStatus('disconnected');
         // Only reconnect if we still have active tickers and not during drag operations
         if (debouncedActiveTickers.length > 0 && !isDragging.current) {
+          console.log(`🔄 WS Effect ${effectId}: Scheduling reconnection in 5s`);
           setTimeout(() => {
             if (!isDragging.current && debouncedActiveTickers.length > 0) {
+              console.log(`🔄 WS Effect ${effectId}: Attempting reconnection`);
               connectWebSocket();
+            } else {
+              console.log(`🔄 WS Effect ${effectId}: Skipping reconnection - dragging:${isDragging.current} tickers:${debouncedActiveTickers.length}`);
             }
           }, 5000);
+        } else {
+          console.log(`🔄 WS Effect ${effectId}: No reconnection needed - dragging:${isDragging.current} tickers:${debouncedActiveTickers.length}`);
         }
       };
       
       ws.onerror = (error) => {
-        console.error('MultiChart: WebSocket error:', error);
+        console.error(`❌ WS Effect ${effectId}: WebSocket error:`, error);
         setConnectionStatus('disconnected');
         // Don't immediately reconnect on error to avoid spam
         ws.close();
@@ -246,6 +268,7 @@ export default function MultiChartContainer() {
     connectWebSocket();
     
     return () => {
+      console.log(`🧹 WS Effect ${effectId}: Cleanup - closing WebSocket`);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -357,6 +380,7 @@ export default function MultiChartContainer() {
   
   // Drag and drop handlers
   const handleDragStart = useCallback((chartId: string) => {
+    console.log(`🖱️ Drag: Starting drag for chart ${chartId}`);
     isDragging.current = true;
     setDraggedChart(chartId);
   }, []);
@@ -397,9 +421,10 @@ export default function MultiChartContainer() {
           const draggedTicker = draggedChart.ticker;
           const targetTicker = targetChart.ticker;
           
-          // DON'T update chart data directly during drag - this causes jarring reloads
-          // The charts will get the correct data via WebSocket updates based on their new tickers
-          // The ManagedChart components will handle the ticker prop changes gracefully
+          // IMPORTANT: Don't call updateTickerAndData during drag operations
+          // This would cause fitContent() and reset the chart zoom/view
+          // Instead, let the charts naturally receive data via WebSocket based on their new ticker assignments
+          // The existing chart instances will preserve their zoom/pan state
           
           // Update the chart configurations with swapped tickers
           // KEEP the existing chart refs to avoid re-creation
@@ -428,6 +453,7 @@ export default function MultiChartContainer() {
     setDraggedChart(null);
     // End drag operation after a brief delay to allow state updates to settle
     setTimeout(() => {
+      console.log(`🖱️ Drag: Ending drag operation, forcing debounce update with:`, activeTickers);
       isDragging.current = false;
       // Force update debounced tickers immediately after drag ends
       setDebouncedActiveTickers(activeTickers);
@@ -459,18 +485,6 @@ export default function MultiChartContainer() {
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Connection Status */}
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
-              debouncedActiveTickers.length === 0 ? 'bg-gray-500' : 
-              connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'
-            }`}></div>
-            <span className={`text-sm ${colors.textSecondary}`}>
-              {debouncedActiveTickers.length === 0 ? 'No Active Charts' :
-               connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
-            </span>
-          </div>
-          
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
@@ -490,6 +504,18 @@ export default function MultiChartContainer() {
           >
             <Share className="w-4 h-4" />
           </button>
+          
+          {/* Connection Status */}
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              debouncedActiveTickers.length === 0 ? 'bg-gray-500' : 
+              connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'
+            }`}></div>
+            <span className={`text-sm ${colors.textSecondary}`}>
+              {debouncedActiveTickers.length === 0 ? 'No Active Charts' :
+               connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
         </div>
         
         {/* Share Feedback */}
