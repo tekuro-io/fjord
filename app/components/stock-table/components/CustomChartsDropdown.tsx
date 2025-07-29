@@ -82,7 +82,7 @@ const CustomChartsDropdown: React.FC<CustomChartsDropdownProps> = ({ className =
     <div className={`relative ${className}`} ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 ${colors.buttonPrimary} text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium hover:opacity-90 cursor-pointer`}
+        className={`flex items-center gap-2 px-3 py-2 ${colors.buttonSecondary} text-white rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium hover:opacity-90 cursor-pointer`}
         title="Create custom multi-chart layout"
         aria-label="Create custom multi-chart layout"
       >
