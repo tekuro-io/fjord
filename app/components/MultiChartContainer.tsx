@@ -515,13 +515,13 @@ export default function MultiChartContainer() {
     }, 100);
   }, [draggedChart]);
   
-  // Calculate chart dimensions based on layout - use more vertical space
-  // Accounts for: ThemeWrapper padding (16px), page header (40px), multichart header (80px), minimal footer (20px), gaps
-  // More aggressive use of available vertical space
-  const chartHeight = layout.rows === 1 ? 'calc(100vh - 160px)' : 
-                     layout.rows === 2 ? 'calc((100vh - 180px) / 2)' :
-                     layout.rows === 3 ? 'calc((100vh - 200px) / 3)' :
-                     'calc((100vh - 220px) / 4)';
+  // Calculate chart dimensions based on layout - use maximum vertical space
+  // Accounts for: ThemeWrapper padding (16px), multichart header (70px), minimal footer (20px), gaps (24px)
+  // Very aggressive use of available vertical space
+  const chartHeight = layout.rows === 1 ? 'calc(100vh - 130px)' : 
+                     layout.rows === 2 ? 'calc((100vh - 140px) / 2)' :
+                     layout.rows === 3 ? 'calc((100vh - 150px) / 3)' :
+                     'calc((100vh - 160px) / 4)';
   
   // Responsive grid columns - stack on mobile for better usability
   const gridTemplateColumns = layout.cols === 1 ? '1fr' : 
@@ -552,7 +552,7 @@ export default function MultiChartContainer() {
           {/* Momentum Scanner Button */}
           <Link 
             href="/" 
-            className={`px-3 py-1.5 ${colors.buttonSecondary} text-white rounded text-xs font-medium transition-colors duration-200 hover:opacity-90`}
+            className={`px-3 py-2 ${colors.buttonSecondary} text-white rounded text-sm font-medium transition-colors duration-200 hover:opacity-90`}
           >
             ← Momentum Scanner
           </Link>
