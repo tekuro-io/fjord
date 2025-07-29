@@ -13,22 +13,21 @@ export default async function MultiChartPage() {
         <ThemeProvider>
             <ThemeWrapper>
                 <ClientPageWrapper>
-                    <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold text-emerald-400">
+                    <div className="text-center mb-4">
+                        <div className="flex justify-center items-center gap-4">
                             <Image
                                 src="/stock.svg"          
-                                width={120}
-                                height={90}
+                                width={48}
+                                height={36}
                                 alt="Stock Screener Icon"
-                                className='inline-block mr-3 my-2'
+                                className='inline-block'
                             />
-                        </h1>
-                        <div className="mt-4 flex justify-center gap-4">
+                            <h1 className="text-2xl font-bold text-emerald-400">Multi-Chart</h1>
                             <Link 
                                 href="/" 
-                                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition-colors duration-200 text-sm font-medium"
+                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-xs font-medium transition-colors duration-200"
                             >
-                                ← Back to Table View
+                                ← Table View
                             </Link>
                         </div>
                     </div>
@@ -36,7 +35,7 @@ export default async function MultiChartPage() {
                     <Suspense fallback={<Spinner />}>
                         <MultiChartContainer />
                     </Suspense>
-                    <footer className="w-full pt-8 py-3 text-center text-sm text-gray-400 font-sans tracking-wide mt-8">
+                    <footer className="w-full pt-4 py-2 text-center text-xs text-gray-400 font-sans tracking-wide mt-4">
                         <CommitLink />
                     </footer>
                 </ClientPageWrapper>

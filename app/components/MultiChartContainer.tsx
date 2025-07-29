@@ -3,14 +3,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTheme } from './ThemeContext';
-import { ChartComponent } from './Chart';
-import type { ChartHandle } from './Chart';
-import type { CandleDataPoint } from './stock-table/types';
+import ManagedChart, { type ManagedChartHandle } from './ManagedChart';
+import type { StockItem } from './stock-table/types';
 
 interface ChartConfig {
   id: string;
   ticker: string | null;
-  chartRef: React.RefObject<ChartHandle | null>;
+  chartRef: React.RefObject<ManagedChartHandle | null>;
 }
 
 interface LayoutConfig {
@@ -48,10 +47,8 @@ export default function MultiChartContainer() {
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('disconnected');
   const wsRef = useRef<WebSocket | null>(null);
   
-  // Background candle collection system for all tickers (like StockTable)
-  const backgroundCandles = useRef<Map<string, CandleDataPoint[]>>(new Map());
-  const backgroundCurrentCandles = useRef<Map<string, CandleDataPoint>>(new Map());
-  const backgroundCandleStartTimes = useRef<Map<string, number>>(new Map());
+  // Chart state tracking
+  const chartStockData = useRef<Map<string, StockItem>>(new Map());
   
   // Initialize charts
   useEffect(() => {
@@ -60,7 +57,7 @@ export default function MultiChartContainer() {
       newCharts.push({
         id: `chart-${i}`,
         ticker: initialTickers[i] || null,
-        chartRef: React.createRef<ChartHandle | null>(),
+        chartRef: React.createRef<ManagedChartHandle | null>(),
       });
     }
     setCharts(newCharts);
@@ -83,74 +80,6 @@ export default function MultiChartContainer() {
       }
     };
     fetchWsUrl();
-  }, []);
-  
-  // Background candle collection for all tickers (independent of chart visibility) - copied from StockTable
-  const collectBackgroundCandle = useCallback((ticker: string, timestamp: number, price: number) => {
-    // Convert timestamp to seconds for lightweight-charts consistency
-    const timeInSeconds = Math.floor(timestamp / 1000);
-    const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
-    
-    // Get or initialize ticker data
-    if (!backgroundCandles.current.has(ticker)) {
-      backgroundCandles.current.set(ticker, []);
-    }
-    
-    const tickerCandles = backgroundCandles.current.get(ticker)!;
-    const currentCandle = backgroundCurrentCandles.current.get(ticker);
-    const currentStartTime = backgroundCandleStartTimes.current.get(ticker);
-    
-    if (currentStartTime !== bucketTime) {
-      // Starting a new minute - finalize previous candle and start new one
-      if (currentCandle && currentStartTime !== undefined) {
-        // Add completed candle to history
-        tickerCandles.push(currentCandle);
-        
-        // Keep only last 100 candles
-        if (tickerCandles.length > 100) {
-          tickerCandles.shift();
-        }
-      }
-      
-      // Start new current candle
-      const newCandle: CandleDataPoint = {
-        time: bucketTime * 1000, // Store in milliseconds for consistency
-        open: price,
-        high: price,
-        low: price,
-        close: price,
-      };
-      
-      backgroundCurrentCandles.current.set(ticker, newCandle);
-      backgroundCandleStartTimes.current.set(ticker, bucketTime);
-    } else {
-      // Update current candle - keep same timestamp, update OHLC
-      if (currentCandle) {
-        const updatedCandle: CandleDataPoint = {
-          time: currentCandle.time,
-          open: currentCandle.open,
-          close: price,
-          low: Math.min(currentCandle.low, price),
-          high: Math.max(currentCandle.high, price),
-        };
-        
-        backgroundCurrentCandles.current.set(ticker, updatedCandle);
-      }
-    }
-  }, []);
-  
-  // Helper function to get historical candles for a ticker (for chart initialization)
-  const getHistoricalCandles = useCallback((ticker: string): CandleDataPoint[] => {
-    const historicalCandles = backgroundCandles.current.get(ticker) || [];
-    const currentCandle = backgroundCurrentCandles.current.get(ticker);
-    
-    // Combine historical + current candle
-    const allCandles = [...historicalCandles];
-    if (currentCandle) {
-      allCandles.push(currentCandle);
-    }
-    
-    return allCandles;
   }, []);
   
   // Get active tickers from charts
@@ -188,22 +117,33 @@ export default function MultiChartContainer() {
               ? new Date(parsedData.timestamp).getTime() 
               : parsedData.timestamp;
             
-            // ALWAYS collect background candles for ALL tickers (regardless of chart visibility)
-            collectBackgroundCandle(ticker, timestamp, price);
+            // Update stock data for this ticker
+            const stockData: StockItem = {
+              ticker,
+              price,
+              timestamp,
+              prev_price: chartStockData.current.get(ticker)?.prev_price || price,
+              delta: 0, // Can be calculated if needed
+              volume: parsedData.volume || 0,
+              multiplier: parsedData.multiplier || 0,
+              float: parsedData.float || 0,
+              mav10: parsedData.mav10 || 0,
+              first_seen: chartStockData.current.get(ticker)?.first_seen || new Date().toISOString()
+            };
             
-            // Update all charts that match this ticker
-            setCharts(prevCharts => 
-              prevCharts.map(chart => {
-                if (chart.ticker?.toUpperCase() === ticker && chart.chartRef.current) {
-                  try {
-                    chart.chartRef.current.updateWithPrice(timestamp, price);
-                  } catch (chartError) {
-                    console.error(`📊 MultiChart Update Error for ${ticker}:`, chartError);
-                  }
+            // Store the stock data
+            chartStockData.current.set(ticker, stockData);
+            
+            // Update all charts that match this ticker using ManagedChart's updateWithPrice
+            charts.forEach(chart => {
+              if (chart.ticker?.toUpperCase() === ticker && chart.chartRef.current) {
+                try {
+                  chart.chartRef.current.updateWithPrice(timestamp, price);
+                } catch (chartError) {
+                  console.error(`📊 MultiChart Update Error for ${ticker}:`, chartError);
                 }
-                return chart; // No need to modify chart object
-              })
-            );
+              }
+            });
           }
         } catch (error) {
           console.error('MultiChart: Error parsing WebSocket message:', error);
@@ -231,7 +171,7 @@ export default function MultiChartContainer() {
         wsRef.current = null;
       }
     };
-  }, [wsUrl, collectBackgroundCandle]);
+  }, [wsUrl, charts]);
   
   // Handle ticker subscriptions separately
   useEffect(() => {
@@ -271,13 +211,7 @@ export default function MultiChartContainer() {
             ticker: ticker || null,
           };
           
-          // Initialize chart with historical data if we have it
-          if (ticker && chart.chartRef.current) {
-            const historicalData = getHistoricalCandles(ticker);
-            if (historicalData.length > 0) {
-              chart.chartRef.current.setData(historicalData);
-            }
-          }
+          // ManagedChart will handle its own historical data initialization
           
           // Subscribe to new ticker
           if (ticker && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
@@ -293,7 +227,7 @@ export default function MultiChartContainer() {
         return chart;
       })
     );
-  }, [getHistoricalCandles]);
+  }, []);
   
   // Drag and drop handlers
   const handleDragStart = useCallback((chartId: string) => {
@@ -327,16 +261,7 @@ export default function MultiChartContainer() {
           newCharts[draggedIndex].ticker = targetTicker;
           newCharts[targetIndex].ticker = draggedTicker;
           
-          // Update chart data for both charts with their historical data
-          if (newCharts[draggedIndex].chartRef.current && newCharts[draggedIndex].ticker) {
-            const historicalData = getHistoricalCandles(newCharts[draggedIndex].ticker);
-            newCharts[draggedIndex].chartRef.current.setData(historicalData);
-          }
-          
-          if (newCharts[targetIndex].chartRef.current && newCharts[targetIndex].ticker) {
-            const historicalData = getHistoricalCandles(newCharts[targetIndex].ticker);
-            newCharts[targetIndex].chartRef.current.setData(historicalData);
-          }
+          // ManagedChart will handle its own data when the ticker changes
         }
         
         return newCharts;
@@ -344,22 +269,25 @@ export default function MultiChartContainer() {
     }
     
     setDraggedChart(null);
-  }, [draggedChart, getHistoricalCandles]);
+  }, [draggedChart]);
   
-  // Calculate chart dimensions based on layout
-  const chartHeight = layout.rows === 1 ? 'calc(100vh - 200px)' : 
-                     layout.rows === 2 ? 'calc((100vh - 250px) / 2)' :
-                     layout.rows === 3 ? 'calc((100vh - 300px) / 3)' :
-                     'calc((100vh - 350px) / 4)';
+  // Calculate chart dimensions based on layout - optimized for maximum space usage
+  // Accounts for: ThemeWrapper padding (32px), page header (60px), multichart header (60px), footer (40px), gaps
+  // For 1x1: limit height to maintain good aspect ratio and prevent excessive vertical space
+  const chartHeight = layout.rows === 1 ? 'min(calc(100vh - 120px), 75vh)' : 
+                     layout.rows === 2 ? 'calc((100vh - 140px) / 2)' :
+                     layout.rows === 3 ? 'calc((100vh - 160px) / 3)' :
+                     'calc((100vh - 180px) / 4)';
   
+  // Responsive grid columns - stack on mobile for better usability
   const gridTemplateColumns = layout.cols === 1 ? '1fr' : 
-                              layout.cols === 2 ? '1fr 1fr' : 
-                              '1fr 1fr 1fr';
+                              layout.cols === 2 ? 'repeat(2, minmax(0, 1fr))' : 
+                              'repeat(3, minmax(0, 1fr))';
   
   return (
-    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-auto w-full max-w-screen-2xl relative border ${colors.border} p-2 sm:p-4`}>
+    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-2 sm:mx-4 lg:mx-auto w-auto lg:max-w-screen-2xl relative border ${colors.border} p-2 sm:p-3`}>
       {/* Header */}
-      <div className={`${colors.tableHeaderGradient} rounded-lg p-4 mb-4 flex justify-between items-center`}>
+      <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center`}>
         <div className="flex items-center gap-4">
           <h2 className={`text-xl font-bold ${colors.textPrimary}`}>Multi-Chart View</h2>
           <div className={`text-sm ${colors.textSecondary}`}>
@@ -376,7 +304,7 @@ export default function MultiChartContainer() {
       
       {/* Charts Grid */}
       <div 
-        className="grid gap-2 sm:gap-4 w-full overflow-hidden"
+        className="grid gap-2 sm:gap-3 w-full overflow-hidden"
         style={{ 
           gridTemplateColumns,
           gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
@@ -395,7 +323,6 @@ export default function MultiChartContainer() {
             onDrop={handleDrop}
             isDraggedOver={dragOverChart === chart.id}
             colors={colors}
-            getHistoricalCandles={getHistoricalCandles}
           />
         ))}
       </div>
@@ -413,7 +340,6 @@ interface ChartContainerProps {
   onDrop: (e: React.DragEvent, chartId: string) => void;
   isDraggedOver: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
-  getHistoricalCandles: (ticker: string) => CandleDataPoint[];
 }
 
 function ChartContainer({
@@ -425,8 +351,7 @@ function ChartContainer({
   onDragLeave,
   onDrop,
   isDraggedOver,
-  colors,
-  getHistoricalCandles
+  colors
 }: ChartContainerProps) {
   const [tickerInput, setTickerInput] = useState('');
   
@@ -438,11 +363,6 @@ function ChartContainer({
     }
   };
   
-  const getChartHistoricalData = useCallback(() => {
-    if (!chart.ticker) return [];
-    // Use the parent's getHistoricalCandles function
-    return getHistoricalCandles(chart.ticker);
-  }, [chart.ticker, getHistoricalCandles]);
   
   return (
     <div
@@ -480,23 +400,23 @@ function ChartContainer({
       <div className="p-2 w-full overflow-hidden" style={{ height: 'calc(100% - 60px)', maxWidth: '100%' }}>
         {chart.ticker ? (
           <div className="w-full h-full overflow-hidden">
-            <ChartComponent
+            <ManagedChart
               ref={chart.chartRef}
-              initialData={getChartHistoricalData()}
-              chartType="candlestick"
-              watermarkText={chart.ticker}
-              isExpanded={true}
-              colors={{
-                backgroundColor: colors.chartBackgroundHex,
-                textColor: colors.chartTextColor,
-                upColor: colors.candleUpColor,
-                downColor: colors.candleDownColor,
-                wickUpColor: colors.candleWickUpColor,
-                wickDownColor: colors.candleWickDownColor,
-                vertLinesColor: colors.gridLines,
-                horzLinesColor: colors.gridLines,
-                watermarkTextColor: colors.chartWatermark,
+              stockData={{
+                ticker: chart.ticker,
+                price: 0, // Will be updated via websocket
+                timestamp: Date.now(),
+                prev_price: 0,
+                delta: 0,
+                volume: 0,
+                multiplier: 0,
+                float: 0,
+                mav10: 0,
+                first_seen: new Date().toISOString()
               }}
+              chartType="candlestick"
+              historicalCandles={[]}
+              isExpanded={true}
             />
           </div>
         ) : (
