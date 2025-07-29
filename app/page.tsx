@@ -1,7 +1,6 @@
 import { Suspense } from 'react';
 import { StockTableLoader } from './components/stock-table';
 import Image from 'next/image'
-import Link from 'next/link'
 import Spinner from './components/ui/Spinner';
 import { CommitLink } from './components/CommitLink';
 import TradingViewWrapper from './components/TradingViewWrapper';

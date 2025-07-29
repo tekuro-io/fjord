@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useTheme } from './ThemeContext';
 import { X, Sun, Moon, Share } from 'lucide-react';
 import ManagedChart, { type ManagedChartHandle } from './ManagedChart';
@@ -533,6 +534,14 @@ export default function MultiChartContainer() {
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Momentum Scanner Button */}
+          <Link 
+            href="/" 
+            className={`px-3 py-1.5 ${colors.buttonSecondary} text-white rounded text-xs font-medium transition-colors duration-200 hover:opacity-90`}
+          >
+            ← Momentum Scanner
+          </Link>
+          
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}

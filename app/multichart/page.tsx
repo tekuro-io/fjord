@@ -1,6 +1,5 @@
 import { Suspense } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import Spinner from '../components/ui/Spinner';
 import { CommitLink } from '../components/CommitLink';
 import { ThemeProvider } from '../components/ThemeContext';
@@ -23,12 +22,6 @@ export default async function MultiChartPage() {
                                 className='inline-block'
                             />
                             <h1 className="text-2xl font-bold text-emerald-400">Multi-Chart</h1>
-                            <Link 
-                                href="/" 
-                                className="px-3 py-1.5 bg-gray-600 hover:bg-gray-700 text-white rounded text-xs font-medium transition-colors duration-200"
-                            >
-                                ← Table View
-                            </Link>
                         </div>
                     </div>
 
