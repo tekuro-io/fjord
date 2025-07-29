@@ -13,7 +13,7 @@ export default async function MultiChartPage() {
         <ThemeProvider>
             <ThemeWrapper>
                 <ClientPageWrapper>
-                    <div className="text-center mb-4">
+                    <div className="text-center mb-2">
                         <div className="flex justify-center items-center gap-4">
                             <Image
                                 src="/stock.svg"          

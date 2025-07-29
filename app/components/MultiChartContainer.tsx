@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useTheme } from './ThemeContext';
+import { X, Sun, Moon, Share } from 'lucide-react';
 import ManagedChart, { type ManagedChartHandle } from './ManagedChart';
-import type { StockItem } from './stock-table/types';
+import type { StockItem, CandleDataPoint } from './stock-table/types';
 
 interface ChartConfig {
   id: string;
   ticker: string | null;
   chartRef: React.RefObject<ManagedChartHandle | null>;
+  historicalCandles: CandleDataPoint[];
 }
 
 interface LayoutConfig {
@@ -26,7 +28,7 @@ const LAYOUT_CONFIGS: Record<string, LayoutConfig> = {
 };
 
 export default function MultiChartContainer() {
-  const { colors } = useTheme();
+  const { colors, theme, toggleTheme } = useTheme();
   const searchParams = useSearchParams();
   
   // Parse URL parameters
@@ -50,6 +52,44 @@ export default function MultiChartContainer() {
   // Chart state tracking
   const chartStockData = useRef<Map<string, StockItem>>(new Map());
   
+  // Track accumulated candle data for each ticker
+  const chartCandleData = useRef<Map<string, CandleDataPoint[]>>(new Map());
+  
+  // UI state
+  const [showShareFeedback, setShowShareFeedback] = useState(false);
+  
+  // Helper function to collect background candles for a ticker
+  const collectBackgroundCandle = useCallback((ticker: string, timestamp: number, price: number) => {
+    const timeInSeconds = Math.floor(timestamp / 1000);
+    const bucketTime = Math.floor(timeInSeconds / 60) * 60; // Round down to nearest minute
+    
+    const existingCandles = chartCandleData.current.get(ticker) || [];
+    const lastCandle = existingCandles[existingCandles.length - 1];
+    
+    if (!lastCandle || Math.floor(lastCandle.time / 1000) !== bucketTime) {
+      // Start new candle
+      const newCandle: CandleDataPoint = {
+        time: bucketTime * 1000,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+      };
+      chartCandleData.current.set(ticker, [...existingCandles, newCandle]);
+    } else {
+      // Update existing candle
+      const updatedCandles = [...existingCandles];
+      const lastIndex = updatedCandles.length - 1;
+      updatedCandles[lastIndex] = {
+        ...lastCandle,
+        close: price,
+        high: Math.max(lastCandle.high, price),
+        low: Math.min(lastCandle.low, price),
+      };
+      chartCandleData.current.set(ticker, updatedCandles);
+    }
+  }, []);
+  
   // Initialize charts
   useEffect(() => {
     const newCharts: ChartConfig[] = [];
@@ -58,6 +98,7 @@ export default function MultiChartContainer() {
         id: `chart-${i}`,
         ticker: initialTickers[i] || null,
         chartRef: React.createRef<ManagedChartHandle | null>(),
+        historicalCandles: [],
       });
     }
     setCharts(newCharts);
@@ -134,6 +175,9 @@ export default function MultiChartContainer() {
             // Store the stock data
             chartStockData.current.set(ticker, stockData);
             
+            // Collect background candle data for this ticker
+            collectBackgroundCandle(ticker, timestamp, price);
+            
             // Update all charts that match this ticker using ManagedChart's updateWithPrice
             charts.forEach(chart => {
               if (chart.ticker?.toUpperCase() === ticker && chart.chartRef.current) {
@@ -209,6 +253,7 @@ export default function MultiChartContainer() {
           const updatedChart = {
             ...chart,
             ticker: ticker || null,
+            historicalCandles: ticker ? chartCandleData.current.get(ticker.toUpperCase()) || [] : [],
           };
           
           // ManagedChart will handle its own historical data initialization
@@ -228,6 +273,51 @@ export default function MultiChartContainer() {
       })
     );
   }, []);
+  
+  // Close chart handler
+  const handleCloseChart = useCallback((chartId: string) => {
+    setCharts(prevCharts => 
+      prevCharts.map(chart => {
+        if (chart.id === chartId) {
+          // Unsubscribe from ticker if active
+          if (chart.ticker && wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            const unsubscribeMessage = {
+              type: "unsubscribe",
+              topic: `stock:${chart.ticker.toUpperCase()}`
+            };
+            wsRef.current.send(JSON.stringify(unsubscribeMessage));
+          }
+          
+          return {
+            ...chart,
+            ticker: null,
+            historicalCandles: []
+          };
+        }
+        return chart;
+      })
+    );
+  }, []);
+  
+  // Share functionality
+  const handleShare = useCallback(() => {
+    const activeTickers = charts
+      .map(chart => chart.ticker)
+      .filter(Boolean);
+    
+    const url = new URL(window.location.origin + '/multichart');
+    url.searchParams.set('s', layoutParam);
+    if (activeTickers.length > 0) {
+      url.searchParams.set('t', activeTickers.join(','));
+    }
+    
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setShowShareFeedback(true);
+      setTimeout(() => setShowShareFeedback(false), 2000);
+    }).catch(err => {
+      console.error('Failed to copy to clipboard:', err);
+    });
+  }, [charts, layoutParam]);
   
   // Drag and drop handlers
   const handleDragStart = useCallback((chartId: string) => {
@@ -254,14 +344,39 @@ export default function MultiChartContainer() {
         const targetIndex = newCharts.findIndex(chart => chart.id === targetChartId);
         
         if (draggedIndex !== -1 && targetIndex !== -1) {
-          // Swap the tickers
-          const draggedTicker = newCharts[draggedIndex].ticker;
-          const targetTicker = newCharts[targetIndex].ticker;
+          // Get the current chart configurations
+          const draggedChart = newCharts[draggedIndex];
+          const targetChart = newCharts[targetIndex];
           
-          newCharts[draggedIndex].ticker = targetTicker;
-          newCharts[targetIndex].ticker = draggedTicker;
+          // Get historical candle data for both tickers
+          const draggedCandles = draggedChart.ticker 
+            ? chartCandleData.current.get(draggedChart.ticker.toUpperCase()) || []
+            : [];
+          const targetCandles = targetChart.ticker 
+            ? chartCandleData.current.get(targetChart.ticker.toUpperCase()) || []
+            : [];
           
-          // ManagedChart will handle its own data when the ticker changes
+          // Swap the tickers and their associated historical data
+          const draggedTicker = draggedChart.ticker;
+          const targetTicker = targetChart.ticker;
+          
+          // Update charts with swapped tickers and preserved historical data
+          newCharts[draggedIndex] = {
+            ...draggedChart,
+            ticker: targetTicker,
+            historicalCandles: targetCandles,
+            chartRef: React.createRef<ManagedChartHandle | null>()
+          };
+          
+          newCharts[targetIndex] = {
+            ...targetChart,
+            ticker: draggedTicker,
+            historicalCandles: draggedCandles,
+            chartRef: React.createRef<ManagedChartHandle | null>()
+          };
+          
+          // The ManagedChart components will re-initialize with the correct tickers and historical data
+          // The WebSocket subscription effect will handle re-subscribing
         }
         
         return newCharts;
@@ -271,13 +386,13 @@ export default function MultiChartContainer() {
     setDraggedChart(null);
   }, [draggedChart]);
   
-  // Calculate chart dimensions based on layout - optimized for maximum space usage
+  // Calculate chart dimensions based on layout - optimized for better aspect ratios
   // Accounts for: ThemeWrapper padding (32px), page header (60px), multichart header (60px), footer (40px), gaps
-  // For 1x1: limit height to maintain good aspect ratio and prevent excessive vertical space
-  const chartHeight = layout.rows === 1 ? 'min(calc(100vh - 120px), 75vh)' : 
-                     layout.rows === 2 ? 'calc((100vh - 140px) / 2)' :
-                     layout.rows === 3 ? 'calc((100vh - 160px) / 3)' :
-                     'calc((100vh - 180px) / 4)';
+  // Prioritize wider aspect ratios for better chart readability
+  const chartHeight = layout.rows === 1 ? 'min(calc(100vh - 120px), 60vh)' : 
+                     layout.rows === 2 ? 'calc((100vh - 140px) / 2.2)' :
+                     layout.rows === 3 ? 'calc((100vh - 160px) / 3.5)' :
+                     'calc((100vh - 180px) / 5)';
   
   // Responsive grid columns - stack on mobile for better usability
   const gridTemplateColumns = layout.cols === 1 ? '1fr' : 
@@ -285,29 +400,60 @@ export default function MultiChartContainer() {
                               'repeat(3, minmax(0, 1fr))';
   
   return (
-    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-2 sm:mx-4 lg:mx-auto w-auto lg:max-w-screen-2xl relative border ${colors.border} p-2 sm:p-3`}>
+    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-1 sm:mx-2 w-full max-w-none relative border ${colors.border} p-2 sm:p-3`}>
       {/* Header */}
-      <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center`}>
+      <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center relative`}>
         <div className="flex items-center gap-4">
           <h2 className={`text-xl font-bold ${colors.textPrimary}`}>Multi-Chart View</h2>
           <div className={`text-sm ${colors.textSecondary}`}>
             Layout: {layoutParam} ({totalCharts} charts)
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span className={`text-sm ${colors.textSecondary}`}>
-            {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
-          </span>
+        
+        <div className="flex items-center gap-3">
+          {/* Connection Status */}
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+            <span className={`text-sm ${colors.textSecondary}`}>
+              {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
+            </span>
+          </div>
+          
+          {/* Theme Toggle */}
+          <button
+            onClick={toggleTheme}
+            className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center cursor-pointer ${colors.textMuted} hover:${colors.secondary}`}
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+          
+          {/* Share Button */}
+          <button
+            onClick={handleShare}
+            className={`p-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 flex items-center justify-center cursor-pointer ${colors.textMuted} hover:${colors.secondary}`}
+            title="Share current configuration"
+            aria-label="Share current configuration"
+          >
+            <Share className="w-4 h-4" />
+          </button>
         </div>
+        
+        {/* Share Feedback */}
+        {showShareFeedback && (
+          <div className={`absolute top-full right-0 mt-2 px-3 py-2 ${colors.successBg} ${colors.success} text-sm rounded-md shadow-lg z-10 whitespace-nowrap`}>
+            Link copied!
+          </div>
+        )}
       </div>
       
       {/* Charts Grid */}
       <div 
-        className="grid gap-2 sm:gap-3 w-full overflow-hidden"
+        className="grid gap-1 sm:gap-2 w-full overflow-hidden"
         style={{ 
           gridTemplateColumns,
-          gridTemplateRows: `repeat(${layout.rows}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${layout.rows}, ${chartHeight})`,
           maxWidth: '100%'
         }}
       >
@@ -323,6 +469,7 @@ export default function MultiChartContainer() {
             onDrop={handleDrop}
             isDraggedOver={dragOverChart === chart.id}
             colors={colors}
+            onCloseChart={handleCloseChart}
           />
         ))}
       </div>
@@ -340,6 +487,7 @@ interface ChartContainerProps {
   onDrop: (e: React.DragEvent, chartId: string) => void;
   isDraggedOver: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
+  onCloseChart: (chartId: string) => void;
 }
 
 function ChartContainer({
@@ -351,7 +499,8 @@ function ChartContainer({
   onDragLeave,
   onDrop,
   isDraggedOver,
-  colors
+  colors,
+  onCloseChart
 }: ChartContainerProps) {
   const [tickerInput, setTickerInput] = useState('');
   
@@ -366,12 +515,11 @@ function ChartContainer({
   
   return (
     <div
-      className={`${colors.chartBackground} rounded-lg border-2 transition-all duration-200 w-full overflow-hidden ${
+      className={`${colors.chartBackground} rounded-lg border-2 transition-all duration-200 w-full h-full overflow-hidden ${
         isDraggedOver 
           ? 'border-blue-500 border-dashed shadow-lg transform scale-[1.02]' 
           : colors.border
       }`}
-      style={{ height, maxWidth: '100%' }}
       draggable={!!chart.ticker}
       onDragStart={() => onDragStart(chart.id)}
       onDragOver={(e) => onDragOver(e, chart.id)}
@@ -391,8 +539,23 @@ function ChartContainer({
             </span>
           )}
         </div>
-        <div className="text-xs text-gray-500">
-          ⋮⋮
+        <div className="flex items-center gap-2">
+          {chart.ticker && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCloseChart(chart.id);
+              }}
+              className={`p-1 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-red-500 hover:text-white ${colors.textMuted}`}
+              title="Close chart"
+              aria-label="Close chart"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          <div className="text-xs text-gray-500">
+            ⋮⋮
+          </div>
         </div>
       </div>
       
@@ -415,7 +578,7 @@ function ChartContainer({
                 first_seen: new Date().toISOString()
               }}
               chartType="candlestick"
-              historicalCandles={[]}
+              historicalCandles={chart.historicalCandles}
               isExpanded={true}
             />
           </div>
@@ -429,7 +592,7 @@ function ChartContainer({
                   placeholder="Enter ticker symbol (e.g., AAPL)"
                   value={tickerInput}
                   onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
-                  className={`w-full px-3 py-2 ${colors.inputBackground} ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder} rounded-md focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500`}
+                  className={`w-full px-3 py-2 ${colors.inputBackground} border-2 ${colors.inputBorder} ${colors.inputText} ${colors.inputPlaceholder} rounded-md focus:outline-none ${colors.inputFocusBorder} focus:ring-1 focus:ring-blue-500 transition-colors duration-200`}
                 />
                 <button
                   type="submit"

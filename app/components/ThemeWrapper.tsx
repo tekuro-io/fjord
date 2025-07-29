@@ -11,7 +11,7 @@ export const ThemeWrapper: React.FC<ThemeWrapperProps> = ({ children }) => {
   const { colors, theme } = useTheme();
   
   return (
-    <main className={`min-h-screen ${colors.gradient} ${colors.textPrimary} p-4 transition-all duration-500`}>
+    <main className={`min-h-screen ${colors.gradient} ${colors.textPrimary} p-2 transition-all duration-500`}>
       <style jsx global>{`
         * {
           transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
