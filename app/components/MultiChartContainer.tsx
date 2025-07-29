@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTheme } from './ThemeContext';
 import { X, Sun, Moon, Share } from 'lucide-react';
 import ManagedChart, { type ManagedChartHandle } from './ManagedChart';
+import CustomChartsDropdown from './stock-table/components/CustomChartsDropdown';
 import type { StockItem, CandleDataPoint } from './stock-table/types';
 
 interface ChartConfig {
@@ -531,7 +533,16 @@ export default function MultiChartContainer() {
       {/* Header */}
       <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center relative`}>
         <div className="flex items-center gap-4">
-          <h2 className={`text-xl font-bold ${colors.textPrimary}`}>Multi-Chart View</h2>
+          <div className="flex items-center gap-2">
+            <Image
+              src="/stock.svg"          
+              width={24}
+              height={18}
+              alt="Stock Screener Icon"
+              className='inline-block'
+            />
+            <h2 className={`text-xl font-bold ${colors.textPrimary}`}>Multi-Chart View</h2>
+          </div>
           <div className={`text-sm ${colors.textSecondary}`}>
             Layout: {layoutParam} ({totalCharts} charts)
           </div>
@@ -545,6 +556,9 @@ export default function MultiChartContainer() {
           >
             ← Momentum Scanner
           </Link>
+          
+          {/* Custom Charts Dropdown */}
+          <CustomChartsDropdown />
           
           {/* Theme Toggle */}
           <button

@@ -5,17 +5,12 @@ import { ThemeProvider } from '../components/ThemeContext';
 import { ThemeWrapper } from '../components/ThemeWrapper';
 import ClientPageWrapper from '../components/ClientPageWrapper';
 import MultiChartContainer from '../components/MultiChartContainer';
-import CustomChartsDropdown from '../components/stock-table/components/CustomChartsDropdown';
 
 export default async function MultiChartPage() {
     return (
         <ThemeProvider>
             <ThemeWrapper>
                 <ClientPageWrapper>
-                    <div className="flex justify-end mb-2">
-                        <CustomChartsDropdown />
-                    </div>
-
                     <Suspense fallback={<Spinner />}>
                         <MultiChartContainer />
                     </Suspense>
