@@ -377,6 +377,12 @@ export default function MultiChartContainer() {
               ? new Date(update.timestamp).getTime() 
               : update.timestamp;
             
+            // Skip if timestamp or price is invalid
+            if (timestamp == null || price == null) {
+              console.warn(`MultiChart: Skipping update for ${ticker} - invalid timestamp or price:`, { timestamp, price });
+              return;
+            }
+            
             // Update stock data for this ticker
             const stockData: StockItem = {
               ticker,

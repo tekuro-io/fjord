@@ -194,6 +194,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             },
             width: chartContainerRef.current.clientWidth,
             height: chartContainerRef.current.clientHeight,
+            autoSize: true, // Enable auto-sizing to container
             grid: {
                 vertLines: {
                     color: vertLinesColor,
@@ -222,8 +223,8 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 },
             },
             timeScale: {
-                rightOffset: isExpanded ? 5 : 1, // Very minimal right padding for multichart view
-                barSpacing: isExpanded ? 8 : 4, // Much tighter bar spacing for multichart view  
+                rightOffset: isExpanded ? 5 : 0, // No right padding for multichart to maximize space usage
+                barSpacing: isExpanded ? 8 : 3, // Very tight bar spacing for multichart view  
                 borderVisible: isExpanded, // Show border in expanded view
                 visible: true,
                 timeVisible: isExpanded, // Only show time labels in expanded view
@@ -231,9 +232,11 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 lockVisibleTimeRangeOnResize: true,
                 rightBarStaysOnScroll: false, // Don't auto-scroll to keep data from sliding off
                 minBarSpacing: 0.5,
+                maxBarSpacing: isExpanded ? 50 : 10, // Limit bar spacing to prevent overflow
                 shiftVisibleRangeOnNewBar: false, // Don't auto-scroll - build from left to right
                 fixLeftEdge: true, // Keep left edge fixed to prevent horizontal scrolling
                 fixRightEdge: !isExpanded, // Fix right edge for multichart view to prevent overflow
+                allowShiftVisibleRangeOnWhitespaceReplacement: false, // Prevent range shifts
             },
             rightPriceScale: {
                 autoScale: true,
@@ -350,7 +353,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
             // Set initial range to start from left (logical position 0) with proper containment
             chart.timeScale().setVisibleLogicalRange({
                 from: -1,  // Minimal negative buffer to ensure left alignment
-                to: isExpanded ? 20 : 12  // Conservative space for multichart view to prevent overflow
+                to: isExpanded ? 20 : 10  // Very conservative space for multichart view to prevent overflow
             });
         }
         // Don't call fitContent() here - let individual charts set their own view ranges
@@ -364,10 +367,27 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
         // Handle window resizing
         const handleResize = () => {
             if (chartRef.current && chartContainerRef.current) {
+                const containerWidth = chartContainerRef.current.clientWidth;
+                const containerHeight = chartContainerRef.current.clientHeight;
+                
                 chartRef.current.applyOptions({ 
-                    width: chartContainerRef.current.clientWidth,
-                    height: chartContainerRef.current.clientHeight
+                    width: Math.max(containerWidth, 100), // Ensure minimum width
+                    height: Math.max(containerHeight, 100) // Ensure minimum height
                 });
+                
+                // For multichart view, ensure the visible range stays contained
+                if (!isExpanded) {
+                    const currentRange = chartRef.current.timeScale().getVisibleLogicalRange();
+                    if (currentRange) {
+                        const maxLogicalRange = Math.min(currentRange.to - currentRange.from, 10);
+                        if (currentRange.to - currentRange.from > maxLogicalRange) {
+                            chartRef.current.timeScale().setVisibleLogicalRange({
+                                from: currentRange.from,
+                                to: currentRange.from + maxLogicalRange
+                            });
+                        }
+                    }
+                }
             }
         };
 
@@ -414,7 +434,7 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
                 // For candlestick charts, show a consistent view that fits well in the container
                 if (chartRef.current && processedData.length > 0) {
                     // Calculate how many bars to show based on chart expansion state
-                    const maxVisibleBars = isExpanded ? 50 : 20; // Fewer bars for multichart view to prevent overflow
+                    const maxVisibleBars = isExpanded ? 50 : 15; // Even fewer bars for multichart view to ensure containment
                     
                     if (processedData.length <= maxVisibleBars) {
                         // If we have fewer bars than max, show all with some padding
@@ -447,7 +467,14 @@ export const ChartComponent = forwardRef<ChartHandle, ChartComponentProps>((prop
     return (
         <div
             ref={chartContainerRef}
-            style={{ width: '100%', height: '100%' }}
+            style={{ 
+                width: '100%', 
+                height: '100%', 
+                maxWidth: '100%',
+                maxHeight: '100%',
+                overflow: 'hidden',
+                position: 'relative'
+            }}
         />
     );
 });
