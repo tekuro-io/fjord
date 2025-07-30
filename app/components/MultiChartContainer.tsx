@@ -8,6 +8,8 @@ import { useTheme } from './ThemeContext';
 import { X, Sun, Moon, Share } from 'lucide-react';
 import ManagedChart, { type ManagedChartHandle } from './ManagedChart';
 import CustomChartsDropdown from './stock-table/components/CustomChartsDropdown';
+import AlertManager from './AlertManager';
+import type { PatternAlertData } from './PatternAlert';
 import type { StockItem, CandleDataPoint } from './stock-table/types';
 
 interface ChartConfig {
@@ -77,6 +79,49 @@ export default function MultiChartContainer() {
   // UI state
   const [showShareFeedback, setShowShareFeedback] = useState(false);
   
+  // Pattern detection state
+  const [patternFlashingCharts, setPatternFlashingCharts] = useState<Map<string, 'bullish' | 'bearish'>>(new Map());
+  
+  // AlertManager ref to call its methods directly
+  const alertManagerRef = useRef<{ handleNewAlert: (alert: PatternAlertData) => void } | null>(null);
+  
+  // Handler for pattern alerts
+  const handlePatternAlert = useCallback((alert: PatternAlertData) => {
+    if (!alert.data || !alert.data.ticker || !alert.data.direction) {
+      console.error('MultiChart: Invalid pattern alert structure:', alert);
+      return;
+    }
+    
+    const ticker = alert.data.ticker.toUpperCase();
+    const direction = alert.data.direction;
+    
+    // Check if this ticker is currently displayed in any chart
+    const hasActiveChart = charts.some(chart => chart.ticker?.toUpperCase() === ticker);
+    
+    if (hasActiveChart) {
+      // Flash the chart background for this ticker
+      setPatternFlashingCharts(prev => new Map(prev).set(ticker, direction));
+      
+      // Stop chart flashing after 12 seconds
+      setTimeout(() => {
+        setPatternFlashingCharts(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(ticker);
+          return newMap;
+        });
+      }, 12000);
+      
+      console.log(`🎯 MultiChart: Pattern alert for active ticker ${ticker} - ${direction} ${alert.data.pattern_display_name}`);
+    } else {
+      console.log(`📊 MultiChart: Pattern alert for inactive ticker ${ticker} - ${direction} ${alert.data.pattern_display_name}`);
+    }
+    
+    // Always trigger the AlertManager popup and sound regardless of whether ticker is active
+    if (alertManagerRef.current) {
+      alertManagerRef.current.handleNewAlert(alert);
+    }
+  }, [charts]);
+
   // Helper function to collect background candles for a ticker
   const collectBackgroundCandle = useCallback((ticker: string, timestamp: number, price: number) => {
     const timeInSeconds = Math.floor(timestamp / 1000);
@@ -242,15 +287,87 @@ export default function MultiChartContainer() {
       
       ws.onmessage = (event) => {
         try {
-          const parsedData = JSON.parse(event.data);
+          const parsedData: unknown = JSON.parse(event.data);
           
-          // Handle stock updates (same logic as StockTable)
-          if (parsedData.ticker && parsedData.price != null && parsedData.timestamp) {
-            const ticker = parsedData.ticker.toUpperCase();
-            const price = parsedData.price;
-            const timestamp = typeof parsedData.timestamp === 'string' 
-              ? new Date(parsedData.timestamp).getTime() 
-              : parsedData.timestamp;
+          // Type guard for pattern detection messages
+          const isPatternDetection = (data: unknown): boolean => {
+            return typeof data === 'object' && 
+                   data !== null && 
+                   (('pattern' in data || 'alert_level' in data || 'confidence' in data) ||
+                    ('topic' in data && (data as { topic: string }).topic === 'pattern_detection'));
+          };
+          
+          // Type guard for StockItem  
+          const isStockItem = (data: unknown): data is StockItem => {
+            return typeof data === 'object' && 
+                   data !== null && 
+                   'ticker' in data && 
+                   typeof (data as StockItem).ticker === 'string' && 
+                   (data as StockItem).ticker.trim() !== '';
+          };
+          
+          // Type guard for control messages
+          const isInfoOrControlMessage = (data: unknown): boolean => {
+            return typeof data === 'object' && data !== null && 'type' in data && !('ticker' in data);
+          };
+          
+          let stockUpdates: StockItem[] = [];
+          
+          if (isInfoOrControlMessage(parsedData)) {
+            // Handle control messages (subscriptions, etc.)
+            return;
+          } else if (isPatternDetection(parsedData)) {
+            // Handle pattern detection messages
+            let ticker = 'unknown';
+            if (typeof parsedData === 'object' && parsedData !== null) {
+              if ('ticker' in parsedData) {
+                ticker = (parsedData as {ticker: string}).ticker;
+              } else if ('data' in parsedData) {
+                const dataObj = (parsedData as {data: unknown}).data;
+                if (typeof dataObj === 'object' && dataObj !== null && 'ticker' in dataObj) {
+                  ticker = (dataObj as {ticker: string}).ticker;
+                }
+              }
+            }
+            
+            // Ensure the alert has the correct structure
+            let alertData: PatternAlertData;
+            if (typeof parsedData === 'object' && parsedData !== null && 'topic' in parsedData && 'data' in parsedData) {
+              alertData = parsedData as PatternAlertData;
+            } else {
+              alertData = {
+                topic: "pattern_detection",
+                data: parsedData as PatternAlertData['data']
+              };
+            }
+            
+            handlePatternAlert(alertData);
+            return;
+          } else if (Array.isArray(parsedData)) {
+            // Process arrays: separate pattern detection from stock updates
+            const patternDetections = parsedData.filter(isPatternDetection);
+            const stockItems = parsedData.filter(item => !isPatternDetection(item) && isStockItem(item));
+            
+            // Handle any pattern detections found in the array
+            patternDetections.forEach(pattern => handlePatternAlert(pattern as PatternAlertData));
+            
+            // Set stock updates (excluding pattern detections)
+            stockUpdates = stockItems;
+          } else if (isStockItem(parsedData)) {
+            // Single stock item
+            stockUpdates = [parsedData];
+          } else {
+            console.warn("MultiChart: Received unknown message type:", parsedData);
+            return;
+          }
+          
+          // Handle stock updates
+          stockUpdates.forEach(update => {
+            const ticker = update.ticker.toUpperCase();
+            const price = update.price;
+            const timestamp = typeof update.timestamp === 'string' 
+              ? new Date(update.timestamp).getTime() 
+              : update.timestamp;
             
             // Update stock data for this ticker
             const stockData: StockItem = {
@@ -259,10 +376,10 @@ export default function MultiChartContainer() {
               timestamp,
               prev_price: chartStockData.current.get(ticker)?.prev_price || price,
               delta: 0, // Can be calculated if needed
-              volume: parsedData.volume || 0,
-              multiplier: parsedData.multiplier || 0,
-              float: parsedData.float || 0,
-              mav10: parsedData.mav10 || 0,
+              volume: update.volume || 0,
+              multiplier: update.multiplier || 0,
+              float: update.float || 0,
+              mav10: update.mav10 || 0,
               first_seen: chartStockData.current.get(ticker)?.first_seen || new Date().toISOString()
             };
             
@@ -282,7 +399,7 @@ export default function MultiChartContainer() {
                 }
               }
             });
-          }
+          });
         } catch (error) {
           console.error('MultiChart: Error parsing WebSocket message:', error);
         }
@@ -353,6 +470,14 @@ export default function MultiChartContainer() {
       wsRef.current!.send(JSON.stringify(subscribeMessage));
       console.log(`MultiChart: Subscribed to ${ticker}`);
     });
+    
+    // Subscribe to pattern detection alerts
+    const patternSubscribeMessage = {
+      type: "subscribe",
+      topic: "pattern_detection"
+    };
+    wsRef.current!.send(JSON.stringify(patternSubscribeMessage));
+    console.log('MultiChart: Subscribed to pattern detection');
   }, [debouncedActiveTickers, connectionStatus]); // Subscribe when tickers change or connection is established
   
   // Handle ticker input change
@@ -537,7 +662,35 @@ export default function MultiChartContainer() {
                               'repeat(4, minmax(0, 1fr))';
   
   return (
-    <div className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-1 sm:mx-2 w-full max-w-none relative border ${colors.border} p-2 sm:p-3`}>
+    <>
+      <style jsx>{`
+        @keyframes pattern-flash-bullish {
+          0% { background-color: var(--pattern-flash-bullish-color); }
+          50% { background-color: transparent; }
+          100% { background-color: var(--pattern-flash-bullish-color); }
+        }
+        
+        @keyframes pattern-flash-bearish {
+          0% { background-color: var(--pattern-flash-bearish-color); }
+          50% { background-color: transparent; }
+          100% { background-color: var(--pattern-flash-bearish-color); }
+        }
+        
+        .pattern-flash-bullish {
+          animation: pattern-flash-bullish 2s ease-in-out infinite;
+        }
+        
+        .pattern-flash-bearish {
+          animation: pattern-flash-bearish 2s ease-in-out infinite;
+        }
+      `}</style>
+      <div 
+        className={`${colors.containerGradient} rounded-lg ${colors.shadowLg} mx-1 sm:mx-2 w-full max-w-none relative border ${colors.border} p-2 sm:p-3`}
+        style={{
+          '--pattern-flash-bullish-color': theme === 'light' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.3)',
+          '--pattern-flash-bearish-color': theme === 'light' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(239, 68, 68, 0.3)'
+        } as React.CSSProperties}
+      >
       {/* Header */}
       <div className={`${colors.tableHeaderGradient} rounded-lg p-3 mb-3 flex justify-between items-center relative`}>
         <div className="flex items-center gap-4">
@@ -631,10 +784,21 @@ export default function MultiChartContainer() {
             isDraggedOver={dragOverChart === chart.id}
             colors={colors}
             onCloseChart={handleCloseChart}
+            patternFlash={chart.ticker ? patternFlashingCharts.get(chart.ticker.toUpperCase()) : undefined}
           />
         ))}
       </div>
+      
+      {/* Pattern Alert Manager */}
+      <AlertManager
+        ref={alertManagerRef}
+        wsConnection={wsRef.current}
+        onPatternAlert={() => {
+          // This is not used anymore since we call AlertManager directly
+        }}
+      />
     </div>
+    </>
   );
 }
 
@@ -649,6 +813,7 @@ interface ChartContainerProps {
   isDraggedOver: boolean;
   colors: ReturnType<typeof useTheme>['colors'];
   onCloseChart: (chartId: string) => void;
+  patternFlash?: 'bullish' | 'bearish';
 }
 
 function ChartContainer({
@@ -661,7 +826,8 @@ function ChartContainer({
   onDrop,
   isDraggedOver,
   colors,
-  onCloseChart
+  onCloseChart,
+  patternFlash
 }: ChartContainerProps) {
   const [tickerInput, setTickerInput] = useState('');
   
@@ -680,6 +846,8 @@ function ChartContainer({
         isDraggedOver 
           ? 'border-blue-500 border-dashed shadow-lg transform scale-[1.02]' 
           : colors.border
+      } ${
+        patternFlash ? `pattern-flash-${patternFlash}` : ''
       }`}
       onDragOver={(e) => onDragOver(e, chart.id)}
       onDragLeave={onDragLeave}
