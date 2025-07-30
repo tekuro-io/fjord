@@ -283,6 +283,14 @@ export default function MultiChartContainer() {
       ws.onopen = () => {
         console.log(`✅ WS Effect ${effectId}: WebSocket connected`);
         setConnectionStatus('connected');
+        
+        // Subscribe to pattern detection alerts immediately when connected
+        const patternSubscribeMessage = {
+          type: "subscribe",
+          topic: "pattern_detection"
+        };
+        ws.send(JSON.stringify(patternSubscribeMessage));
+        console.log('MultiChart: Subscribed to pattern detection in onopen');
       };
       
       ws.onmessage = (event) => {
@@ -470,14 +478,6 @@ export default function MultiChartContainer() {
       wsRef.current!.send(JSON.stringify(subscribeMessage));
       console.log(`MultiChart: Subscribed to ${ticker}`);
     });
-    
-    // Subscribe to pattern detection alerts
-    const patternSubscribeMessage = {
-      type: "subscribe",
-      topic: "pattern_detection"
-    };
-    wsRef.current!.send(JSON.stringify(patternSubscribeMessage));
-    console.log('MultiChart: Subscribed to pattern detection');
   }, [debouncedActiveTickers, connectionStatus]); // Subscribe when tickers change or connection is established
   
   // Handle ticker input change
